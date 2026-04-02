@@ -7,6 +7,7 @@ import {
   bookingCancelledProvider,
   bookingReminder,
 } from "./templates";
+import { generateGoogleCalendarUrl } from "@/lib/calendar/ics";
 
 const LIFF_ID = process.env.NEXT_PUBLIC_LIFF_ID!;
 
@@ -81,6 +82,13 @@ async function getBookingDetails(bookingId: string) {
       price: service.price,
       customerName: booking.customer_name || customer.display_name || "お客さま",
       liffId: LIFF_ID,
+      googleCalendarUrl: generateGoogleCalendarUrl(
+        `${provider.name}（${service.name}）`,
+        startAt,
+        endAt,
+        `料金: ¥${service.price.toLocaleString()}`
+      ),
+      appleCalendarUrl: `${process.env.NEXT_PUBLIC_VERCEL_URL ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}` : "https://edgeconnect.vercel.app"}/api/calendar/event/${booking.id}.ics`,
     },
   };
 }

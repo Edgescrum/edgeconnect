@@ -10,6 +10,7 @@ const PAGE_TITLES: Record<string, string> = {
   "/provider/qrcode": "QRコード",
   "/provider/register": "事業主登録",
   "/provider/bookings": "予約管理",
+  "/provider/calendar": "カレンダー連携",
 };
 
 export function ProviderHeader() {

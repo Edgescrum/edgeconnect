@@ -2,6 +2,7 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { redirect, notFound } from "next/navigation";
 import { CancelButton } from "./cancel-button";
+import { generateGoogleCalendarUrl } from "@/lib/calendar/ics";
 
 export default async function BookingDetailPage({
   params,
@@ -126,8 +127,38 @@ export default async function BookingDetailPage({
           </div>
         )}
 
+        {/* カレンダー追加 */}
+        {!isCancelled && (
+          <div className="mt-4">
+            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted">
+              カレンダーに追加
+            </h3>
+            <div className="flex gap-2">
+              <a
+                href={generateGoogleCalendarUrl(
+                  `${provider?.name}（${service?.name}）`,
+                  startAt,
+                  new Date(booking.end_at),
+                  `料金: ¥${(service?.price || 0).toLocaleString()}`
+                )}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 rounded-xl bg-card py-2.5 text-center text-xs font-medium ring-1 ring-border active:scale-[0.98]"
+              >
+                Google
+              </a>
+              <a
+                href={`/api/calendar/event/${booking.id}.ics`}
+                className="flex-1 rounded-xl bg-card py-2.5 text-center text-xs font-medium ring-1 ring-border active:scale-[0.98]"
+              >
+                Apple
+              </a>
+            </div>
+          </div>
+        )}
+
         {/* Actions */}
-        <div className="mt-6 space-y-2.5">
+        <div className="mt-4 space-y-2.5">
           {canCancel && <CancelButton bookingId={booking.id} />}
 
           {provider?.line_contact_url && (

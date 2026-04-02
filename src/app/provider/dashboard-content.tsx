@@ -32,6 +32,12 @@ const menuItems = [
     desc: "名前・紹介文・アイコンを変更",
   },
   {
+    href: "/provider/calendar",
+    icon: "📆",
+    title: "カレンダー連携",
+    desc: "Google・Appleカレンダーと同期",
+  },
+  {
     href: "/provider/qrcode",
     icon: "📱",
     title: "QRコード",

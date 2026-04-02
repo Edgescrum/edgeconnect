@@ -10,6 +10,8 @@ interface BookingInfo {
   price: number;
   customerName: string;
   liffId: string;
+  googleCalendarUrl?: string;
+  appleCalendarUrl?: string;
 }
 
 function formatPrice(price: number) {
@@ -74,6 +76,32 @@ export function bookingConfirmedCustomer(info: BookingInfo): Record<string, unkn
           style: "primary",
           color: "#6366f1",
         },
+        ...(info.googleCalendarUrl
+          ? [
+              {
+                type: "button" as const,
+                action: {
+                  type: "uri" as const,
+                  label: "Googleカレンダーに追加",
+                  uri: info.googleCalendarUrl,
+                },
+                style: "link" as const,
+              },
+            ]
+          : []),
+        ...(info.appleCalendarUrl
+          ? [
+              {
+                type: "button" as const,
+                action: {
+                  type: "uri" as const,
+                  label: "Appleカレンダーに追加",
+                  uri: info.appleCalendarUrl,
+                },
+                style: "link" as const,
+              },
+            ]
+          : []),
       ],
     },
   };
