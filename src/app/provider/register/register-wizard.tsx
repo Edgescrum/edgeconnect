@@ -9,9 +9,11 @@ const STEPS = [
   { title: "はじめに", icon: "👋" },
   { title: "お店の名前", icon: "🏠" },
   { title: "予約ページURL", icon: "🔗" },
-  { title: "プロフィール", icon: "✨" },
+  { title: "連絡先・プロフィール", icon: "✨" },
   { title: "完了", icon: "🎉" },
 ];
+
+type ContactMethod = "line" | "email" | "both";
 
 export function RegisterWizard() {
   const { user } = useLiff();
@@ -26,9 +28,11 @@ export function RegisterWizard() {
   const [slugStatus, setSlugStatus] = useState<"idle" | "checking" | "available" | "taken">("idle");
   const [bio, setBio] = useState("");
   const [iconFile, setIconFile] = useState<File | null>(null);
-  const [lineContactUrl, setLineContactUrl] = useState(
+  const [contactMethod, setContactMethod] = useState<ContactMethod>("line");
+  const [lineContactUrl] = useState(
     user ? `https://line.me/ti/p/~${user.lineUserId}` : ""
   );
+  const [contactEmail, setContactEmail] = useState("");
 
   async function handleSlugChange(value: string) {
     const normalized = value.toLowerCase().replace(/[^a-z0-9-]/g, "");
@@ -50,7 +54,12 @@ export function RegisterWizard() {
       formData.set("slug", slug);
       formData.set("name", name);
       formData.set("bio", bio);
-      formData.set("line_contact_url", lineContactUrl);
+      if (contactMethod === "line" || contactMethod === "both") {
+        formData.set("line_contact_url", lineContactUrl);
+      }
+      if (contactMethod === "email" || contactMethod === "both") {
+        formData.set("contact_email", contactEmail);
+      }
       if (iconFile) formData.set("icon", iconFile);
       await registerProvider(formData);
       setStep(4);
@@ -65,7 +74,11 @@ export function RegisterWizard() {
     switch (step) {
       case 1: return name.trim().length > 0;
       case 2: return slug.length >= 3 && slugStatus === "available";
-      case 3: return lineContactUrl.length > 0;
+      case 3: {
+        if (contactMethod === "email") return contactEmail.includes("@");
+        if (contactMethod === "both") return contactEmail.includes("@");
+        return true; // LINE は自動取得
+      }
       default: return true;
     }
   };
@@ -109,7 +122,7 @@ export function RegisterWizard() {
                 {[
                   { step: "1", title: "お店の名前を決める", desc: "お客さまに表示される名前です" },
                   { step: "2", title: "予約ページのURLを決める", desc: "あなた専用のURLを作成します" },
-                  { step: "3", title: "プロフィールを入力", desc: "自己紹介やアイコンを設定します" },
+                  { step: "3", title: "連絡先・プロフィールを設定", desc: "お客さまとの連絡方法を選びます" },
                 ].map((item) => (
                   <div key={item.step} className="flex gap-3">
                     <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent-bg text-sm font-bold text-accent">
@@ -238,18 +251,79 @@ export function RegisterWizard() {
           </div>
         )}
 
-        {/* Step 3: Profile */}
+        {/* Step 3: Contact & Profile */}
         {step === 3 && (
           <div className="flex flex-1 flex-col">
             <div className="flex-1">
               <p className="text-4xl">{STEPS[3].icon}</p>
-              <h1 className="mt-4 text-2xl font-bold">プロフィール</h1>
+              <h1 className="mt-4 text-2xl font-bold">連絡先・プロフィール</h1>
               <p className="mt-2 text-sm text-muted">
-                あなたのことをお客さまに伝えましょう。
-                あとから編集できるので、まずは気軽に入力してください。
+                お客さまからの連絡方法を選択してください。
               </p>
 
               <div className="mt-6 space-y-5">
+                {/* Contact Method */}
+                <div>
+                  <label className="mb-2 block text-sm font-medium">
+                    連絡方法
+                  </label>
+                  <div className="space-y-2">
+                    {([
+                      { value: "line" as const, label: "LINEで連絡を受ける", desc: "LINEアカウントを自動で連携します" },
+                      { value: "email" as const, label: "メールで連絡を受ける", desc: "メールアドレスを入力してください" },
+                      { value: "both" as const, label: "両方で連絡を受ける", desc: "LINEとメール両方を設定します" },
+                    ]).map((option) => (
+                      <label
+                        key={option.value}
+                        className={`flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition-colors ${
+                          contactMethod === option.value
+                            ? "border-accent bg-accent-bg"
+                            : "border-border bg-card"
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="contactMethod"
+                          value={option.value}
+                          checked={contactMethod === option.value}
+                          onChange={() => setContactMethod(option.value)}
+                          className="mt-0.5 accent-accent"
+                        />
+                        <div>
+                          <p className="text-sm font-semibold">{option.label}</p>
+                          <p className="text-xs text-muted">{option.desc}</p>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                {/* LINE confirmation */}
+                {(contactMethod === "line" || contactMethod === "both") && (
+                  <div className="rounded-xl bg-green-50 p-3">
+                    <p className="text-xs text-green-700">
+                      ✓ LINEアカウントは自動で連携されます。お客さまがタップするとあなたのLINEトークが開きます。
+                    </p>
+                  </div>
+                )}
+
+                {/* Email input */}
+                {(contactMethod === "email" || contactMethod === "both") && (
+                  <div>
+                    <label className="mb-1.5 block text-sm font-medium">
+                      メールアドレス
+                    </label>
+                    <input
+                      type="email"
+                      value={contactEmail}
+                      onChange={(e) => setContactEmail(e.target.value)}
+                      placeholder="you@example.com"
+                      className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm"
+                    />
+                  </div>
+                )}
+
+                {/* Bio */}
                 <div>
                   <label className="mb-1.5 block text-sm font-medium">
                     自己紹介
@@ -264,6 +338,7 @@ export function RegisterWizard() {
                   />
                 </div>
 
+                {/* Icon */}
                 <div>
                   <label className="mb-1.5 block text-sm font-medium">
                     アイコン画像
@@ -288,21 +363,6 @@ export function RegisterWizard() {
                       onChange={(e) => setIconFile(e.target.files?.[0] || null)}
                     />
                   </label>
-                </div>
-
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium">
-                    連絡用LINE URL
-                  </label>
-                  <input
-                    type="url"
-                    value={lineContactUrl}
-                    onChange={(e) => setLineContactUrl(e.target.value)}
-                    className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm"
-                  />
-                  <p className="mt-1 text-xs text-muted">
-                    お客さまが直接連絡する際のLINE URLです
-                  </p>
                 </div>
               </div>
             </div>

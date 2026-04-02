@@ -11,7 +11,8 @@ export async function registerProvider(formData: FormData) {
   const slug = (formData.get("slug") as string).toLowerCase().trim();
   const name = formData.get("name") as string;
   const bio = (formData.get("bio") as string) || null;
-  const lineContactUrl = formData.get("line_contact_url") as string;
+  const lineContactUrl = (formData.get("line_contact_url") as string) || null;
+  const contactEmail = (formData.get("contact_email") as string) || null;
 
   const supabase = await createClient();
 
@@ -37,6 +38,7 @@ export async function registerProvider(formData: FormData) {
     p_slug: slug,
     p_name: name,
     p_line_contact_url: lineContactUrl,
+    p_contact_email: contactEmail,
     p_bio: bio,
     p_icon_url: iconUrl,
   });
@@ -53,7 +55,6 @@ export async function updateProfile(formData: FormData) {
 
   const supabase = await createClient();
 
-  // 事業主情報取得
   const { data: provider } = await supabase
     .from("providers")
     .select("id, slug")
@@ -66,10 +67,12 @@ export async function updateProfile(formData: FormData) {
   const name = formData.get("name") as string;
   const bio = formData.get("bio") as string;
   const lineContactUrl = formData.get("line_contact_url") as string;
+  const contactEmail = formData.get("contact_email") as string;
 
   if (name) updates.name = name;
   if (bio !== null) updates.bio = bio;
-  if (lineContactUrl) updates.line_contact_url = lineContactUrl;
+  updates.line_contact_url = lineContactUrl || null;
+  updates.contact_email = contactEmail || null;
 
   // アイコン画像アップロード
   const iconFile = formData.get("icon") as File | null;
