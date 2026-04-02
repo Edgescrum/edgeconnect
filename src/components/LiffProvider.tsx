@@ -41,12 +41,20 @@ export function useLiff() {
 const SESSION_KEY = "edgeconnect_user";
 
 export function LiffProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<LiffState>({
-    user: null,
-    isReady: false,
-    isLoggedIn: false,
-    error: null,
+  // キャッシュがあれば初期値として即座に設定（LIFF init不要）
+  const [state, setState] = useState<LiffState>(() => {
+    if (typeof window !== "undefined") {
+      const cached = sessionStorage.getItem(SESSION_KEY);
+      if (cached) {
+        try {
+          const user = JSON.parse(cached) as LiffUser;
+          return { user, isReady: true, isLoggedIn: true, error: null };
+        } catch { /* ignore */ }
+      }
+    }
+    return { user: null, isReady: false, isLoggedIn: false, error: null };
   });
+
   const [liffInstance, setLiffInstance] = useState<typeof import("@line/liff").default | null>(null);
 
   useEffect(() => {
@@ -56,11 +64,8 @@ export function LiffProvider({ children }: { children: ReactNode }) {
         await liff.init({ liffId: process.env.NEXT_PUBLIC_LIFF_ID! });
         setLiffInstance(liff);
 
-        // セッションキャッシュがあればそのまま使う
-        const cached = sessionStorage.getItem(SESSION_KEY);
-        if (cached) {
-          const cachedUser = JSON.parse(cached) as LiffUser;
-          setState({ user: cachedUser, isReady: true, isLoggedIn: true, error: null });
+        // キャッシュ済みならLIFF initだけで完了（サーバー認証スキップ）
+        if (sessionStorage.getItem(SESSION_KEY)) {
           return;
         }
 
@@ -83,10 +88,10 @@ export function LiffProvider({ children }: { children: ReactNode }) {
         }
 
         // 未ログイン
-        setState((prev) => ({ ...prev, isReady: true }));
+        setState((prev) => prev.isReady ? prev : { ...prev, isReady: true });
       } catch (e) {
         console.error("LIFF init error:", e);
-        setState({
+        setState((prev) => prev.isReady ? prev : {
           user: null,
           isReady: true,
           isLoggedIn: false,
