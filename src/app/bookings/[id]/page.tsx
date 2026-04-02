@@ -83,9 +83,19 @@ export default async function BookingDetailPage({
         {/* Details */}
         <div className="rounded-2xl bg-card p-5 shadow-sm ring-1 ring-border">
           <div className="space-y-4">
-            <div>
-              <p className="text-xs text-muted">事業主</p>
-              <p className="mt-0.5 font-semibold">{provider?.name}</p>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs text-muted">事業主</p>
+                <p className="mt-0.5 font-semibold">{provider?.name}</p>
+              </div>
+              {provider?.slug && (
+                <a
+                  href={`/p/${provider.slug}`}
+                  className="rounded-lg bg-accent-bg px-3 py-1.5 text-xs font-medium text-accent active:opacity-70"
+                >
+                  予約ページ
+                </a>
+              )}
             </div>
             <div>
               <p className="text-xs text-muted">メニュー</p>

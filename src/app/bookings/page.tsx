@@ -64,47 +64,38 @@ export default async function BookingsPage() {
     const isCancelled = booking.status === "cancelled";
 
     return (
-      <div
-        className={`rounded-2xl bg-card p-4 shadow-sm ring-1 ring-border ${
+      <a
+        href={`/bookings/${booking.id}`}
+        className={`block rounded-2xl bg-card p-4 shadow-sm ring-1 ring-border active:scale-[0.99] ${
           isCancelled ? "opacity-60" : ""
         }`}
       >
-        <a href={`/bookings/${booking.id}`} className="block active:opacity-70">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="mt-0.5 font-semibold">{service?.name}</p>
-              <p className="mt-1 text-sm">
-                {formatBookingDate(booking.start_at)} {formatTime(booking.start_at)}〜{formatTime(booking.end_at)}
-              </p>
-            </div>
-            <div className="text-right">
-              {isCancelled ? (
-                <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-muted">
-                  キャンセル
-                </span>
-              ) : (
-                <span className="rounded-full bg-green-50 px-2 py-0.5 text-[10px] font-medium text-green-700">
-                  確定
-                </span>
-              )}
-              {service && (
-                <p className="mt-1 text-sm font-bold">
-                  ¥{service.price.toLocaleString()}
-                </p>
-              )}
-            </div>
+        <div className="flex items-start justify-between">
+          <div>
+            <p className="text-xs text-muted">{provider?.name}</p>
+            <p className="mt-0.5 font-semibold">{service?.name}</p>
+            <p className="mt-1 text-sm">
+              {formatBookingDate(booking.start_at)} {formatTime(booking.start_at)}〜{formatTime(booking.end_at)}
+            </p>
           </div>
-        </a>
-        {provider && (
-          <a
-            href={`/p/${provider.slug}`}
-            className="mt-2 flex items-center gap-1.5 border-t border-border pt-2 text-xs text-accent active:opacity-70"
-          >
-            <span>{provider.name}</span>
-            <span>→ 予約ページ</span>
-          </a>
-        )}
-      </div>
+          <div className="text-right">
+            {isCancelled ? (
+              <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-muted">
+                キャンセル
+              </span>
+            ) : (
+              <span className="rounded-full bg-green-50 px-2 py-0.5 text-[10px] font-medium text-green-700">
+                確定
+              </span>
+            )}
+            {service && (
+              <p className="mt-1 text-sm font-bold">
+                ¥{service.price.toLocaleString()}
+              </p>
+            )}
+          </div>
+        </div>
+      </a>
     );
   }
 
