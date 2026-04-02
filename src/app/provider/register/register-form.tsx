@@ -3,8 +3,10 @@
 import { useState } from "react";
 import { registerProvider, checkSlugAvailability } from "@/lib/actions/provider";
 import { useRouter } from "next/navigation";
+import { useLiff } from "@/components/LiffProvider";
 
 export function RegisterForm() {
+  const { user } = useLiff();
   const router = useRouter();
   const [slugStatus, setSlugStatus] = useState<
     "idle" | "checking" | "available" | "taken"
@@ -72,6 +74,7 @@ export function RegisterForm() {
           name="name"
           type="text"
           required
+          defaultValue={user?.displayName || ""}
           className="w-full rounded-lg border px-3 py-2"
         />
       </div>
@@ -113,6 +116,7 @@ export function RegisterForm() {
           name="line_contact_url"
           type="url"
           required
+          defaultValue={user ? `https://line.me/ti/p/~${user.lineUserId}` : ""}
           placeholder="https://line.me/ti/p/xxxxx"
           className="w-full rounded-lg border px-3 py-2"
         />
