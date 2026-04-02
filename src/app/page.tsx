@@ -152,6 +152,23 @@ export default function Home() {
           </div>
         )}
 
+        {/* 管理画面（事業主のみ・上部に配置） */}
+        {isLoggedIn && userInfo?.role === "provider" && (
+          <a
+            href="/provider"
+            className="flex items-center gap-4 rounded-2xl bg-accent/5 p-4 ring-1 ring-accent/20 active:scale-[0.99]"
+          >
+            <span className="text-2xl">📊</span>
+            <div className="flex-1">
+              <p className="font-semibold">管理画面</p>
+              <p className="text-xs text-muted">予約・メニュー・スケジュールを管理</p>
+            </div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-muted">
+              <path d="m9 18 6-6-6-6" />
+            </svg>
+          </a>
+        )}
+
         {/* 予約一覧 */}
         {isLoggedIn && (
           <a
@@ -213,44 +230,26 @@ export default function Home() {
           </div>
         )}
 
-        {/* 事業主セクション */}
-        {isLoggedIn && userInfo && (
-          <div className="mt-2">
-            {userInfo.role === "provider" ? (
-              <a
-                href="/provider"
-                className="flex items-center gap-4 rounded-2xl bg-card p-4 shadow-sm ring-1 ring-border active:scale-[0.99]"
-              >
-                <span className="text-2xl">📊</span>
-                <div className="flex-1">
-                  <p className="font-semibold">管理画面</p>
-                  <p className="text-xs text-muted">予約・メニュー・スケジュールを管理</p>
-                </div>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-muted">
-                  <path d="m9 18 6-6-6-6" />
-                </svg>
-              </a>
-            ) : (
-              <div className="rounded-2xl bg-gradient-to-br from-accent/5 to-accent/10 p-5 ring-1 ring-accent/20">
-                <div className="flex items-start gap-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent/10 text-xl">
-                    🏠
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-semibold">あなたも予約を受け付けませんか？</p>
-                    <p className="mt-1 text-xs leading-relaxed text-muted">
-                      無料であなた専用の予約ページを作成。お客さまはLINEから簡単に予約できます。
-                    </p>
-                  </div>
-                </div>
-                <a
-                  href="/provider/register"
-                  className="mt-4 block w-full rounded-xl bg-accent py-3 text-center text-sm font-semibold text-white shadow-lg shadow-accent/25 active:scale-[0.98]"
-                >
-                  事業主として無料で始める
-                </a>
+        {/* 事業主登録バナー（未登録ユーザーのみ） */}
+        {isLoggedIn && userInfo && userInfo.role !== "provider" && (
+          <div className="mt-2 rounded-2xl bg-gradient-to-br from-accent/5 to-accent/10 p-5 ring-1 ring-accent/20">
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent/10 text-xl">
+                🏠
               </div>
-            )}
+              <div className="flex-1">
+                <p className="font-semibold">あなたも予約を受け付けませんか？</p>
+                <p className="mt-1 text-xs leading-relaxed text-muted">
+                  無料であなた専用の予約ページを作成。お客さまはLINEから簡単に予約できます。
+                </p>
+              </div>
+            </div>
+            <a
+              href="/provider/register"
+              className="mt-4 block w-full rounded-xl bg-accent py-3 text-center text-sm font-semibold text-white shadow-lg shadow-accent/25 active:scale-[0.98]"
+            >
+              事業主として無料で始める
+            </a>
           </div>
         )}
       </div>
