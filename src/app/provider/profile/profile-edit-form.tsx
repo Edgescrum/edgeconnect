@@ -17,13 +17,16 @@ export function ProfileEditForm({ provider }: { provider: Provider }) {
   const [success, setSuccess] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  async function handleSubmit(formData: FormData) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
     setError(null);
     setSuccess(false);
     setSubmitting(true);
     try {
+      const formData = new FormData(e.currentTarget);
       await updateProfile(formData);
       setSuccess(true);
+      setTimeout(() => setSuccess(false), 3000);
     } catch (e) {
       setError(e instanceof Error ? e.message : "更新に失敗しました");
     } finally {
@@ -32,26 +35,38 @@ export function ProfileEditForm({ provider }: { provider: Provider }) {
   }
 
   return (
-    <form action={handleSubmit} className="space-y-5">
+    <form onSubmit={handleSubmit} className="space-y-5">
+      {/* Avatar */}
       <div className="flex justify-center">
-        {provider.icon_url ? (
-          <Image
-            src={provider.icon_url}
-            alt=""
-            width={80}
-            height={80}
-            className="rounded-full object-cover"
-          />
-        ) : (
-          <div className="flex h-20 w-20 items-center justify-center rounded-full bg-gray-200 text-xl text-gray-500">
-            {(provider.name || "?")[0]}
+        <label className="group relative cursor-pointer">
+          {provider.icon_url ? (
+            <Image
+              src={provider.icon_url}
+              alt=""
+              width={80}
+              height={80}
+              className="rounded-2xl object-cover shadow-md"
+            />
+          ) : (
+            <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-accent text-2xl font-bold text-white shadow-md">
+              {(provider.name || "?")[0]}
+            </div>
+          )}
+          <div className="absolute inset-0 flex items-center justify-center rounded-2xl bg-black/40 text-xs font-medium text-white opacity-0 group-hover:opacity-100">
+            変更
           </div>
-        )}
+          <input
+            name="icon"
+            type="file"
+            accept="image/*"
+            className="hidden"
+          />
+        </label>
       </div>
 
       <div>
-        <label htmlFor="name" className="mb-1 block text-sm font-medium">
-          屋号
+        <label htmlFor="name" className="mb-1.5 block text-sm font-medium">
+          お店の名前
         </label>
         <input
           id="name"
@@ -59,42 +74,26 @@ export function ProfileEditForm({ provider }: { provider: Provider }) {
           type="text"
           defaultValue={provider.name || ""}
           required
-          className="w-full rounded-lg border px-3 py-2"
+          className="w-full rounded-xl border border-border bg-card px-4 py-3"
         />
       </div>
 
       <div>
-        <label htmlFor="bio" className="mb-1 block text-sm font-medium">
-          プロフィール文
+        <label htmlFor="bio" className="mb-1.5 block text-sm font-medium">
+          自己紹介
         </label>
         <textarea
           id="bio"
           name="bio"
           rows={4}
           defaultValue={provider.bio || ""}
-          className="w-full rounded-lg border px-3 py-2"
+          className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm"
         />
       </div>
 
       <div>
-        <label htmlFor="icon" className="mb-1 block text-sm font-medium">
-          アイコン画像を変更
-        </label>
-        <input
-          id="icon"
-          name="icon"
-          type="file"
-          accept="image/*"
-          className="w-full"
-        />
-      </div>
-
-      <div>
-        <label
-          htmlFor="line_contact_url"
-          className="mb-1 block text-sm font-medium"
-        >
-          個人LINE URL
+        <label htmlFor="line_contact_url" className="mb-1.5 block text-sm font-medium">
+          連絡用LINE URL
         </label>
         <input
           id="line_contact_url"
@@ -102,17 +101,25 @@ export function ProfileEditForm({ provider }: { provider: Provider }) {
           type="url"
           defaultValue={provider.line_contact_url}
           required
-          className="w-full rounded-lg border px-3 py-2"
+          className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm"
         />
       </div>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
-      {success && <p className="text-sm text-green-600">保存しました</p>}
+      {error && (
+        <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">
+          {error}
+        </div>
+      )}
+      {success && (
+        <div className="rounded-xl bg-green-50 px-4 py-3 text-sm text-green-600">
+          ✓ 保存しました
+        </div>
+      )}
 
       <button
         type="submit"
         disabled={submitting}
-        className="w-full rounded-lg bg-black py-3 font-semibold text-white disabled:opacity-50"
+        className="w-full rounded-xl bg-accent py-3.5 font-semibold text-white shadow-lg shadow-accent/25 disabled:opacity-40 active:scale-[0.98]"
       >
         {submitting ? "保存中..." : "保存する"}
       </button>

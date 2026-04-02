@@ -25,10 +25,12 @@ export function RegisterForm() {
     setSlugStatus(available ? "available" : "taken");
   }
 
-  async function handleSubmit(formData: FormData) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
     setError(null);
     setSubmitting(true);
     try {
+      const formData = new FormData(e.currentTarget);
       await registerProvider(formData);
       router.push("/provider/qrcode");
     } catch (e) {
@@ -39,7 +41,7 @@ export function RegisterForm() {
   }
 
   return (
-    <form action={handleSubmit} className="space-y-5">
+    <form onSubmit={handleSubmit} className="space-y-5">
       <div>
         <label htmlFor="slug" className="mb-1 block text-sm font-medium">
           スラッグ（URL用ID）
