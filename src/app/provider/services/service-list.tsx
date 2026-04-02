@@ -80,24 +80,23 @@ export function ServiceList({ services }: { services: Service[] }) {
                     handleToggle(service.id, service.is_published);
                   }}
                   disabled={loadingId === service.id}
-                  className="relative h-7 w-12 shrink-0 rounded-full transition-colors disabled:opacity-50"
-                  style={{
-                    backgroundColor: service.is_published
-                      ? "#06C755"
-                      : "#d1d5db",
-                  }}
+                  className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition-colors disabled:opacity-50 ${
+                    service.is_published ? "bg-success" : "bg-gray-300"
+                  }`}
                   aria-label={
                     service.is_published ? "公開中（タップで非公開）" : "非公開（タップで公開）"
                   }
                 >
                   {loadingId === service.id ? (
-                    <span className="absolute left-1/2 top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                    <span className="absolute inset-0 flex items-center justify-center">
+                      <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                    </span>
                   ) : (
                     <span
-                      className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform ${
+                      className={`inline-block h-5 w-5 rounded-full bg-white shadow-md transition-transform ${
                         service.is_published
-                          ? "translate-x-[22px]"
-                          : "translate-x-[2px]"
+                          ? "translate-x-6"
+                          : "translate-x-1"
                       }`}
                     />
                   )}
