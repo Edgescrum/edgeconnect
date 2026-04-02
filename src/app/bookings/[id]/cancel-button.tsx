@@ -1,0 +1,72 @@
+"use client";
+
+import { useState } from "react";
+import { cancelBooking } from "@/lib/actions/booking";
+import { useRouter } from "next/navigation";
+
+export function CancelButton({ bookingId }: { bookingId: string }) {
+  const router = useRouter();
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleCancel() {
+    setError(null);
+    setCancelling(true);
+    try {
+      await cancelBooking(bookingId);
+      router.refresh();
+      setShowConfirm(false);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "キャンセルに失敗しました");
+    } finally {
+      setCancelling(false);
+    }
+  }
+
+  return (
+    <>
+      <button
+        onClick={() => setShowConfirm(true)}
+        className="w-full rounded-xl border border-red-200 py-3.5 text-sm font-medium text-red-500 active:scale-[0.98]"
+      >
+        予約をキャンセル
+      </button>
+
+      {showConfirm && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center">
+          <div className="w-full max-w-sm rounded-2xl bg-card p-6 shadow-xl">
+            <h3 className="text-lg font-bold">予約をキャンセルしますか？</h3>
+            <p className="mt-2 text-sm text-muted">
+              この操作は元に戻せません。
+            </p>
+            {error && (
+              <div className="mt-3 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">
+                {error}
+              </div>
+            )}
+            <div className="mt-6 flex gap-3">
+              <button
+                onClick={() => setShowConfirm(false)}
+                disabled={cancelling}
+                className="flex-1 rounded-xl border border-border py-3 font-semibold active:scale-[0.98]"
+              >
+                戻る
+              </button>
+              <button
+                onClick={handleCancel}
+                disabled={cancelling}
+                className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-red-500 py-3 font-semibold text-white active:scale-[0.98]"
+              >
+                {cancelling && (
+                  <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                )}
+                {cancelling ? "処理中..." : "キャンセルする"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}

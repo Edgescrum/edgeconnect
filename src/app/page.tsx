@@ -96,19 +96,25 @@ export default function Home() {
       </header>
 
       {/* Content */}
-      <div className="mx-auto max-w-lg px-4 py-8">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold">ようこそ</h1>
-          <p className="mt-2 text-sm text-muted">
-            予約やお気に入りの事業主がここに表示されます
-          </p>
-        </div>
+      <div className="mx-auto max-w-lg px-4 py-6">
+        {isLoggedIn && (
+          <a
+            href="/bookings"
+            className="flex items-center gap-4 rounded-2xl bg-card p-4 shadow-sm ring-1 ring-border active:scale-[0.99]"
+          >
+            <span className="text-2xl">📅</span>
+            <div className="flex-1">
+              <p className="font-semibold">予約一覧</p>
+              <p className="text-xs text-muted">予約の確認・キャンセル</p>
+            </div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-muted">
+              <path d="m9 18 6-6-6-6" />
+            </svg>
+          </a>
+        )}
 
-        {/* Empty state */}
-        <div className="mt-12 flex flex-col items-center text-center">
-          <div className="text-5xl">📅</div>
-          <p className="mt-4 font-semibold">予約はまだありません</p>
-          <p className="mt-1 text-sm text-muted">
+        <div className="mt-8 flex flex-col items-center text-center">
+          <p className="text-sm text-muted">
             事業主のQRコードやURLから予約ページにアクセスしてください
           </p>
         </div>

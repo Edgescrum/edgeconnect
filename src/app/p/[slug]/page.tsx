@@ -71,28 +71,33 @@ export default async function ProviderProfilePage({
             </h2>
             <ul className="space-y-2.5">
               {provider.services.map((service) => (
-                <li
-                  key={service.id}
-                  className="rounded-2xl bg-card p-4 shadow-sm ring-1 ring-border"
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <p className="font-semibold">{service.name}</p>
-                      {service.description && (
-                        <p className="mt-1 text-xs text-muted">
-                          {service.description}
+                <li key={service.id}>
+                  <a
+                    href={`/p/${slug}/book/${service.id}`}
+                    className="block rounded-2xl bg-card p-4 shadow-sm ring-1 ring-border active:scale-[0.99]"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <p className="font-semibold">{service.name}</p>
+                        {service.description && (
+                          <p className="mt-1 text-xs text-muted">
+                            {service.description}
+                          </p>
+                        )}
+                      </div>
+                      <div className="ml-4 text-right">
+                        <p className="text-lg font-bold">
+                          ¥{service.price.toLocaleString()}
                         </p>
-                      )}
+                        <p className="text-xs text-muted">
+                          {service.duration_min}分
+                        </p>
+                      </div>
                     </div>
-                    <div className="ml-4 text-right">
-                      <p className="text-lg font-bold">
-                        ¥{service.price.toLocaleString()}
-                      </p>
-                      <p className="text-xs text-muted">
-                        {service.duration_min}分
-                      </p>
+                    <div className="mt-3 flex items-center justify-center rounded-xl bg-accent-bg py-2 text-sm font-semibold text-accent">
+                      予約する
                     </div>
-                  </div>
+                  </a>
                 </li>
               ))}
             </ul>
