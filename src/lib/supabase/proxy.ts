@@ -36,6 +36,24 @@ export async function updateSession(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname;
 
+  // トップページの ?path= / ?provider= パラメータをサーバーサイドでリダイレクト
+  if (pathname === "/") {
+    const path = request.nextUrl.searchParams.get("path");
+    if (path) {
+      const url = request.nextUrl.clone();
+      url.pathname = path;
+      url.search = "";
+      return NextResponse.redirect(url);
+    }
+    const providerSlug = request.nextUrl.searchParams.get("provider");
+    if (providerSlug) {
+      const url = request.nextUrl.clone();
+      url.pathname = `/p/${providerSlug}`;
+      url.search = "";
+      return NextResponse.redirect(url);
+    }
+  }
+
   // 認証不要パス: API、公開プロフィール、静的ファイル
   const isPublicPath =
     pathname.startsWith("/api/") ||
