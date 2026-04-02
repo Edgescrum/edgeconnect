@@ -70,6 +70,12 @@ export default function Home() {
   if (provider) {
     const menuItems = [
       {
+        href: "/provider/services",
+        icon: "📋",
+        title: "サービスメニュー",
+        desc: "メニューの追加・編集・公開設定",
+      },
+      {
         href: `/p/${provider.slug}`,
         icon: "👤",
         title: "予約ページ",
@@ -142,9 +148,9 @@ export default function Home() {
 
           {/* Tip */}
           <div className="mt-6 rounded-2xl bg-accent-bg p-4">
-            <p className="text-xs font-semibold text-accent">💡 次のステップ</p>
+            <p className="text-xs font-semibold text-accent">💡 ヒント</p>
             <p className="mt-1 text-xs leading-relaxed text-accent">
-              サービスメニューを登録するとお客さまが予約できるようになります。（準備中）
+              サービスメニューを登録するとお客さまの予約ページに表示されます。
             </p>
           </div>
         </div>
