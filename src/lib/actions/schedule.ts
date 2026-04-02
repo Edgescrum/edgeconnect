@@ -65,10 +65,14 @@ export async function addBlockedSlot(
   const providerId = await getProviderId();
   const supabase = await createClient();
 
+  // タイムゾーンが付いていない場合はJSTとして扱う
+  const startAtJst = startAt.includes("+") || startAt.includes("Z") ? startAt : `${startAt}+09:00`;
+  const endAtJst = endAt.includes("+") || endAt.includes("Z") ? endAt : `${endAt}+09:00`;
+
   const { error } = await supabase.from("blocked_slots").insert({
     provider_id: providerId,
-    start_at: startAt,
-    end_at: endAt,
+    start_at: startAtJst,
+    end_at: endAtJst,
     reason,
   });
 
