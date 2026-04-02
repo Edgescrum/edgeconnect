@@ -9,6 +9,7 @@ const PAGE_TITLES: Record<string, string> = {
   "/provider/profile": "プロフィール編集",
   "/provider/qrcode": "QRコード",
   "/provider/register": "事業主登録",
+  "/provider/bookings": "予約管理",
 };
 
 export function ProviderHeader() {
@@ -18,19 +19,24 @@ export function ProviderHeader() {
   if (pathname === "/" || pathname === "/provider" || pathname.startsWith("/p/"))
     return null;
 
-  // 編集ページ（/provider/services/123/edit）
-  const isEditPage = /\/provider\/services\/\d+\/edit/.test(pathname);
-  const title = isEditPage
+  // 動的ページのタイトル判定
+  const isServiceEditPage = /\/provider\/services\/\d+\/edit/.test(pathname);
+  const isBookingDetailPage = /\/provider\/bookings\/[a-f0-9-]+/.test(pathname);
+  const title = isServiceEditPage
     ? "メニューを編集"
-    : PAGE_TITLES[pathname] || "";
+    : isBookingDetailPage
+      ? "予約詳細"
+      : PAGE_TITLES[pathname] || "";
 
   if (!title) return null;
 
-  // 戻り先: サービス関連はservices一覧、それ以外はダッシュボード
+  // 戻り先
   const backHref =
-    isEditPage || pathname === "/provider/services/new"
+    isServiceEditPage || pathname === "/provider/services/new"
       ? "/provider/services"
-      : "/provider";
+      : isBookingDetailPage
+        ? "/provider/bookings"
+        : "/provider";
 
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-card/80 backdrop-blur-lg">

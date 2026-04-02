@@ -8,6 +8,12 @@ interface Provider {
 
 const menuItems = [
   {
+    href: "/provider/bookings",
+    icon: "📅",
+    title: "予約管理",
+    desc: "予約の確認・キャンセル",
+  },
+  {
     href: "/provider/services",
     icon: "📋",
     title: "サービスメニュー",
@@ -33,7 +39,15 @@ const menuItems = [
   },
 ];
 
-export function ProviderDashboard({ provider }: { provider: Provider }) {
+export function ProviderDashboard({
+  provider,
+  todayCount = 0,
+  weekCount = 0,
+}: {
+  provider: Provider;
+  todayCount?: number;
+  weekCount?: number;
+}) {
   return (
     <main className="min-h-screen bg-background px-4 py-6">
       <div className="mx-auto max-w-lg">
@@ -54,11 +68,11 @@ export function ProviderDashboard({ provider }: { provider: Provider }) {
         {/* Quick Stats */}
         <div className="mt-6 grid grid-cols-2 gap-3">
           <div className="rounded-2xl bg-card p-4 shadow-sm ring-1 ring-border">
-            <p className="text-2xl font-bold">0</p>
+            <p className="text-2xl font-bold">{todayCount}</p>
             <p className="text-xs text-muted">今日の予約</p>
           </div>
           <div className="rounded-2xl bg-card p-4 shadow-sm ring-1 ring-border">
-            <p className="text-2xl font-bold">0</p>
+            <p className="text-2xl font-bold">{weekCount}</p>
             <p className="text-xs text-muted">今週の予約</p>
           </div>
         </div>
