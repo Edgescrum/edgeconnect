@@ -138,6 +138,7 @@ export function LiffProvider({ children }: { children: ReactNode }) {
 
   return (
     <LiffContext.Provider value={{ ...state, login }}>
+      {state.isReady && <div data-liff-ready="true" style={{ display: "none" }} />}
       {children}
       {/* デバッグ用パフォーマンスログ */}
       {DEBUG_PERF && perfLogs.length > 0 && (
