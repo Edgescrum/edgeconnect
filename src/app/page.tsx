@@ -24,9 +24,16 @@ export default function Home() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [showWelcome, setShowWelcome] = useState(false);
 
-  // ?provider=xxx パラメータがあれば公開プロフィールにリダイレクト
+  // URLパラメータによるリダイレクト
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+    // ?path=/bookings/xxx → 指定パスにリダイレクト
+    const path = params.get("path");
+    if (path) {
+      window.location.href = path;
+      return;
+    }
+    // ?provider=xxx → 公開プロフィールにリダイレクト
     const providerSlug = params.get("provider");
     if (providerSlug) {
       window.location.href = `/p/${providerSlug}`;
