@@ -43,6 +43,14 @@ export function LiffProvider({ children }: { children: ReactNode }) {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [liffInstance, setLiffInstance] = useState<typeof import("@line/liff").default | null>(null);
+  const [redirecting, setRedirecting] = useState(false);
+
+  // 初期化前にリダイレクト判定（SSR時はfalse、CSR時にチェック）
+  const [hasRedirectParam] = useState(() => {
+    if (typeof window === "undefined") return false;
+    const params = new URLSearchParams(window.location.search);
+    return !!(params.get("path") || params.get("provider"));
+  });
 
   useEffect(() => {
     async function init() {
@@ -64,8 +72,8 @@ export function LiffProvider({ children }: { children: ReactNode }) {
           setLiffInstance(liff);
           setIsReady(true);
           // リダイレクト処理
-          if (redirectPath) { window.location.href = redirectPath; return; }
-          if (redirectProvider) { window.location.href = `/p/${redirectProvider}`; return; }
+          if (redirectPath) { setRedirecting(true); window.location.href = redirectPath; return; }
+          if (redirectProvider) { setRedirecting(true); window.location.href = `/p/${redirectProvider}`; return; }
           return;
         }
 
@@ -112,6 +120,20 @@ export function LiffProvider({ children }: { children: ReactNode }) {
       liffInstance.login();
     }
   }, [liffInstance]);
+
+  // リダイレクト中またはリダイレクトパラメータがある初期化中はローディング表示
+  if (redirecting || (hasRedirectParam && !isReady)) {
+    return (
+      <LiffContext.Provider value={{ user, isReady, isLoggedIn, error, login }}>
+        <main className="flex min-h-screen items-center justify-center">
+          <div className="flex items-center gap-2 text-muted">
+            <div className="h-4 w-4 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+            <span className="text-sm">読み込み中...</span>
+          </div>
+        </main>
+      </LiffContext.Provider>
+    );
+  }
 
   return (
     <LiffContext.Provider value={{ user, isReady, isLoggedIn, error, login }}>
