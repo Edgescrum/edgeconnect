@@ -383,9 +383,12 @@ export function RegisterWizard() {
               <button
                 onClick={handleSubmit}
                 disabled={submitting || !canNext()}
-                className="flex-1 rounded-xl bg-accent py-3.5 font-semibold text-white shadow-lg shadow-accent/25 disabled:opacity-40 active:scale-[0.98]"
+                className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-accent py-3.5 font-semibold text-white shadow-lg shadow-accent/25 disabled:opacity-40 active:scale-[0.98]"
               >
-                {submitting ? "登録中..." : "登録を完了する"}
+                {submitting && (
+                  <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                )}
+                {submitting ? "処理中..." : "登録を完了する"}
               </button>
             </div>
           </div>

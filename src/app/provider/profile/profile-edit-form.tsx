@@ -119,9 +119,12 @@ export function ProfileEditForm({ provider }: { provider: Provider }) {
       <button
         type="submit"
         disabled={submitting}
-        className="w-full rounded-xl bg-accent py-3.5 font-semibold text-white shadow-lg shadow-accent/25 disabled:opacity-40 active:scale-[0.98]"
+        className="flex w-full items-center justify-center gap-2 rounded-xl bg-accent py-3.5 font-semibold text-white shadow-lg shadow-accent/25 disabled:opacity-60 active:scale-[0.98]"
       >
-        {submitting ? "保存中..." : "保存する"}
+        {submitting && (
+          <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+        )}
+        {submitting ? "処理中..." : "保存する"}
       </button>
     </form>
   );

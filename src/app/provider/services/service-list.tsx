@@ -91,12 +91,15 @@ export function ServiceList({ services }: { services: Service[] }) {
               <button
                 onClick={() => handleToggle(service.id, service.is_published)}
                 disabled={loadingId === service.id}
-                className={`rounded-lg px-3 py-1.5 text-xs font-medium ${
+                className={`flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium transition-opacity disabled:opacity-50 ${
                   service.is_published
                     ? "bg-green-50 text-green-700"
                     : "bg-gray-100 text-muted"
                 }`}
               >
+                {loadingId === service.id && (
+                  <span className="inline-block h-3 w-3 animate-spin rounded-full border-[1.5px] border-current border-t-transparent" />
+                )}
                 {service.is_published ? "公開中" : "非公開"}
               </button>
               <a
@@ -108,8 +111,11 @@ export function ServiceList({ services }: { services: Service[] }) {
               <button
                 onClick={() => handleDelete(service.id, service.name)}
                 disabled={loadingId === service.id}
-                className="rounded-lg px-3 py-1.5 text-xs font-medium text-red-500 hover:bg-red-50"
+                className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium text-red-500 transition-opacity hover:bg-red-50 disabled:opacity-50"
               >
+                {loadingId === service.id && (
+                  <span className="inline-block h-3 w-3 animate-spin rounded-full border-[1.5px] border-current border-t-transparent" />
+                )}
                 削除
               </button>
             </div>

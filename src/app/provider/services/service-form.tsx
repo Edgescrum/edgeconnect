@@ -167,9 +167,12 @@ export function ServiceForm({
         <button
           type="submit"
           disabled={submitting}
-          className="flex-1 rounded-xl bg-accent py-3.5 font-semibold text-white shadow-lg shadow-accent/25 disabled:opacity-40 active:scale-[0.98]"
+          className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-accent py-3.5 font-semibold text-white shadow-lg shadow-accent/25 disabled:opacity-60 active:scale-[0.98]"
         >
-          {submitting ? "保存中..." : submitLabel}
+          {submitting && (
+            <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+          )}
+          {submitting ? "処理中..." : submitLabel}
         </button>
       </div>
     </form>
