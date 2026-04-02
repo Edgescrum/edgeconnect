@@ -20,8 +20,6 @@ const FILTERS: { value: FilterType; label: string }[] = [
   { value: "today", label: "今日" },
   { value: "week", label: "今週" },
   { value: "upcoming", label: "今後" },
-  { value: "past", label: "過去" },
-  { value: "cancelled", label: "キャンセル" },
 ];
 
 const DAYS = ["日", "月", "火", "水", "木", "金", "土"];
