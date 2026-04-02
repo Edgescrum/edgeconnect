@@ -1,6 +1,7 @@
 import { getCurrentUser } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { CustomerBookingList } from "./customer-booking-list";
 
 export default async function BookingsPage() {
   const user = await getCurrentUser();
@@ -15,89 +16,21 @@ export default async function BookingsPage() {
       providers:provider_id ( name, slug )
     `)
     .eq("customer_user_id", user.id)
-    .order("start_at", { ascending: false });
+    .order("start_at", { ascending: true });
 
-  const now = new Date();
-  const upcoming = (bookings || []).filter(
-    (b) => new Date(b.start_at) >= now && b.status === "confirmed"
-  );
-  const past = (bookings || []).filter(
-    (b) => new Date(b.start_at) < now || b.status === "cancelled"
-  );
-
-  function formatBookingDate(dateStr: string) {
-    const d = new Date(dateStr);
-    const days = ["日", "月", "火", "水", "木", "金", "土"];
-    return `${d.getMonth() + 1}/${d.getDate()}（${days[d.getDay()]}）`;
-  }
-
-  function formatTime(dateStr: string) {
-    return new Date(dateStr).toLocaleTimeString("ja-JP", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  }
-
-  type RawBooking = NonNullable<typeof bookings>[number];
-
-  interface Booking {
-    id: string;
-    start_at: string;
-    end_at: string;
-    status: string;
-    cancelled_by: string | null;
-    services: { name: string; duration_min: number; price: number } | null;
-    providers: { name: string; slug: string } | null;
-  }
-
-  function toBooking(raw: RawBooking): Booking {
+  const allBookings = (bookings || []).map((b) => {
+    const service = Array.isArray(b.services) ? b.services[0] : b.services;
+    const provider = Array.isArray(b.providers) ? b.providers[0] : b.providers;
     return {
-      ...raw,
-      services: Array.isArray(raw.services) ? raw.services[0] || null : raw.services,
-      providers: Array.isArray(raw.providers) ? raw.providers[0] || null : raw.providers,
-    } as Booking;
-  }
-
-  function BookingCard({ booking }: { booking: Booking }) {
-    const service = booking.services;
-    const provider = booking.providers;
-    const isCancelled = booking.status === "cancelled";
-
-    return (
-      <a
-        href={`/bookings/${booking.id}`}
-        className={`block rounded-2xl bg-card p-4 shadow-sm ring-1 ring-border active:scale-[0.99] ${
-          isCancelled ? "opacity-60" : ""
-        }`}
-      >
-        <div className="flex items-start justify-between">
-          <div>
-            <p className="text-xs text-muted">{provider?.name}</p>
-            <p className="mt-0.5 font-semibold">{service?.name}</p>
-            <p className="mt-1 text-sm">
-              {formatBookingDate(booking.start_at)} {formatTime(booking.start_at)}〜{formatTime(booking.end_at)}
-            </p>
-          </div>
-          <div className="text-right">
-            {isCancelled ? (
-              <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-muted">
-                キャンセル
-              </span>
-            ) : (
-              <span className="rounded-full bg-green-50 px-2 py-0.5 text-[10px] font-medium text-green-700">
-                確定
-              </span>
-            )}
-            {service && (
-              <p className="mt-1 text-sm font-bold">
-                ¥{service.price.toLocaleString()}
-              </p>
-            )}
-          </div>
-        </div>
-      </a>
-    );
-  }
+      id: b.id as string,
+      start_at: b.start_at as string,
+      end_at: b.end_at as string,
+      status: b.status as string,
+      cancelled_by: b.cancelled_by as string | null,
+      service: service as { name: string; price: number } | null,
+      provider: provider as { name: string; slug: string } | null,
+    };
+  });
 
   return (
     <main className="min-h-screen bg-background">
@@ -113,43 +46,7 @@ export default async function BookingsPage() {
       </header>
 
       <div className="mx-auto max-w-lg px-4 py-6">
-        {bookings && bookings.length === 0 ? (
-          <div className="flex flex-col items-center pt-12 text-center">
-            <div className="text-5xl">📅</div>
-            <p className="mt-4 font-semibold">予約はまだありません</p>
-            <p className="mt-1 text-sm text-muted">
-              事業主のページからサービスを予約してみましょう
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-6">
-            {upcoming.length > 0 && (
-              <section>
-                <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted">
-                  予定の予約
-                </h2>
-                <div className="space-y-2">
-                  {upcoming.map((b) => (
-                    <BookingCard key={b.id} booking={toBooking(b)} />
-                  ))}
-                </div>
-              </section>
-            )}
-
-            {past.length > 0 && (
-              <section>
-                <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted">
-                  過去の予約
-                </h2>
-                <div className="space-y-2">
-                  {past.map((b) => (
-                    <BookingCard key={b.id} booking={toBooking(b)} />
-                  ))}
-                </div>
-              </section>
-            )}
-          </div>
-        )}
+        <CustomerBookingList bookings={allBookings} />
       </div>
     </main>
   );
