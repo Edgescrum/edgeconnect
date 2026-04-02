@@ -1,0 +1,103 @@
+# 13. カレンダー連携
+
+## 概要
+事業主向けにiCal URLによるカレンダー自動同期、お客さん向けにFlex Messageからの1件カレンダー追加を提供する。
+
+---
+
+## 13-A. 事業主向けカレンダー連携（iCal URL）
+
+### 仕様
+管理画面（プロフィール設定 > カレンダー連携タブ）でURLを1回登録するだけで、以降の予約がカレンダーに自動反映される。
+
+| アプリ | 方法 | 優先度 |
+|--------|------|--------|
+| Googleカレンダー | URLボタン1タップで登録 | MVP |
+| Appleカレンダー（iPhone/Mac） | URLボタン1タップで登録 | MVP |
+| TimeTree・Outlook・その他 | URLをコピーして手動登録 | MVP（URLコピーボタンで対応） |
+
+### iCal URLの仕様
+```
+webcal://edgeconnect.app/api/calendar/[slug]/[token].ics
+```
+- アカウント作成時に事業主ごとに1本発行・固定
+- アクセスされるたびにSupabaseから最新の予約一覧を取得して.ics形式で返す
+- カレンダーアプリ側が数時間〜1日おきに自動ポーリング → 新規予約が自動反映
+
+### Todo
+
+#### APIルート
+- [ ] `GET /api/calendar/[slug]/[token].ics` Route Handler作成
+- [ ] JWTでトークンを検証
+- [ ] `provider_id` に紐づく `status = "confirmed"` の予約一覧をSupabaseから取得
+- [ ] .ics形式（VCALENDAR）に変換して返す
+- [ ] レスポンスヘッダー設定（`Content-Type: text/calendar`）
+- [ ] アクセス日時を `providers.calendar_last_synced_at` に記録
+
+#### トークン管理
+- [ ] `providers.calendar_token` をアカウント作成時に自動生成（UUID or ランダム文字列）
+- [ ] トークン再発行機能（URLが流出した場合の対応）
+
+#### 管理画面UI（カレンダー連携タブ）
+- [ ] カレンダー連携タブを事業主管理画面に追加
+- [ ] 連携状況エリア: 連携済みアプリ名・最終同期日時・解除ボタン
+- [ ] 「Googleカレンダーに登録する」ボタン（`webcal://` スキーム）
+- [ ] 「Appleカレンダーに登録する（iPhone）」ボタン（`webcal://` スキーム）
+- [ ] 「URLをコピーする（その他のアプリ用）」ボタン
+- [ ] 注意書き表示:「このURLはあなた専用です。他の人と共有しないでください」
+
+---
+
+## 13-B. お客さん向けカレンダー追加（1件ずつ）
+
+### 仕様
+Flex Messageに「カレンダーに追加」ボタンを設置し、タップするとその予約1件だけをカレンダーに追加できる。定期同期は行わない。
+
+### 対象Flex Message
+
+| 通知種別 | ボタン表示 |
+|---------|-----------|
+| 予約確定通知 | 「Googleカレンダー」「Appleカレンダー」の2ボタンを常に表示 |
+| リマインダー通知 | カレンダー未連携の場合のみ「カレンダーに追加する」を表示 |
+
+### ボタンURL仕様
+
+**Googleカレンダー**（サーバー不要・URLパラメータのみで完結）
+```
+https://calendar.google.com/calendar/r/eventedit
+  ?text=[事業主名]（[メニュー名]）
+  &dates=[開始日時]/[終了日時]
+  &details=[料金・キャンセル期限]
+  &location=[場所]
+```
+
+**Appleカレンダー**（1件分の.icsをAPIルートで返す）
+```
+GET /api/calendar/event/[booking_id].ics
+→ booking_id（UUID）に紐づく予約1件を.ics形式で返す
+→ JWTなし・booking_idのUUIDが推測困難なため安全
+```
+
+### セキュリティ
+- `booking_id` はSupabaseが自動生成するUUID（推測不可）
+- URLが流出しても1件分の予約情報のみ参照可能
+- Flex Message内に「あなた専用のURLです・他の人と共有しないでください」を表示
+
+### Todo
+
+#### Googleカレンダー用URL生成
+- [ ] 予約情報からGoogleカレンダーURLを生成するヘルパー関数
+- [ ] 日時フォーマット変換（ISO 8601 → Googleカレンダー形式 `YYYYMMDDTHHmmSSZ`）
+
+#### Apple カレンダー用APIルート
+- [ ] `GET /api/calendar/event/[booking_id].ics` Route Handler作成
+- [ ] `booking_id`（UUID）で予約1件を取得
+- [ ] .ics形式（VEVENT単体）に変換して返す
+
+#### .ics生成共通
+- [ ] VCALENDAR / VEVENT生成ユーティリティ（事業主向け・お客さん向け共通）
+- [ ] VEVENTに含める情報: サービス名・事業主名・開始/終了日時・料金・キャンセル期限
+
+#### Flex Messageへのボタン追加
+- [ ] 予約確定通知テンプレートに「Googleカレンダー」「Appleカレンダー」ボタン追加
+- [ ] リマインダー通知テンプレートに「カレンダーに追加する」ボタン追加（条件付き表示）
