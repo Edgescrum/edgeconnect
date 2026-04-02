@@ -1,5 +1,3 @@
-"use client";
-
 interface Provider {
   slug: string;
   name: string;

@@ -2,6 +2,9 @@ import { createClient } from "@/lib/supabase/server";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 
+// 60秒キャッシュ（予約が入った時にrevalidatePathで無効化される）
+export const revalidate = 60;
+
 interface ProviderProfile {
   id: number;
   slug: string;

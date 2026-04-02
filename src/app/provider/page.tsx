@@ -17,27 +17,28 @@ export default async function ProviderPage() {
 
   if (!provider) redirect("/provider/register");
 
-  // 予約統計を取得
+  // 予約統計を並列取得
   const now = new Date();
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
   const tomorrowStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).toISOString();
   const weekEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 7).toISOString();
 
-  const { count: todayCount } = await supabase
-    .from("bookings")
-    .select("id", { count: "exact", head: true })
-    .eq("provider_id", provider.id)
-    .eq("status", "confirmed")
-    .gte("start_at", todayStart)
-    .lt("start_at", tomorrowStart);
-
-  const { count: weekCount } = await supabase
-    .from("bookings")
-    .select("id", { count: "exact", head: true })
-    .eq("provider_id", provider.id)
-    .eq("status", "confirmed")
-    .gte("start_at", todayStart)
-    .lt("start_at", weekEnd);
+  const [{ count: todayCount }, { count: weekCount }] = await Promise.all([
+    supabase
+      .from("bookings")
+      .select("id", { count: "exact", head: true })
+      .eq("provider_id", provider.id)
+      .eq("status", "confirmed")
+      .gte("start_at", todayStart)
+      .lt("start_at", tomorrowStart),
+    supabase
+      .from("bookings")
+      .select("id", { count: "exact", head: true })
+      .eq("provider_id", provider.id)
+      .eq("status", "confirmed")
+      .gte("start_at", todayStart)
+      .lt("start_at", weekEnd),
+  ]);
 
   return (
     <ProviderDashboard
