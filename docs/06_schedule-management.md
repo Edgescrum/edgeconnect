@@ -29,26 +29,26 @@
 ## Todo
 
 ### 営業時間設定
-- [ ] 曜日ごとの営業時間入力フォーム（開始・終了時間）
-- [ ] 定休日トグル（曜日単位）
-- [ ] `provider_settings.business_hours` の保存（Server Action）
+- [x] 曜日ごとの営業時間入力フォーム（開始・終了時間）→ `/provider/schedule`
+- [x] 定休日トグル（曜日単位）
+- [x] `provider_settings.business_hours` の保存（Server Action `updateBusinessHours`）
 
 ### インターバル設定
-- [ ] 予約前バッファ（分）入力
-- [ ] 予約後バッファ（分）入力
-- [ ] `provider_settings` の更新（Server Action）
+- [x] 予約前バッファ（分）入力
+- [x] 予約後バッファ（分）入力
+- [x] `provider_settings` の更新（Server Action `updateInterval`）
 
 ### 手動ブロック
-- [ ] 手動ブロック追加フォーム（日時範囲 + 任意メモ）
-- [ ] `blocked_slots` テーブルへのINSERT（Server Action）
-- [ ] ブロック一覧表示
-- [ ] ブロック解除（DELETE）
+- [x] 手動ブロック追加フォーム（日時範囲 + 任意メモ）
+- [x] `blocked_slots` テーブルへのINSERT（Server Action `addBlockedSlot`）
+- [x] ブロック一覧表示
+- [x] ブロック解除（DELETE）（Server Action `removeBlockedSlot`）
 
 ### 空き枠算出ロジック
-- [ ] 指定日の空き枠を算出する関数を実装
+- [x] 指定日の空き枠を算出する関数を実装 → DB Function `get_available_slots()`
   - 営業時間内の枠を生成
   - 既存予約（`bookings` で `status = "confirmed"`）を除外
   - インターバル（前後バッファ）を考慮
   - `blocked_slots` を除外
   - サービスの `duration_min` に基づく枠生成
-- [ ] 排他制御: 同一時間帯への同時予約防止（トランザクション）
+- [x] 排他制御: 同一時間帯への同時予約防止 → DB Function `create_booking()` 内で実装
