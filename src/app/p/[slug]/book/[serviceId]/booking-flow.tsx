@@ -405,8 +405,14 @@ export function BookingFlow({
                 </a>
               )}
               <a
-                href="/"
+                href={`/p/${providerSlug}`}
                 className="block w-full rounded-xl border border-border py-3.5 text-center font-semibold active:scale-[0.98]"
+              >
+                もう一度予約する
+              </a>
+              <a
+                href="/"
+                className="block w-full py-3 text-center text-sm text-muted"
               >
                 トップに戻る
               </a>

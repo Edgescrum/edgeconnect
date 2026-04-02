@@ -3,9 +3,17 @@
 import { useLiff } from "@/components/LiffProvider";
 import { useEffect, useState } from "react";
 
+interface RecentProvider {
+  slug: string;
+  name: string;
+  lastService: string;
+  lastDate: string;
+}
+
 interface UserInfo {
   role: string;
   provider?: { slug: string; name: string } | null;
+  recentProviders?: RecentProvider[];
 }
 
 export default function Home() {
@@ -31,6 +39,7 @@ export default function Home() {
           setUserInfo({
             role: data.user.role,
             provider: data.provider,
+            recentProviders: data.recentProviders,
           });
         }
       });
@@ -105,7 +114,7 @@ export default function Home() {
       </header>
 
       {/* Content */}
-      <div className="mx-auto max-w-lg px-4 py-6">
+      <div className="mx-auto max-w-lg px-4 py-6 space-y-4">
         {isLoggedIn && (
           <a
             href="/bookings"
@@ -122,11 +131,48 @@ export default function Home() {
           </a>
         )}
 
-        <div className="mt-8 flex flex-col items-center text-center">
-          <p className="text-sm text-muted">
-            事業主のQRコードやURLから予約ページにアクセスしてください
-          </p>
-        </div>
+        {/* 最近利用した事業主 */}
+        {userInfo?.recentProviders && userInfo.recentProviders.length > 0 && (
+          <section>
+            <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted">
+              最近利用した事業主
+            </h2>
+            <div className="space-y-2">
+              {userInfo.recentProviders.map((rp) => {
+                const d = new Date(rp.lastDate);
+                const dateLabel = `${d.getMonth() + 1}/${d.getDate()}`;
+                return (
+                  <a
+                    key={rp.slug}
+                    href={`/p/${rp.slug}`}
+                    className="flex items-center gap-3 rounded-2xl bg-card p-4 shadow-sm ring-1 ring-border active:scale-[0.99]"
+                  >
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent text-sm font-bold text-white">
+                      {rp.name[0]}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold truncate">{rp.name}</p>
+                      <p className="text-xs text-muted truncate">
+                        {dateLabel} {rp.lastService}
+                      </p>
+                    </div>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0 text-muted">
+                      <path d="m9 18 6-6-6-6" />
+                    </svg>
+                  </a>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
+        {(!userInfo?.recentProviders || userInfo.recentProviders.length === 0) && (
+          <div className="pt-4 text-center">
+            <p className="text-sm text-muted">
+              事業主のQRコードやURLから予約ページにアクセスしてください
+            </p>
+          </div>
+        )}
       </div>
     </main>
   );
