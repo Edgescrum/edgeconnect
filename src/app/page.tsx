@@ -16,10 +16,13 @@ interface UserInfo {
   recentProviders?: RecentProvider[];
 }
 
+const WELCOME_DISMISSED_KEY = "edgeconnect_welcome_dismissed";
+
 export default function Home() {
   const { user, isReady, isLoggedIn } = useLiff();
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [showWelcome, setShowWelcome] = useState(false);
 
   // ?provider=xxx パラメータがあれば公開プロフィールにリダイレクト
   useEffect(() => {
@@ -29,6 +32,19 @@ export default function Home() {
       window.location.href = `/p/${providerSlug}`;
     }
   }, []);
+
+  // 初回表示判定
+  useEffect(() => {
+    const dismissed = localStorage.getItem(WELCOME_DISMISSED_KEY);
+    if (!dismissed) {
+      setShowWelcome(true);
+    }
+  }, []);
+
+  function dismissWelcome() {
+    setShowWelcome(false);
+    localStorage.setItem(WELCOME_DISMISSED_KEY, "1");
+  }
 
   useEffect(() => {
     if (!isReady || !isLoggedIn) return;
@@ -55,6 +71,8 @@ export default function Home() {
       </main>
     );
   }
+
+  const hasRecent = userInfo?.recentProviders && userInfo.recentProviders.length > 0;
 
   return (
     <main className="min-h-screen bg-background">
@@ -113,8 +131,37 @@ export default function Home() {
         </div>
       </header>
 
-      {/* Content */}
       <div className="mx-auto max-w-lg px-4 py-6 space-y-4">
+        {/* ウェルカム（初回のみ） */}
+        {showWelcome && (
+          <div className="relative rounded-2xl bg-gradient-to-br from-accent to-accent-light p-5 text-white shadow-lg">
+            <button
+              onClick={dismissWelcome}
+              className="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full bg-white/20 text-xs active:bg-white/30"
+              aria-label="閉じる"
+            >
+              ✕
+            </button>
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/20 text-lg font-bold">
+              E
+            </div>
+            <h2 className="mt-3 text-lg font-bold">
+              EdgeConnectへようこそ
+            </h2>
+            <p className="mt-1 text-sm leading-relaxed text-white/90">
+              LINEで簡単に予約ができるサービスです。
+              事業主から共有されたQRコードやURLからアクセスして予約しましょう。
+            </p>
+            <div className="mt-4 flex items-center gap-3 rounded-xl bg-white/10 p-3">
+              <span className="text-2xl">📱</span>
+              <p className="text-xs leading-relaxed text-white/80">
+                QRコードをスキャンするか、共有されたURLをタップしてください
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* 予約一覧 */}
         {isLoggedIn && (
           <a
             href="/bookings"
@@ -132,13 +179,13 @@ export default function Home() {
         )}
 
         {/* 最近利用した事業主 */}
-        {userInfo?.recentProviders && userInfo.recentProviders.length > 0 && (
+        {hasRecent && (
           <section>
             <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted">
               最近利用した事業主
             </h2>
             <div className="space-y-2">
-              {userInfo.recentProviders.map((rp) => {
+              {userInfo!.recentProviders!.map((rp) => {
                 const d = new Date(rp.lastDate);
                 const dateLabel = `${d.getMonth() + 1}/${d.getDate()}`;
                 return (
@@ -166,7 +213,8 @@ export default function Home() {
           </section>
         )}
 
-        {(!userInfo?.recentProviders || userInfo.recentProviders.length === 0) && (
+        {/* ガイド（ウェルカム非表示 & 予約履歴なしの場合） */}
+        {!showWelcome && !hasRecent && (
           <div className="pt-4 text-center">
             <p className="text-sm text-muted">
               事業主のQRコードやURLから予約ページにアクセスしてください
