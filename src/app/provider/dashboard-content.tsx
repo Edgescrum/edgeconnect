@@ -73,7 +73,7 @@ export function ProviderDashboard({ provider }: { provider: Provider }) {
               <a
                 key={item.href}
                 href={item.href}
-                className="flex items-center gap-4 rounded-2xl bg-card p-4 shadow-sm ring-1 ring-border active:scale-[0.99]"
+                className="flex min-h-[4.5rem] items-center gap-4 rounded-2xl bg-card p-4 shadow-sm ring-1 ring-border active:scale-[0.99]"
               >
                 <span className="text-2xl">{item.icon}</span>
                 <div className="flex-1">

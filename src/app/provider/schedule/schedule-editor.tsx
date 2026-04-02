@@ -93,10 +93,11 @@ export function ScheduleEditor({
   async function saveHours() {
     setError(null);
     setSaving("hours");
+    showSuccess("営業時間を保存しました");
     try {
       await updateBusinessHours(hours);
-      showSuccess("営業時間を保存しました");
     } catch (e) {
+      setSuccess(null);
       setError(e instanceof Error ? e.message : "保存に失敗しました");
     } finally {
       setSaving(null);
@@ -106,10 +107,11 @@ export function ScheduleEditor({
   async function saveInterval() {
     setError(null);
     setSaving("interval");
+    showSuccess("インターバルを保存しました");
     try {
       await updateInterval(intervalBefore, intervalAfter);
-      showSuccess("インターバルを保存しました");
     } catch (e) {
+      setSuccess(null);
       setError(e instanceof Error ? e.message : "保存に失敗しました");
     } finally {
       setSaving(null);
@@ -258,15 +260,16 @@ export function ScheduleEditor({
               <div className="flex items-center gap-1">
                 <input
                   type="number"
+                  inputMode="numeric"
                   min="0"
                   step="5"
                   value={intervalBefore}
                   onChange={(e) =>
                     setIntervalBefore(parseInt(e.target.value) || 0)
                   }
-                  className="w-16 rounded-lg border border-border bg-background px-2 py-1.5 text-center text-sm"
+                  className="w-20 rounded-lg border border-border bg-background px-3 py-2.5 text-center"
                 />
-                <span className="text-xs text-muted">分</span>
+                <span className="text-sm text-muted">分</span>
               </div>
             </div>
             <div className="flex-1">
@@ -276,13 +279,14 @@ export function ScheduleEditor({
               <div className="flex items-center gap-1">
                 <input
                   type="number"
+                  inputMode="numeric"
                   min="0"
                   step="5"
                   value={intervalAfter}
                   onChange={(e) =>
                     setIntervalAfter(parseInt(e.target.value) || 0)
                   }
-                  className="w-16 rounded-lg border border-border bg-background px-2 py-1.5 text-center text-sm"
+                  className="w-20 rounded-lg border border-border bg-background px-3 py-2.5 text-center"
                 />
                 <span className="text-xs text-muted">分</span>
               </div>

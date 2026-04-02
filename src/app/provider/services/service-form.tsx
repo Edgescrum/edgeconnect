@@ -110,6 +110,7 @@ export function ServiceForm({
               id="duration_min"
               name="duration_min"
               type="number"
+              inputMode="numeric"
               required
               min="1"
               defaultValue={defaultValues?.duration_min || 60}
@@ -127,6 +128,7 @@ export function ServiceForm({
               id="price"
               name="price"
               type="number"
+              inputMode="numeric"
               required
               min="0"
               defaultValue={defaultValues?.price || 0}
@@ -147,6 +149,7 @@ export function ServiceForm({
               id="cancel_deadline_hours"
               name="cancel_deadline_hours"
               type="number"
+              inputMode="numeric"
               min="0"
               defaultValue={defaultValues?.cancel_deadline_hours || 24}
               className="w-24 rounded-xl border border-border bg-card px-4 py-3"
