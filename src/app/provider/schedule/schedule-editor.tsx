@@ -9,7 +9,11 @@ import {
   type BusinessHours,
 } from "@/lib/actions/schedule";
 
-const DAY_LABELS = ["日", "月", "火", "水", "木", "金", "土"];
+// 月〜日の順で表示（日曜を最後に）
+const DAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
+const DAY_LABELS: Record<number, string> = {
+  0: "日", 1: "月", 2: "火", 3: "水", 4: "木", 5: "金", 6: "土",
+};
 
 const DEFAULT_HOURS: BusinessHours = {
   "0": null,
@@ -56,7 +60,9 @@ export function ScheduleEditor({
   const [error, setError] = useState<string | null>(null);
 
   // Block form
+  const [blockMode, setBlockMode] = useState<"single" | "range">("single");
   const [blockDate, setBlockDate] = useState("");
+  const [blockEndDate, setBlockEndDate] = useState("");
   const [blockStartTime, setBlockStartTime] = useState("09:00");
   const [blockEndTime, setBlockEndTime] = useState("18:00");
   const [blockReason, setBlockReason] = useState("");
@@ -115,10 +121,27 @@ export function ScheduleEditor({
     setError(null);
     setSaving("block");
     try {
-      const startAt = `${blockDate}T${blockStartTime}:00`;
-      const endAt = `${blockDate}T${blockEndTime}:00`;
-      await addBlockedSlot(startAt, endAt, blockReason || null);
+      if (blockMode === "range" && blockEndDate) {
+        // 期間: 各日にブロックを追加
+        const start = new Date(blockDate);
+        const end = new Date(blockEndDate);
+        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+          const dateStr = d.toISOString().split("T")[0];
+          await addBlockedSlot(
+            `${dateStr}T${blockStartTime}:00`,
+            `${dateStr}T${blockEndTime}:00`,
+            blockReason || null
+          );
+        }
+      } else {
+        await addBlockedSlot(
+          `${blockDate}T${blockStartTime}:00`,
+          `${blockDate}T${blockEndTime}:00`,
+          blockReason || null
+        );
+      }
       setBlockDate("");
+      setBlockEndDate("");
       setBlockReason("");
       showSuccess("ブロックを追加しました");
     } catch (e) {
@@ -161,8 +184,9 @@ export function ScheduleEditor({
           曜日ごとに営業時間を設定します。オフにすると定休日です。
         </p>
         <div className="mt-4 space-y-2">
-          {DAY_LABELS.map((label, i) => {
+          {DAY_ORDER.map((i) => {
             const day = String(i);
+            const label = DAY_LABELS[i];
             const isOpen = hours[day] !== null;
             return (
               <div
@@ -181,7 +205,7 @@ export function ScheduleEditor({
                     }`}
                   />
                 </button>
-                <span className="w-6 text-center text-sm font-medium">
+                <span className={`w-6 text-center text-sm font-medium ${i === 0 ? "text-red-500" : i === 6 ? "text-blue-500" : ""}`}>
                   {label}
                 </span>
                 {isOpen ? (
@@ -287,18 +311,75 @@ export function ScheduleEditor({
         {/* 追加フォーム */}
         <div className="mt-4 rounded-xl bg-card p-4 ring-1 ring-border">
           <div className="space-y-3">
-            <div>
-              <label className="mb-1 block text-xs text-muted">日付</label>
-              <input
-                type="date"
-                value={blockDate}
-                onChange={(e) => setBlockDate(e.target.value)}
-                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
-              />
+            {/* モード切替 */}
+            <div className="flex rounded-lg bg-background p-1">
+              <button
+                type="button"
+                onClick={() => setBlockMode("single")}
+                className={`flex-1 rounded-md py-1.5 text-xs font-medium transition-colors ${
+                  blockMode === "single"
+                    ? "bg-card shadow-sm"
+                    : "text-muted"
+                }`}
+              >
+                1日
+              </button>
+              <button
+                type="button"
+                onClick={() => setBlockMode("range")}
+                className={`flex-1 rounded-md py-1.5 text-xs font-medium transition-colors ${
+                  blockMode === "range"
+                    ? "bg-card shadow-sm"
+                    : "text-muted"
+                }`}
+              >
+                期間
+              </button>
             </div>
+
+            {blockMode === "single" ? (
+              <div>
+                <label className="mb-1 block text-xs text-muted">日付</label>
+                <input
+                  type="date"
+                  value={blockDate}
+                  onChange={(e) => setBlockDate(e.target.value)}
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+                />
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <div className="flex-1">
+                  <label className="mb-1 block text-xs text-muted">開始日</label>
+                  <input
+                    type="date"
+                    value={blockDate}
+                    onChange={(e) => {
+                      setBlockDate(e.target.value);
+                      if (!blockEndDate || e.target.value > blockEndDate) {
+                        setBlockEndDate(e.target.value);
+                      }
+                    }}
+                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+                  />
+                </div>
+                <span className="mt-5 text-xs text-muted">〜</span>
+                <div className="flex-1">
+                  <label className="mb-1 block text-xs text-muted">終了日</label>
+                  <input
+                    type="date"
+                    value={blockEndDate}
+                    min={blockDate}
+                    onChange={(e) => setBlockEndDate(e.target.value)}
+                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+                  />
+                </div>
+              </div>
+            )}
+
             <div className="flex gap-2">
               <div className="flex-1">
-                <label className="mb-1 block text-xs text-muted">開始</label>
+                <label className="mb-1 block text-xs text-muted">開始時間</label>
                 <input
                   type="time"
                   value={blockStartTime}
@@ -307,7 +388,7 @@ export function ScheduleEditor({
                 />
               </div>
               <div className="flex-1">
-                <label className="mb-1 block text-xs text-muted">終了</label>
+                <label className="mb-1 block text-xs text-muted">終了時間</label>
                 <input
                   type="time"
                   value={blockEndTime}
@@ -324,14 +405,14 @@ export function ScheduleEditor({
                 type="text"
                 value={blockReason}
                 onChange={(e) => setBlockReason(e.target.value)}
-                placeholder="例：私用"
+                placeholder="例：夏季休暇"
                 className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
               />
             </div>
           </div>
           <button
             onClick={handleAddBlock}
-            disabled={!blockDate || saving === "block"}
+            disabled={!blockDate || (blockMode === "range" && !blockEndDate) || saving === "block"}
             className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-border py-2.5 text-sm font-semibold disabled:opacity-40 active:scale-[0.98]"
           >
             {saving === "block" && (
