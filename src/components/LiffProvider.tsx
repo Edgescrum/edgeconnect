@@ -60,12 +60,18 @@ export function LiffProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     async function init() {
       try {
+        const t0 = performance.now();
         const liff = (await import("@line/liff")).default;
+        console.log(`[PERF] liff import: ${Math.round(performance.now() - t0)}ms`);
+
+        const t1 = performance.now();
         await liff.init({ liffId: process.env.NEXT_PUBLIC_LIFF_ID! });
+        console.log(`[PERF] liff.init: ${Math.round(performance.now() - t1)}ms`);
         setLiffInstance(liff);
 
         // キャッシュ済みならLIFF initだけで完了（サーバー認証スキップ）
         if (sessionStorage.getItem(SESSION_KEY)) {
+          console.log(`[PERF] total (cached): ${Math.round(performance.now() - t0)}ms`);
           return;
         }
 
@@ -73,14 +79,17 @@ export function LiffProvider({ children }: { children: ReactNode }) {
         if (liff.isLoggedIn()) {
           const accessToken = liff.getAccessToken();
           if (accessToken) {
+            const t2 = performance.now();
             const res = await fetch("/api/auth/login", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ accessToken }),
             });
+            console.log(`[PERF] /api/auth/login: ${Math.round(performance.now() - t2)}ms`);
             if (res.ok) {
               const { user: serverUser } = await res.json();
               sessionStorage.setItem(SESSION_KEY, JSON.stringify(serverUser));
+              console.log(`[PERF] total (fresh): ${Math.round(performance.now() - t0)}ms`);
               setState({ user: serverUser, isReady: true, isLoggedIn: true, error: null });
               return;
             }
