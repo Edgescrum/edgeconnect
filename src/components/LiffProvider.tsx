@@ -39,7 +39,7 @@ export function useLiff() {
 }
 
 const SESSION_KEY = "edgeconnect_user";
-const DEBUG_PERF = true; // 本番リリース時にfalseにする
+const DEBUG_PERF = false;
 
 export function LiffProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<LiffState>(() => {

@@ -50,14 +50,8 @@ export default function Home() {
   }, [isReady, isLoggedIn]);
 
   if (!isReady) {
-    return (
-      <main className="flex min-h-screen items-center justify-center">
-        <div className="flex items-center gap-2 text-muted">
-          <div className="h-4 w-4 animate-spin rounded-full border-2 border-accent border-t-transparent" />
-          <span className="text-sm">読み込み中...</span>
-        </div>
-      </main>
-    );
+    // layout.tsxのinitial-loaderが表示中なので空を返す
+    return null;
   }
 
   const hasRecent = userInfo?.recentProviders && userInfo.recentProviders.length > 0;
