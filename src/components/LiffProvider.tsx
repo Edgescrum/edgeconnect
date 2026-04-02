@@ -35,6 +35,8 @@ export function useLiff() {
   return useContext(LiffContext);
 }
 
+const SESSION_KEY = "edgeconnect_user";
+
 export function LiffProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<LiffUser | null>(null);
   const [isReady, setIsReady] = useState(false);
@@ -45,11 +47,25 @@ export function LiffProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     async function init() {
       try {
+        // セッションストレージに既存ユーザーがあればそのまま使う
+        const cached = sessionStorage.getItem(SESSION_KEY);
+        if (cached) {
+          const cachedUser = JSON.parse(cached) as LiffUser;
+          setUser(cachedUser);
+          setIsLoggedIn(true);
+          // LIFFは初期化だけして、サーバー認証はスキップ
+          const liff = (await import("@line/liff")).default;
+          await liff.init({ liffId: process.env.NEXT_PUBLIC_LIFF_ID! });
+          setLiffInstance(liff);
+          setIsReady(true);
+          return;
+        }
+
         const liff = (await import("@line/liff")).default;
         await liff.init({ liffId: process.env.NEXT_PUBLIC_LIFF_ID! });
         setLiffInstance(liff);
 
-        // 既にログイン済みならサーバー認証を実行
+        // LIFFログイン済み & セッション未作成の場合のみサーバー認証
         if (liff.isLoggedIn()) {
           const accessToken = liff.getAccessToken();
           if (accessToken) {
@@ -63,6 +79,7 @@ export function LiffProvider({ children }: { children: ReactNode }) {
               const { user: serverUser } = await res.json();
               setUser(serverUser);
               setIsLoggedIn(true);
+              sessionStorage.setItem(SESSION_KEY, JSON.stringify(serverUser));
             }
           }
         }
@@ -79,7 +96,6 @@ export function LiffProvider({ children }: { children: ReactNode }) {
     init();
   }, []);
 
-  // 明示的に呼ばれた時のみログインを実行
   const login = useCallback(() => {
     if (liffInstance && !liffInstance.isLoggedIn()) {
       liffInstance.login();
