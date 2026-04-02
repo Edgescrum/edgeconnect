@@ -27,27 +27,28 @@
 ## Todo
 
 ### Messaging API基盤
-- [ ] LINE Messaging APIクライアント初期化（`@line/bot-sdk`）
-- [ ] Flex Messageの送信ヘルパー関数（`pushMessage`ラッパー）
-- [ ] `line_user_id` からメッセージ送信する共通関数
+- [x] LINE Messaging APIクライアント初期化 → `src/lib/line/messaging.ts`
+- [x] Flex Messageの送信ヘルパー関数（`pushFlexMessage`）
+- [x] 通知送信ヘルパー → `src/lib/line/notify.ts`
 
-### Flex Messageテンプレート
-- [ ] 予約確定テンプレート（お客さん向け）※「Googleカレンダー」「Appleカレンダー」ボタン含む
-- [ ] 予約確定テンプレート（事業主向け）
-- [ ] リマインダーテンプレート（前日通知）※「カレンダーに追加する」ボタン含む（条件付き表示）
-- [ ] キャンセル通知テンプレート（お客さん向け）
-- [ ] キャンセル通知テンプレート（事業主向け）
+### Flex Messageテンプレート → `src/lib/line/templates.ts`
+- [x] 予約確定テンプレート（お客さん向け: 紫ヘッダー）
+- [x] 新規予約テンプレート（事業主向け: 緑ヘッダー）
+- [x] リマインダーテンプレート（前日通知: 黄ヘッダー）
+- [x] キャンセル通知テンプレート（お客さん向け: グレーヘッダー）
+- [x] キャンセル通知テンプレート（事業主向け: 赤ヘッダー）
+- [ ] 「Googleカレンダー」「Appleカレンダー」ボタン追加（13で実装）
 
 ### 送信トリガー
-- [ ] 予約作成時: お客さん＋事業主へ予約確定通知
-- [ ] お客さんキャンセル時: 事業主へキャンセル通知
-- [ ] 事業主キャンセル時: お客さんへキャンセル通知
+- [x] 予約作成時: お客さん＋事業主へ予約確定通知
+- [x] お客さんキャンセル時: 事業主へキャンセル通知
+- [x] 事業主キャンセル時: お客さんへキャンセル通知
 
 ### リマインダー
-- [ ] 前日リマインダーのバッチ/CRON処理実装
-- [ ] 対象予約の抽出（翌日の `status = "confirmed"` な予約）
-- [ ] リマインダーFlex Message送信
+- [x] 前日リマインダーのCRON処理 → `/api/cron/reminder` + `vercel.json`
+- [x] 対象予約の抽出（翌日の `status = "confirmed"` な予約）
+- [x] リマインダーFlex Message送信
 
 ### Webhookエンドポイント
-- [ ] LINE Messaging API Webhookの受信Route Handler（`app/api/webhook/line/route.ts`）
-- [ ] 署名検証
+- [x] LINE Messaging API Webhookの受信Route Handler → `app/api/webhook/route.ts`
+- [x] 署名検証
