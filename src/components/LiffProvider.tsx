@@ -47,6 +47,11 @@ export function LiffProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     async function init() {
       try {
+        // LIFF init前にURLパラメータを保存（initで消される場合がある）
+        const params = new URLSearchParams(window.location.search);
+        const redirectPath = params.get("path");
+        const redirectProvider = params.get("provider");
+
         // セッションストレージに既存ユーザーがあればそのまま使う
         const cached = sessionStorage.getItem(SESSION_KEY);
         if (cached) {
@@ -58,6 +63,9 @@ export function LiffProvider({ children }: { children: ReactNode }) {
           await liff.init({ liffId: process.env.NEXT_PUBLIC_LIFF_ID! });
           setLiffInstance(liff);
           setIsReady(true);
+          // リダイレクト処理
+          if (redirectPath) { window.location.href = redirectPath; return; }
+          if (redirectProvider) { window.location.href = `/p/${redirectProvider}`; return; }
           return;
         }
 
@@ -80,6 +88,9 @@ export function LiffProvider({ children }: { children: ReactNode }) {
               setUser(serverUser);
               setIsLoggedIn(true);
               sessionStorage.setItem(SESSION_KEY, JSON.stringify(serverUser));
+              // ログイン完了後にリダイレクト
+              if (redirectPath) { window.location.href = redirectPath; return; }
+              if (redirectProvider) { window.location.href = `/p/${redirectProvider}`; return; }
             }
           }
         }
