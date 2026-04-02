@@ -40,6 +40,7 @@ export default async function EditServicePage({
       <div className="mx-auto max-w-lg">
         <h1 className="mb-6 text-2xl font-bold">メニューを編集</h1>
         <ServiceForm
+          serviceId={serviceId}
           defaultValues={{
             name: service.name,
             description: service.description,

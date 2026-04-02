@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { toggleServicePublished, deleteService } from "@/lib/actions/service";
+import { toggleServicePublished } from "@/lib/actions/service";
 
 interface Service {
   id: number;
@@ -29,19 +29,6 @@ export function ServiceList({ services }: { services: Service[] }) {
     }
   }
 
-  async function handleDelete(id: number, name: string) {
-    if (!confirm(`「${name}」を削除しますか？`)) return;
-    setError(null);
-    setLoadingId(id);
-    try {
-      await deleteService(id);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "エラーが発生しました");
-    } finally {
-      setLoadingId(null);
-    }
-  }
-
   return (
     <div className="mt-6">
       {error && (
@@ -52,9 +39,10 @@ export function ServiceList({ services }: { services: Service[] }) {
 
       <div className="space-y-3">
         {services.map((service) => (
-          <div
+          <a
             key={service.id}
-            className={`rounded-2xl bg-card p-4 shadow-sm ring-1 ring-border ${
+            href={`/provider/services/${service.id}/edit`}
+            className={`block rounded-2xl bg-card p-4 shadow-sm ring-1 ring-border active:scale-[0.99] ${
               !service.is_published ? "opacity-60" : ""
             }`}
           >
@@ -69,7 +57,7 @@ export function ServiceList({ services }: { services: Service[] }) {
                   )}
                 </div>
                 {service.description && (
-                  <p className="mt-1 text-xs text-muted">
+                  <p className="mt-1 text-xs text-muted line-clamp-1">
                     {service.description}
                   </p>
                 )}
@@ -80,46 +68,54 @@ export function ServiceList({ services }: { services: Service[] }) {
                   <span className="text-xs text-muted">
                     {service.duration_min}分
                   </span>
-                  <span className="text-xs text-muted">
-                    キャンセル{service.cancel_deadline_hours}h前まで
-                  </span>
                 </div>
               </div>
-            </div>
 
-            <div className="mt-3 flex items-center gap-2 border-t border-border pt-3">
-              <button
-                onClick={() => handleToggle(service.id, service.is_published)}
-                disabled={loadingId === service.id}
-                className={`flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium transition-opacity disabled:opacity-50 ${
-                  service.is_published
-                    ? "bg-green-50 text-green-700"
-                    : "bg-gray-100 text-muted"
-                }`}
-              >
-                {loadingId === service.id && (
-                  <span className="inline-block h-3 w-3 animate-spin rounded-full border-[1.5px] border-current border-t-transparent" />
-                )}
-                {service.is_published ? "公開中" : "非公開"}
-              </button>
-              <a
-                href={`/provider/services/${service.id}/edit`}
-                className="rounded-lg bg-accent-bg px-3 py-1.5 text-xs font-medium text-accent"
-              >
-                編集
-              </a>
-              <button
-                onClick={() => handleDelete(service.id, service.name)}
-                disabled={loadingId === service.id}
-                className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium text-red-500 transition-opacity hover:bg-red-50 disabled:opacity-50"
-              >
-                {loadingId === service.id && (
-                  <span className="inline-block h-3 w-3 animate-spin rounded-full border-[1.5px] border-current border-t-transparent" />
-                )}
-                削除
-              </button>
+              {/* Toggle + Chevron */}
+              <div className="ml-3 flex items-center gap-2">
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleToggle(service.id, service.is_published);
+                  }}
+                  disabled={loadingId === service.id}
+                  className="relative h-7 w-12 shrink-0 rounded-full transition-colors disabled:opacity-50"
+                  style={{
+                    backgroundColor: service.is_published
+                      ? "#06C755"
+                      : "#d1d5db",
+                  }}
+                  aria-label={
+                    service.is_published ? "公開中（タップで非公開）" : "非公開（タップで公開）"
+                  }
+                >
+                  {loadingId === service.id ? (
+                    <span className="absolute left-1/2 top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  ) : (
+                    <span
+                      className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform ${
+                        service.is_published
+                          ? "translate-x-[22px]"
+                          : "translate-x-[2px]"
+                      }`}
+                    />
+                  )}
+                </button>
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  className="text-muted"
+                >
+                  <path d="m9 18 6-6-6-6" />
+                </svg>
+              </div>
             </div>
-          </div>
+          </a>
         ))}
       </div>
     </div>
