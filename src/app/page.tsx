@@ -13,6 +13,15 @@ export default function Home() {
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
 
+  // ?provider=xxx パラメータがあれば公開プロフィールにリダイレクト
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const providerSlug = params.get("provider");
+    if (providerSlug) {
+      window.location.href = `/p/${providerSlug}`;
+    }
+  }, []);
+
   useEffect(() => {
     if (!isReady || !isLoggedIn) return;
     fetch("/api/auth/me")
