@@ -84,8 +84,19 @@ export function BookingList({
       new Date(b.start_at) < weekEnd
   ).length;
 
-  function formatDate(dateStr: string) {
+  function toDateKey(dateStr: string) {
     const d = new Date(dateStr);
+    return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+  }
+
+  function formatDateHeader(dateStr: string) {
+    const d = new Date(dateStr);
+    const todayKey = `${todayStart.getFullYear()}-${todayStart.getMonth()}-${todayStart.getDate()}`;
+    const tomorrowKey = `${tomorrowStart.getFullYear()}-${tomorrowStart.getMonth()}-${tomorrowStart.getDate()}`;
+    const key = toDateKey(dateStr);
+
+    if (key === todayKey) return "今日";
+    if (key === tomorrowKey) return "明日";
     return `${d.getMonth() + 1}/${d.getDate()}（${DAYS[d.getDay()]}）`;
   }
 
@@ -158,52 +169,67 @@ export function BookingList({
           </div>
         ) : (
           <div className="space-y-2">
-            {filtered.map((booking) => {
-              const isCancelled = booking.status === "cancelled";
-              return (
-                <a
-                  key={booking.id}
-                  href={`/provider/bookings/${booking.id}`}
-                  className={`block rounded-2xl bg-card p-4 shadow-sm ring-1 ring-border active:scale-[0.99] ${
-                    isCancelled ? "opacity-60" : ""
-                  }`}
-                >
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="text-xs text-muted">
-                        {booking.customer_name ||
-                          booking.customer?.display_name ||
-                          "お客さま"}
-                      </p>
-                      <p className="mt-0.5 font-semibold">
-                        {booking.service?.name}
-                      </p>
-                      <p className="mt-1 text-sm">
-                        {formatDate(booking.start_at)}{" "}
-                        {formatTime(booking.start_at)}〜
-                        {formatTime(booking.end_at)}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      {isCancelled ? (
-                        <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-muted">
-                          キャンセル
-                        </span>
-                      ) : (
-                        <span className="rounded-full bg-green-50 px-2 py-0.5 text-[10px] font-medium text-green-700">
-                          確定
-                        </span>
-                      )}
-                      {booking.service && (
-                        <p className="mt-1 text-sm font-bold">
-                          ¥{booking.service.price.toLocaleString()}
+            {(() => {
+              let lastDateKey = "";
+              return filtered.map((booking) => {
+                const isCancelled = booking.status === "cancelled";
+                const dateKey = toDateKey(booking.start_at);
+                const showHeader = dateKey !== lastDateKey;
+                lastDateKey = dateKey;
+
+                return (
+                  <div key={booking.id}>
+                    {showHeader && (
+                      <div className="flex items-center gap-2 pb-1 pt-3 first:pt-0">
+                        <p className="text-xs font-semibold text-muted">
+                          {formatDateHeader(booking.start_at)}
                         </p>
-                      )}
-                    </div>
+                        <div className="h-px flex-1 bg-border" />
+                      </div>
+                    )}
+                    <a
+                      href={`/provider/bookings/${booking.id}`}
+                      className={`block rounded-2xl bg-card p-4 shadow-sm ring-1 ring-border active:scale-[0.99] ${
+                        isCancelled ? "opacity-60" : ""
+                      }`}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <p className="text-xs text-muted">
+                            {booking.customer_name ||
+                              booking.customer?.display_name ||
+                              "お客さま"}
+                          </p>
+                          <p className="mt-0.5 font-semibold">
+                            {booking.service?.name}
+                          </p>
+                          <p className="mt-1 text-sm">
+                            {formatTime(booking.start_at)}〜
+                            {formatTime(booking.end_at)}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          {isCancelled ? (
+                            <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-muted">
+                              キャンセル
+                            </span>
+                          ) : (
+                            <span className="rounded-full bg-green-50 px-2 py-0.5 text-[10px] font-medium text-green-700">
+                              確定
+                            </span>
+                          )}
+                          {booking.service && (
+                            <p className="mt-1 text-sm font-bold">
+                              ¥{booking.service.price.toLocaleString()}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </a>
                   </div>
-                </a>
-              );
-            })}
+                );
+              });
+            })()}
           </div>
         )}
       </div>
