@@ -15,18 +15,22 @@ interface Service {
 
 export function ServiceList({ services }: { services: Service[] }) {
   const [error, setError] = useState<string | null>(null);
-  const [loadingId, setLoadingId] = useState<number | null>(null);
+  // 楽観的更新: トグル即座に切り替え、失敗時に戻す
+  const [optimisticState, setOptimisticState] = useState<Record<number, boolean>>({});
 
   async function handleToggle(id: number, current: boolean) {
     setError(null);
-    setLoadingId(id);
+    setOptimisticState((prev) => ({ ...prev, [id]: !current }));
     try {
       await toggleServicePublished(id, !current);
     } catch (e) {
+      setOptimisticState((prev) => ({ ...prev, [id]: current }));
       setError(e instanceof Error ? e.message : "エラーが発生しました");
-    } finally {
-      setLoadingId(null);
     }
+  }
+
+  function isPublished(service: Service) {
+    return optimisticState[service.id] ?? service.is_published;
   }
 
   return (
@@ -42,15 +46,15 @@ export function ServiceList({ services }: { services: Service[] }) {
           <a
             key={service.id}
             href={`/provider/services/${service.id}/edit`}
-            className={`block rounded-2xl bg-card p-4 shadow-sm ring-1 ring-border active:scale-[0.99] ${
-              !service.is_published ? "opacity-60" : ""
+            className={`block rounded-2xl bg-card p-4 shadow-sm ring-1 ring-border active:scale-[0.99] transition-opacity ${
+              !isPublished(service) ? "opacity-60" : ""
             }`}
           >
             <div className="flex items-start justify-between">
               <div className="flex-1">
                 <div className="flex items-center gap-2">
                   <p className="font-semibold">{service.name}</p>
-                  {!service.is_published && (
+                  {!isPublished(service) && (
                     <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-muted">
                       非公開
                     </span>
@@ -77,29 +81,22 @@ export function ServiceList({ services }: { services: Service[] }) {
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    handleToggle(service.id, service.is_published);
+                    handleToggle(service.id, isPublished(service));
                   }}
-                  disabled={loadingId === service.id}
-                  className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition-colors disabled:opacity-50 ${
-                    service.is_published ? "bg-success" : "bg-gray-300"
+                  className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition-colors duration-200 ${
+                    isPublished(service) ? "bg-success" : "bg-gray-300"
                   }`}
                   aria-label={
-                    service.is_published ? "公開中（タップで非公開）" : "非公開（タップで公開）"
+                    isPublished(service) ? "公開中（タップで非公開）" : "非公開（タップで公開）"
                   }
                 >
-                  {loadingId === service.id ? (
-                    <span className="absolute inset-0 flex items-center justify-center">
-                      <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                    </span>
-                  ) : (
-                    <span
-                      className={`inline-block h-5 w-5 rounded-full bg-white shadow-md transition-transform ${
-                        service.is_published
-                          ? "translate-x-6"
-                          : "translate-x-1"
-                      }`}
-                    />
-                  )}
+                  <span
+                    className={`inline-block h-5 w-5 rounded-full bg-white shadow-md transition-transform duration-200 ${
+                      isPublished(service)
+                        ? "translate-x-6"
+                        : "translate-x-1"
+                    }`}
+                  />
                 </button>
                 <svg
                   width="16"
