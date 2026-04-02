@@ -2,6 +2,23 @@ import { createClient } from "@/lib/supabase/server";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 
+interface ProviderProfile {
+  id: number;
+  slug: string;
+  name: string | null;
+  bio: string | null;
+  icon_url: string | null;
+  line_contact_url: string | null;
+  contact_email: string | null;
+  services: {
+    id: number;
+    name: string;
+    description: string | null;
+    duration_min: number;
+    price: number;
+  }[];
+}
+
 export default async function ProviderProfilePage({
   params,
 }: {
@@ -10,18 +27,13 @@ export default async function ProviderProfilePage({
   const { slug } = await params;
   const supabase = await createClient();
 
-  const { data: provider } = await supabase
-    .from("providers")
-    .select("*, services(*)")
-    .eq("slug", slug)
-    .eq("is_active", true)
-    .single();
+  // Database Function で連絡先を含むプロフィールを取得（一括取得不可）
+  const { data } = await supabase.rpc("get_provider_profile", {
+    p_slug: slug,
+  });
 
+  const provider = data as ProviderProfile | null;
   if (!provider) notFound();
-
-  const publishedServices = (provider.services || []).filter(
-    (s: { is_published: boolean }) => s.is_published
-  );
 
   return (
     <main className="min-h-screen bg-background">
@@ -52,45 +64,37 @@ export default async function ProviderProfilePage({
 
       <div className="mx-auto max-w-lg px-4 pb-8">
         {/* Menu */}
-        {publishedServices.length > 0 && (
+        {provider.services.length > 0 && (
           <section>
             <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted">
               メニュー
             </h2>
             <ul className="space-y-2.5">
-              {publishedServices.map(
-                (service: {
-                  id: number;
-                  name: string;
-                  description: string | null;
-                  duration_min: number;
-                  price: number;
-                }) => (
-                  <li
-                    key={service.id}
-                    className="rounded-2xl bg-card p-4 shadow-sm ring-1 ring-border"
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <p className="font-semibold">{service.name}</p>
-                        {service.description && (
-                          <p className="mt-1 text-xs text-muted">
-                            {service.description}
-                          </p>
-                        )}
-                      </div>
-                      <div className="ml-4 text-right">
-                        <p className="text-lg font-bold">
-                          ¥{service.price.toLocaleString()}
+              {provider.services.map((service) => (
+                <li
+                  key={service.id}
+                  className="rounded-2xl bg-card p-4 shadow-sm ring-1 ring-border"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <p className="font-semibold">{service.name}</p>
+                      {service.description && (
+                        <p className="mt-1 text-xs text-muted">
+                          {service.description}
                         </p>
-                        <p className="text-xs text-muted">
-                          {service.duration_min}分
-                        </p>
-                      </div>
+                      )}
                     </div>
-                  </li>
-                )
-              )}
+                    <div className="ml-4 text-right">
+                      <p className="text-lg font-bold">
+                        ¥{service.price.toLocaleString()}
+                      </p>
+                      <p className="text-xs text-muted">
+                        {service.duration_min}分
+                      </p>
+                    </div>
+                  </div>
+                </li>
+              ))}
             </ul>
           </section>
         )}
