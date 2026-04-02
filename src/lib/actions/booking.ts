@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth/session";
 import { revalidatePath } from "next/cache";
+import { notifyBookingConfirmed, notifyBookingCancelled } from "@/lib/line/notify";
 
 export async function getAvailableSlots(
   providerId: number,
@@ -48,6 +49,12 @@ export async function createBooking(
     throw new Error(error.message);
   }
 
+  // LINE通知（バックグラウンド、エラーでも予約自体は成功）
+  const bookingId = typeof data === "object" && data !== null ? (data as { id: string }).id : null;
+  if (bookingId) {
+    notifyBookingConfirmed(bookingId).catch(console.error);
+  }
+
   revalidatePath("/bookings");
   return data;
 }
@@ -55,6 +62,9 @@ export async function createBooking(
 export async function cancelBooking(bookingId: string) {
   const user = await getCurrentUser();
   if (!user) throw new Error("ログインが必要です");
+
+  // キャンセル者の判定のためにrole確認
+  const cancelledBy = user.role === "provider" ? "provider" : "customer";
 
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("cancel_booking", {
@@ -68,6 +78,9 @@ export async function cancelBooking(bookingId: string) {
     }
     throw new Error(error.message);
   }
+
+  // LINE通知（バックグラウンド）
+  notifyBookingCancelled(bookingId, cancelledBy).catch(console.error);
 
   revalidatePath("/bookings");
   revalidatePath(`/bookings/${bookingId}`);
