@@ -45,6 +45,10 @@ input:focus, textarea:focus, select:focus {
   box-shadow: 0 0 0 3px var(--accent-bg);
 }
 
+/* 横スクロールバー非表示 */
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
 /* タッチフィードバック */
 .active\:scale-\[0\.98\]:active,
 .active\:scale-\[0\.99\]:active {
