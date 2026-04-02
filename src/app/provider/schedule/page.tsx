@@ -33,22 +33,13 @@ export default async function SchedulePage() {
   return (
     <main className="min-h-screen bg-background px-4 py-6">
       <div className="mx-auto max-w-lg">
-        <h1 className="text-2xl font-bold">スケジュール設定</h1>
-        <p className="mt-1 text-sm text-muted">
+        <p className="text-sm text-muted">
           営業時間やお休みを設定します
         </p>
         <ScheduleEditor
           settings={settings}
           blockedSlots={blockedSlots || []}
         />
-        <div className="mt-6">
-          <a
-            href="/"
-            className="inline-flex items-center gap-1 text-sm text-muted"
-          >
-            ← ダッシュボードに戻る
-          </a>
-        </div>
       </div>
     </main>
   );

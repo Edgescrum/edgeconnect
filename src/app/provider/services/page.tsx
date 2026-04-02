@@ -27,12 +27,9 @@ export default async function ServicesPage() {
     <main className="min-h-screen bg-background px-4 py-6">
       <div className="mx-auto max-w-lg">
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold">サービスメニュー</h1>
-            <p className="mt-1 text-sm text-muted">
-              {services?.length || 0}件のメニュー
-            </p>
-          </div>
+          <p className="text-sm text-muted">
+            {services?.length || 0}件のメニュー
+          </p>
           <a
             href="/provider/services/new"
             className="rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-accent/25 active:scale-[0.98]"
@@ -59,14 +56,6 @@ export default async function ServicesPage() {
           </div>
         )}
 
-        <div className="mt-4">
-          <a
-            href="/"
-            className="inline-flex items-center gap-1 text-sm text-muted"
-          >
-            ← ダッシュボードに戻る
-          </a>
-        </div>
       </div>
     </main>
   );

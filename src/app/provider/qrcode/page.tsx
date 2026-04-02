@@ -23,12 +23,9 @@ export default async function QrCodePage() {
   return (
     <main className="min-h-screen bg-background px-4 py-8">
       <div className="mx-auto max-w-sm">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold">あなたの予約ページ</h1>
-          <p className="mt-2 text-sm text-muted">
-            このQRコードをお客さまに共有しましょう
-          </p>
-        </div>
+        <p className="text-center text-sm text-muted">
+          このQRコードをお客さまに共有しましょう
+        </p>
         <QrCodeView url={profileUrl} slug={provider.slug} name={provider.name || ""} />
       </div>
     </main>

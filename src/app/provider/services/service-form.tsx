@@ -182,25 +182,16 @@ export function ServiceForm({
           </div>
         )}
 
-        <div className="flex gap-3">
-          <button
-            type="button"
-            onClick={() => router.back()}
-            className="rounded-xl border border-border px-6 py-3.5 font-semibold active:scale-[0.98]"
-          >
-            戻る
-          </button>
-          <button
-            type="submit"
-            disabled={submitting}
-            className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-accent py-3.5 font-semibold text-white shadow-lg shadow-accent/25 disabled:opacity-60 active:scale-[0.98]"
-          >
-            {submitting && (
-              <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-            )}
-            {submitting ? "処理中..." : submitLabel}
-          </button>
-        </div>
+        <button
+          type="submit"
+          disabled={submitting}
+          className="flex w-full items-center justify-center gap-2 rounded-xl bg-accent py-3.5 font-semibold text-white shadow-lg shadow-accent/25 disabled:opacity-60 active:scale-[0.98]"
+        >
+          {submitting && (
+            <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+          )}
+          {submitting ? "処理中..." : submitLabel}
+        </button>
       </form>
 
       {/* 削除セクション（編集時のみ） */}
