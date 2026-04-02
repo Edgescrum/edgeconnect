@@ -76,6 +76,12 @@ export default function Home() {
         desc: "メニューの追加・編集・公開設定",
       },
       {
+        href: "/provider/schedule",
+        icon: "🕐",
+        title: "スケジュール設定",
+        desc: "営業時間・定休日・インターバル",
+      },
+      {
         href: `/p/${provider.slug}`,
         icon: "👤",
         title: "予約ページ",
