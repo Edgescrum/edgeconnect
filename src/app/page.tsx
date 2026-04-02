@@ -59,54 +59,53 @@ export default function Home() {
   // userInfoロード前はバナーを表示（ロード後にproviderならバナー非表示に切り替わる）
   const showProviderBanner = isLoggedIn && !isProvider;
 
-  // バナーカルーセルに表示するカード
-  const bannerCards: { key: string; node: React.ReactNode }[] = [];
+  const [activeSlide, setActiveSlide] = useState(0);
 
+  // バナーカード定義
+  const bannerCards: { key: string; node: React.ReactNode }[] = [];
   if (showWelcome) {
     bannerCards.push({
       key: "welcome",
       node: (
-        <div className="relative min-w-[85vw] max-w-sm shrink-0 snap-center rounded-2xl bg-gradient-to-br from-accent to-accent-light p-5 text-white shadow-lg">
+        <>
           <button
-            onClick={dismissWelcome}
+            onClick={(e) => { e.stopPropagation(); dismissWelcome(); }}
             className="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full bg-white/20 text-xs active:bg-white/30"
-            aria-label="閉じる"
           >
             ✕
           </button>
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/20 text-lg font-bold">
-            E
-          </div>
-          <h2 className="mt-3 text-lg font-bold">EdgeConnectへようこそ</h2>
-          <p className="mt-1 text-sm leading-relaxed text-white/90">
-            LINEで簡単に予約ができるサービスです。事業主から共有されたQRコードやURLからアクセスして予約しましょう。
+          <h2 className="text-lg font-bold text-white">EdgeConnectへようこそ</h2>
+          <p className="mt-2 text-sm leading-relaxed text-white/90">
+            LINEで簡単に予約ができるサービスです。事業主のQRコードやURLから予約しましょう。
           </p>
-        </div>
+        </>
       ),
     });
   }
-
   if (showProviderBanner) {
     bannerCards.push({
       key: "provider-cta",
       node: (
-        <div className="min-w-[85vw] max-w-sm shrink-0 snap-center rounded-2xl bg-gradient-to-br from-amber-400 to-orange-400 p-5 text-white shadow-lg">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/20 text-lg">
-            🏠
-          </div>
-          <h2 className="mt-3 text-lg font-bold">予約を受け付けませんか？</h2>
-          <p className="mt-1 text-sm leading-relaxed text-white/90">
-            無料であなた専用の予約ページを作成。お客さまはLINEから簡単に予約できます。
+        <>
+          <h2 className="text-lg font-bold text-white">予約を受け付けませんか？</h2>
+          <p className="mt-2 text-sm leading-relaxed text-white/90">
+            無料であなた専用の予約ページを作成できます。
           </p>
           <a
             href="/provider/register"
-            className="mt-3 block rounded-xl bg-white/20 py-2.5 text-center text-sm font-semibold active:bg-white/30"
+            className="mt-3 inline-block rounded-xl bg-white/20 px-5 py-2.5 text-sm font-semibold text-white active:bg-white/30"
           >
             事業主として始める →
           </a>
-        </div>
+        </>
       ),
     });
+  }
+
+  function handleScroll(e: React.UIEvent<HTMLDivElement>) {
+    const el = e.currentTarget;
+    const idx = Math.round(el.scrollLeft / (el.scrollWidth / bannerCards.length));
+    setActiveSlide(idx);
   }
 
   return (
@@ -156,14 +155,41 @@ export default function Home() {
       <div className="mx-auto max-w-lg">
         {/* バナーカルーセル */}
         {bannerCards.length > 0 && (
-          <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pt-6 pb-2 scrollbar-hide">
-            {bannerCards.map((card) => (
-              <div key={card.key}>{card.node}</div>
-            ))}
+          <div className="pt-4 pb-2">
+            <div
+              className="flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 scrollbar-hide"
+              onScroll={handleScroll}
+            >
+              {bannerCards.map((card, i) => (
+                <div
+                  key={card.key}
+                  className={`relative h-[140px] w-[80vw] max-w-[360px] shrink-0 snap-center overflow-hidden rounded-2xl p-5 shadow-lg ${
+                    i === 0 && card.key === "welcome"
+                      ? "bg-gradient-to-br from-accent to-accent-light"
+                      : "bg-gradient-to-br from-amber-400 to-orange-400"
+                  }`}
+                >
+                  {card.node}
+                </div>
+              ))}
+            </div>
+            {/* ドットインジケーター */}
+            {bannerCards.length > 1 && (
+              <div className="mt-2 flex justify-center gap-1.5">
+                {bannerCards.map((_, i) => (
+                  <div
+                    key={i}
+                    className={`h-1.5 rounded-full transition-all ${
+                      i === activeSlide ? "w-4 bg-accent" : "w-1.5 bg-border"
+                    }`}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         )}
 
-        <div className="px-4 py-4 space-y-4">
+        <div className="px-4 pb-4 space-y-4">
           {/* 事業主セクション */}
           {isLoggedIn && isProvider && (
             <section>
