@@ -73,14 +73,20 @@ export function ProviderDashboard({
 
         {/* Quick Stats */}
         <div className="mt-6 grid grid-cols-2 gap-3">
-          <div className="rounded-2xl bg-card p-4 shadow-sm ring-1 ring-border">
+          <a
+            href="/provider/bookings?filter=today"
+            className="rounded-2xl bg-card p-4 shadow-sm ring-1 ring-border active:scale-[0.98]"
+          >
             <p className="text-2xl font-bold">{todayCount}</p>
-            <p className="text-xs text-muted">今日の予約</p>
-          </div>
-          <div className="rounded-2xl bg-card p-4 shadow-sm ring-1 ring-border">
+            <p className="text-xs text-muted">今日の予約 →</p>
+          </a>
+          <a
+            href="/provider/bookings?filter=week"
+            className="rounded-2xl bg-card p-4 shadow-sm ring-1 ring-border active:scale-[0.98]"
+          >
             <p className="text-2xl font-bold">{weekCount}</p>
-            <p className="text-xs text-muted">今週の予約</p>
-          </div>
+            <p className="text-xs text-muted">今週の予約 →</p>
+          </a>
         </div>
 
         {/* Menu */}
