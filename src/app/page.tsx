@@ -56,7 +56,8 @@ export default function Home() {
 
   const hasRecent = userInfo?.recentProviders && userInfo.recentProviders.length > 0;
   const isProvider = userInfo?.role === "provider";
-  const showProviderBanner = isLoggedIn && userInfo && !isProvider;
+  // userInfoロード前はバナーを表示（ロード後にproviderならバナー非表示に切り替わる）
+  const showProviderBanner = isLoggedIn && !isProvider;
 
   // バナーカルーセルに表示するカード
   const bannerCards: { key: string; node: React.ReactNode }[] = [];
