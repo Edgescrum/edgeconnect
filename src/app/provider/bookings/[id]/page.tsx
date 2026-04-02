@@ -26,7 +26,7 @@ export default async function ProviderBookingDetailPage({
   const { data: booking } = await supabase
     .from("bookings")
     .select(`
-      id, start_at, end_at, status, cancelled_by, created_at,
+      id, start_at, end_at, status, cancelled_by, created_at, customer_name,
       services:service_id ( name, duration_min, price ),
       users:customer_user_id ( display_name, line_user_id )
     `)
@@ -72,8 +72,13 @@ export default async function ProviderBookingDetailPage({
             <div>
               <p className="text-xs text-muted">お客さま</p>
               <p className="mt-0.5 font-semibold">
-                {customer?.display_name || "お客さま"}
+                {booking.customer_name || customer?.display_name || "お客さま"}
               </p>
+              {booking.customer_name && customer?.display_name && (
+                <p className="text-xs text-muted">
+                  LINE: {customer.display_name}
+                </p>
+              )}
             </div>
             <div>
               <p className="text-xs text-muted">メニュー</p>

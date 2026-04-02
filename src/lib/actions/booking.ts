@@ -23,7 +23,8 @@ export async function getAvailableSlots(
 export async function createBooking(
   providerId: number,
   serviceId: number,
-  startAt: string
+  startAt: string,
+  customerName?: string
 ) {
   const user = await getCurrentUser();
   if (!user) throw new Error("ログインが必要です");
@@ -34,6 +35,7 @@ export async function createBooking(
     p_service_id: serviceId,
     p_customer_line_user_id: user.lineUserId,
     p_start_at: startAt,
+    p_customer_name: customerName || null,
   });
 
   if (error) {

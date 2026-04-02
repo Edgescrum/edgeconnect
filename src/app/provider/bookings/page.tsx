@@ -19,7 +19,7 @@ export default async function ProviderBookingsPage() {
   const { data: bookings } = await supabase
     .from("bookings")
     .select(`
-      id, start_at, end_at, status, cancelled_by, created_at,
+      id, start_at, end_at, status, cancelled_by, created_at, customer_name,
       services:service_id ( name, duration_min, price ),
       users:customer_user_id ( display_name )
     `)
@@ -79,6 +79,7 @@ export default async function ProviderBookingsPage() {
     end_at: string;
     status: string;
     cancelled_by: string | null;
+    customer_name: string | null;
     service: { name: string; price: number } | null;
     customer: { display_name: string | null } | null;
   }
@@ -95,7 +96,7 @@ export default async function ProviderBookingsPage() {
         <div className="flex items-start justify-between">
           <div>
             <p className="text-xs text-muted">
-              {booking.customer?.display_name || "お客さま"}
+              {booking.customer_name || booking.customer?.display_name || "お客さま"}
             </p>
             <p className="mt-0.5 font-semibold">
               {booking.service?.name}

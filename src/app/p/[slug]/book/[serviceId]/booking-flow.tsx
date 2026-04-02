@@ -24,6 +24,7 @@ export function BookingFlow({
   service: Service;
 }) {
   const [step, setStep] = useState<"date" | "confirm" | "done">("date");
+  const [customerName, setCustomerName] = useState("");
 
   // カレンダー状態
   const today = useMemo(() => {
@@ -121,7 +122,7 @@ export function BookingFlow({
     setError(null);
     setSubmitting(true);
     try {
-      const result = await createBooking(providerId, service.id, selectedSlot.slot_start);
+      const result = await createBooking(providerId, service.id, selectedSlot.slot_start, customerName || undefined);
       setBookingId(typeof result === "object" && result !== null ? (result as { id: string }).id : null);
       setStep("done");
     } catch (e) {
@@ -322,6 +323,23 @@ export function BookingFlow({
         {/* Step 2: 確認 */}
         {step === "confirm" && selectedSlot && (
           <div>
+            {/* 氏名入力 */}
+            <div className="mb-4 rounded-2xl bg-card p-5 shadow-sm ring-1 ring-border">
+              <label className="mb-1.5 block text-sm font-medium">
+                お名前
+              </label>
+              <input
+                type="text"
+                value={customerName}
+                onChange={(e) => setCustomerName(e.target.value)}
+                placeholder="山田 太郎"
+                className="w-full rounded-xl border border-border bg-background px-4 py-3"
+              />
+              <p className="mt-1.5 text-xs text-muted">
+                事業主に表示されるお名前です（任意）
+              </p>
+            </div>
+
             <div className="rounded-2xl bg-card p-5 shadow-sm ring-1 ring-border">
               <div className="space-y-4">
                 <div className="flex justify-between">
