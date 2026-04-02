@@ -27,24 +27,24 @@ webcal://edgeconnect.app/api/calendar/[slug]/[token].ics
 ### Todo
 
 #### APIルート
-- [ ] `GET /api/calendar/[slug]/[token].ics` Route Handler作成
-- [ ] JWTでトークンを検証
-- [ ] `provider_id` に紐づく `status = "confirmed"` の予約一覧をSupabaseから取得
-- [ ] .ics形式（VCALENDAR）に変換して返す
-- [ ] レスポンスヘッダー設定（`Content-Type: text/calendar`）
-- [ ] アクセス日時を `providers.calendar_last_synced_at` に記録
+- [x] `GET /api/calendar/[slug]/[token].ics` Route Handler作成
+- [x] トークンを検証
+- [x] `provider_id` に紐づく `status = "confirmed"` の予約一覧をSupabaseから取得
+- [x] .ics形式（VCALENDAR）に変換して返す
+- [x] レスポンスヘッダー設定（`Content-Type: text/calendar`）
+- [x] アクセス日時を `providers.calendar_last_synced_at` に記録
 
 #### トークン管理
-- [ ] `providers.calendar_token` をアカウント作成時に自動生成（UUID or ランダム文字列）
-- [ ] トークン再発行機能（URLが流出した場合の対応）
+- [x] `providers.calendar_token` をアカウント作成時に自動生成（DB Function `register_provider`内）
+- [ ] トークン再発行機能
 
-#### 管理画面UI（カレンダー連携タブ）
-- [ ] カレンダー連携タブを事業主管理画面に追加
-- [ ] 連携状況エリア: 連携済みアプリ名・最終同期日時・解除ボタン
-- [ ] 「Googleカレンダーに登録する」ボタン（`webcal://` スキーム）
-- [ ] 「Appleカレンダーに登録する（iPhone）」ボタン（`webcal://` スキーム）
-- [ ] 「URLをコピーする（その他のアプリ用）」ボタン
-- [ ] 注意書き表示:「このURLはあなた専用です。他の人と共有しないでください」
+#### 管理画面UI → `/provider/calendar`
+- [x] カレンダー連携画面を事業主管理画面に追加
+- [x] 連携状況エリア（最終同期日時表示）
+- [x] 「Googleカレンダーに登録する」ボタン
+- [x] 「Appleカレンダーに登録する（iPhone）」ボタン（`webcal://`スキーム）
+- [x] 「URLをコピーする（その他のアプリ用）」ボタン
+- [x] 注意書き表示
 
 ---
 
@@ -86,18 +86,21 @@ GET /api/calendar/event/[booking_id].ics
 ### Todo
 
 #### Googleカレンダー用URL生成
-- [ ] 予約情報からGoogleカレンダーURLを生成するヘルパー関数
-- [ ] 日時フォーマット変換（ISO 8601 → Googleカレンダー形式 `YYYYMMDDTHHmmSSZ`）
+- [x] 予約情報からGoogleカレンダーURLを生成するヘルパー関数 → `generateGoogleCalendarUrl()`
+- [x] 日時フォーマット変換
 
 #### Apple カレンダー用APIルート
-- [ ] `GET /api/calendar/event/[booking_id].ics` Route Handler作成
-- [ ] `booking_id`（UUID）で予約1件を取得
-- [ ] .ics形式（VEVENT単体）に変換して返す
+- [x] `GET /api/calendar/event/[booking_id].ics` Route Handler作成
+- [x] `booking_id`（UUID）で予約1件を取得
+- [x] .ics形式に変換して返す
 
-#### .ics生成共通
-- [ ] VCALENDAR / VEVENT生成ユーティリティ（事業主向け・お客さん向け共通）
-- [ ] VEVENTに含める情報: サービス名・事業主名・開始/終了日時・料金・キャンセル期限
+#### .ics生成共通 → `src/lib/calendar/ics.ts`
+- [x] VCALENDAR / VEVENT生成ユーティリティ
+- [x] VEVENTに含める情報: サービス名・事業主名・開始/終了日時・料金
 
 #### Flex Messageへのボタン追加
-- [ ] 予約確定通知テンプレートに「Googleカレンダー」「Appleカレンダー」ボタン追加
-- [ ] リマインダー通知テンプレートに「カレンダーに追加する」ボタン追加（条件付き表示）
+- [x] 予約確定通知テンプレートに「Googleカレンダー」「Appleカレンダー」ボタン追加
+- [ ] リマインダー通知テンプレートにカレンダーボタン追加
+
+#### 予約詳細ページ
+- [x] お客さま予約詳細にGoogle/Appleカレンダー追加ボタン
