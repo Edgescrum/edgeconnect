@@ -37,8 +37,22 @@ export default async function ProviderProfilePage({
 
   return (
     <main className="min-h-screen bg-background">
+      {/* Back button */}
+      <div className="sticky top-0 z-40 bg-gradient-to-b from-accent/10 to-accent/10">
+        <div className="mx-auto flex max-w-lg items-center px-4 py-3">
+          <a
+            href="/"
+            className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/60 backdrop-blur active:bg-white/80"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="m15 18-6-6 6-6" />
+            </svg>
+          </a>
+        </div>
+      </div>
+
       {/* Hero */}
-      <div className="bg-gradient-to-b from-accent/10 to-background px-4 pb-8 pt-12">
+      <div className="bg-gradient-to-b from-accent/10 to-background px-4 pb-8 pt-4">
         <div className="mx-auto flex max-w-lg flex-col items-center text-center">
           {provider.icon_url ? (
             <Image
