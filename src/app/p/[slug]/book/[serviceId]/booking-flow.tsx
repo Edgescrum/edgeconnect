@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { getAvailableSlots, createBooking } from "@/lib/actions/booking";
 
 interface Service {
@@ -9,6 +9,8 @@ interface Service {
   duration_min: number;
   price: number;
 }
+
+const WEEKDAY_LABELS = ["日", "月", "火", "水", "木", "金", "土"];
 
 export function BookingFlow({
   providerId,
@@ -22,6 +24,16 @@ export function BookingFlow({
   service: Service;
 }) {
   const [step, setStep] = useState<"date" | "confirm" | "done">("date");
+
+  // カレンダー状態
+  const today = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, []);
+  const [viewYear, setViewYear] = useState(today.getFullYear());
+  const [viewMonth, setViewMonth] = useState(today.getMonth());
+
   const [selectedDate, setSelectedDate] = useState("");
   const [slots, setSlots] = useState<{ slot_start: string; slot_end: string }[]>([]);
   const [selectedSlot, setSelectedSlot] = useState<{ slot_start: string; slot_end: string } | null>(null);
@@ -30,12 +42,58 @@ export function BookingFlow({
   const [error, setError] = useState<string | null>(null);
   const [bookingId, setBookingId] = useState<string | null>(null);
 
-  // 今日から14日分の日付を生成
-  const dates = Array.from({ length: 14 }, (_, i) => {
-    const d = new Date();
-    d.setDate(d.getDate() + i + 1);
-    return d.toISOString().split("T")[0];
-  });
+  // カレンダーグリッド生成
+  const calendarDays = useMemo(() => {
+    const firstDay = new Date(viewYear, viewMonth, 1);
+    const lastDay = new Date(viewYear, viewMonth + 1, 0);
+    const startDow = firstDay.getDay(); // 0=日
+
+    const days: (Date | null)[] = [];
+    // 先頭の空セル
+    for (let i = 0; i < startDow; i++) days.push(null);
+    // 日付
+    for (let d = 1; d <= lastDay.getDate(); d++) {
+      days.push(new Date(viewYear, viewMonth, d));
+    }
+    return days;
+  }, [viewYear, viewMonth]);
+
+  // 月の移動制限: 当月 〜 3ヶ月先
+  const maxMonth = today.getMonth() + 3;
+  const maxYear = today.getFullYear() + Math.floor(maxMonth / 12);
+  const canPrev = viewYear > today.getFullYear() || viewMonth > today.getMonth();
+  const canNext = viewYear < maxYear || (viewYear === maxYear && viewMonth < maxMonth % 12);
+
+  function prevMonth() {
+    if (!canPrev) return;
+    if (viewMonth === 0) {
+      setViewYear(viewYear - 1);
+      setViewMonth(11);
+    } else {
+      setViewMonth(viewMonth - 1);
+    }
+  }
+
+  function nextMonth() {
+    if (!canNext) return;
+    if (viewMonth === 11) {
+      setViewYear(viewYear + 1);
+      setViewMonth(0);
+    } else {
+      setViewMonth(viewMonth + 1);
+    }
+  }
+
+  function isDateSelectable(date: Date) {
+    return date > today;
+  }
+
+  function toDateString(date: Date) {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, "0");
+    const d = String(date.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  }
 
   async function handleDateSelect(date: string) {
     setSelectedDate(date);
@@ -63,11 +121,7 @@ export function BookingFlow({
     setError(null);
     setSubmitting(true);
     try {
-      const result = await createBooking(
-        providerId,
-        service.id,
-        selectedSlot.slot_start
-      );
+      const result = await createBooking(providerId, service.id, selectedSlot.slot_start);
       setBookingId(typeof result === "object" && result !== null ? (result as { id: string }).id : null);
       setStep("done");
     } catch (e) {
@@ -79,12 +133,10 @@ export function BookingFlow({
 
   function formatDate(dateStr: string) {
     const d = new Date(dateStr);
-    const days = ["日", "月", "火", "水", "木", "金", "土"];
     return {
       month: d.getMonth() + 1,
       day: d.getDate(),
-      weekday: days[d.getDay()],
-      isWeekend: d.getDay() === 0 || d.getDay() === 6,
+      weekday: WEEKDAY_LABELS[d.getDay()],
     };
   }
 
@@ -147,53 +199,107 @@ export function BookingFlow({
         {/* Step 1: 日時選択 */}
         {step === "date" && (
           <div>
-            {/* 日付選択 */}
-            <h2 className="mb-3 text-sm font-semibold">日付</h2>
-            <div className="flex gap-2 overflow-x-auto pb-2">
-              {dates.map((date) => {
-                const { month, day, weekday, isWeekend } = formatDate(date);
-                const isSelected = date === selectedDate;
-                return (
-                  <button
-                    key={date}
-                    onClick={() => handleDateSelect(date)}
-                    className={`flex min-w-[3.5rem] shrink-0 flex-col items-center rounded-xl px-3 py-2.5 transition-colors ${
-                      isSelected
-                        ? "bg-accent text-white"
-                        : "bg-card ring-1 ring-border active:bg-accent-bg"
+            {/* 月カレンダー */}
+            <div className="rounded-2xl bg-card p-4 shadow-sm ring-1 ring-border">
+              {/* 月ナビ */}
+              <div className="flex items-center justify-between">
+                <button
+                  onClick={prevMonth}
+                  disabled={!canPrev}
+                  className="flex h-8 w-8 items-center justify-center rounded-lg disabled:opacity-20 active:bg-accent-bg"
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="m15 18-6-6 6-6" />
+                  </svg>
+                </button>
+                <span className="text-sm font-semibold">
+                  {viewYear}年{viewMonth + 1}月
+                </span>
+                <button
+                  onClick={nextMonth}
+                  disabled={!canNext}
+                  className="flex h-8 w-8 items-center justify-center rounded-lg disabled:opacity-20 active:bg-accent-bg"
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="m9 18 6-6-6-6" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* 曜日ヘッダー */}
+              <div className="mt-3 grid grid-cols-7 text-center">
+                {WEEKDAY_LABELS.map((label, i) => (
+                  <div
+                    key={label}
+                    className={`py-1 text-xs font-medium ${
+                      i === 0 ? "text-red-400" : i === 6 ? "text-blue-400" : "text-muted"
                     }`}
                   >
-                    <span className="text-[10px]">{month}月</span>
-                    <span className="text-lg font-bold">{day}</span>
-                    <span
-                      className={`text-xs ${
+                    {label}
+                  </div>
+                ))}
+              </div>
+
+              {/* 日付グリッド */}
+              <div className="mt-1 grid grid-cols-7 gap-0.5">
+                {calendarDays.map((date, i) => {
+                  if (!date) {
+                    return <div key={`empty-${i}`} className="aspect-square" />;
+                  }
+
+                  const dateStr = toDateString(date);
+                  const selectable = isDateSelectable(date);
+                  const isSelected = dateStr === selectedDate;
+                  const isToday = toDateString(today) === dateStr;
+                  const dow = date.getDay();
+
+                  return (
+                    <button
+                      key={dateStr}
+                      onClick={() => selectable && handleDateSelect(dateStr)}
+                      disabled={!selectable}
+                      className={`relative flex aspect-square items-center justify-center rounded-xl text-sm transition-colors ${
                         isSelected
-                          ? "text-white/80"
-                          : isWeekend
-                            ? "text-red-400"
-                            : "text-muted"
+                          ? "bg-accent font-bold text-white"
+                          : selectable
+                            ? "font-medium active:bg-accent-bg"
+                            : "text-gray-300"
+                      } ${
+                        !isSelected && selectable && dow === 0
+                          ? "text-red-500"
+                          : ""
+                      } ${
+                        !isSelected && selectable && dow === 6
+                          ? "text-blue-500"
+                          : ""
                       }`}
                     >
-                      {weekday}
-                    </span>
-                  </button>
-                );
-              })}
+                      {date.getDate()}
+                      {isToday && !isSelected && (
+                        <span className="absolute bottom-1 h-1 w-1 rounded-full bg-accent" />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             {/* 時間帯選択 */}
             {selectedDate && (
               <div className="mt-6">
-                <h2 className="mb-3 text-sm font-semibold">時間帯</h2>
+                <h2 className="mb-3 text-sm font-semibold">
+                  {(() => {
+                    const { month, day, weekday } = formatDate(selectedDate);
+                    return `${month}/${day}（${weekday}）の空き`;
+                  })()}
+                </h2>
                 {loadingSlots ? (
                   <div className="flex items-center justify-center py-8">
                     <div className="h-5 w-5 animate-spin rounded-full border-2 border-accent border-t-transparent" />
                   </div>
                 ) : slots.length === 0 ? (
                   <div className="rounded-2xl bg-card p-6 text-center ring-1 ring-border">
-                    <p className="text-sm text-muted">
-                      この日は空きがありません
-                    </p>
+                    <p className="text-sm text-muted">この日は空きがありません</p>
                   </div>
                 ) : (
                   <div className="grid grid-cols-3 gap-2">
@@ -237,9 +343,7 @@ export function BookingFlow({
                 </div>
                 <div className="flex justify-between border-t border-border pt-4">
                   <span className="text-sm text-muted">料金</span>
-                  <span className="text-lg font-bold">
-                    ¥{service.price.toLocaleString()}
-                  </span>
+                  <span className="text-lg font-bold">¥{service.price.toLocaleString()}</span>
                 </div>
               </div>
             </div>
@@ -268,7 +372,7 @@ export function BookingFlow({
               {providerName}への予約が完了しました。
             </p>
 
-            <div className="mt-6 w-full rounded-2xl bg-card p-5 shadow-sm ring-1 ring-border text-left">
+            <div className="mt-6 w-full rounded-2xl bg-card p-5 text-left shadow-sm ring-1 ring-border">
               <div className="space-y-3">
                 <div className="flex justify-between">
                   <span className="text-sm text-muted">日時</span>
@@ -286,9 +390,7 @@ export function BookingFlow({
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-muted">料金</span>
-                  <span className="text-sm font-bold">
-                    ¥{service.price.toLocaleString()}
-                  </span>
+                  <span className="text-sm font-bold">¥{service.price.toLocaleString()}</span>
                 </div>
               </div>
             </div>
