@@ -1,16 +1,16 @@
 import { cache } from "react";
-import { getCurrentUser } from "@/lib/auth/session";
-import { createClient } from "@/lib/supabase/server";
+import { resolveUser } from "@/lib/auth/session";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { log, logError } from "@/lib/log";
 
 export const getProviderId = cache(async () => {
-  const user = await getCurrentUser();
+  const user = await resolveUser();
   if (!user || user.role !== "provider") {
     logError("provider-session", "getProviderId: not a provider", { role: user?.role });
     throw new Error("Not authorized");
   }
 
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("providers")
     .select("id, slug")

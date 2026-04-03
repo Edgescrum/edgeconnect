@@ -1,12 +1,12 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getProviderId } from "@/lib/auth/provider-session";
 import { revalidatePath } from "next/cache";
 
 export async function createService(formData: FormData) {
   const provider = await getProviderId();
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   const name = formData.get("name") as string;
   const description = (formData.get("description") as string) || null;
@@ -44,7 +44,7 @@ export async function createService(formData: FormData) {
 
 export async function updateService(serviceId: number, formData: FormData) {
   const provider = await getProviderId();
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   const name = formData.get("name") as string;
   const description = (formData.get("description") as string) || null;
@@ -85,7 +85,7 @@ export async function toggleServicePublished(
   isPublished: boolean
 ) {
   const provider = await getProviderId();
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   const { error } = await supabase
     .from("services")
@@ -101,7 +101,7 @@ export async function toggleServicePublished(
 
 export async function deleteService(serviceId: number) {
   const provider = await getProviderId();
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   // 予約がある場合は非公開にするだけ
   const { data: bookings } = await supabase

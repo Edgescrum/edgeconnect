@@ -100,9 +100,28 @@ async function handleFollow(userId: string) {
     return;
   }
 
-  // pending なし → 通常のウェルカムメッセージ
-  log("webhook", "no pending, sending welcome");
-  await pushFlexMessage(userId, "EdgeConnectへようこそ！", {
+  // ユーザーのroleを確認
+  const { data: existingUser } = await supabase
+    .from("users")
+    .select("role")
+    .eq("line_user_id", userId)
+    .single();
+
+  const isProvider = existingUser?.role === "provider";
+
+  // ウェルカムメッセージ（事業主にはアプリを開くボタンのみ）
+  log("webhook", "sending welcome", { isProvider });
+
+  const footerButtons: Record<string, unknown>[] = [
+    { type: "button", action: { type: "uri", label: "アプリを開く", uri: `https://liff.line.me/${LIFF_ID}` }, style: "primary", color: "#6366f1" },
+  ];
+  if (!isProvider) {
+    footerButtons.push(
+      { type: "button", action: { type: "uri", label: "事業主として登録する", uri: `https://liff.line.me/${LIFF_ID}?path=/provider/register` }, style: "link" }
+    );
+  }
+
+  await pushFlexMessage(userId, isProvider ? "おかえりなさい！" : "EdgeConnectへようこそ！", {
     type: "bubble",
     header: {
       type: "box",
@@ -111,8 +130,7 @@ async function handleFollow(userId: string) {
       paddingAll: "20px",
       contents: [
         { type: "text", text: "EdgeConnect", color: "#ffffff", size: "xs" },
-        { type: "text", text: "ようこそ！", color: "#ffffff", size: "xl", weight: "bold", margin: "sm" },
-        { type: "text", text: "LINEで簡単に予約ができるサービスです", color: "#ffffffcc", size: "xs", margin: "sm", wrap: true },
+        { type: "text", text: isProvider ? "おかえりなさい！" : "ようこそ！", color: "#ffffff", size: "xl", weight: "bold", margin: "sm" },
       ],
     },
     body: {
@@ -120,17 +138,14 @@ async function handleFollow(userId: string) {
       layout: "vertical",
       spacing: "md",
       contents: [
-        { type: "text", text: "事業主から共有されたQRコードやURLから予約ページにアクセスしてください。", size: "sm", color: "#64748b", wrap: true },
+        { type: "text", text: isProvider ? "管理画面からサービスの管理ができます。" : "事業主から共有されたQRコードやURLから予約ページにアクセスしてください。", size: "sm", color: "#64748b", wrap: true },
       ],
     },
     footer: {
       type: "box",
       layout: "vertical",
       spacing: "sm",
-      contents: [
-        { type: "button", action: { type: "uri", label: "アプリを開く", uri: `https://liff.line.me/${LIFF_ID}` }, style: "primary", color: "#6366f1" },
-        { type: "button", action: { type: "uri", label: "事業主として登録する", uri: `https://liff.line.me/${LIFF_ID}?path=/provider/register` }, style: "link" },
-      ],
+      contents: footerButtons,
     },
   });
 }

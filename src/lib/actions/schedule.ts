@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getProviderId as getProviderData } from "@/lib/auth/provider-session";
 import { revalidatePath } from "next/cache";
 
@@ -17,7 +17,7 @@ export type BusinessHours = Record<
 
 export async function updateBusinessHours(hours: BusinessHours) {
   const providerId = await getProviderId();
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   const { error } = await supabase
     .from("provider_settings")
@@ -33,7 +33,7 @@ export async function updateInterval(
   intervalAfterMin: number
 ) {
   const providerId = await getProviderId();
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   const { error } = await supabase
     .from("provider_settings")
@@ -53,7 +53,7 @@ export async function addBlockedSlot(
   reason: string | null
 ) {
   const providerId = await getProviderId();
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   // タイムゾーンが付いていない場合はJSTとして扱う
   const startAtJst = startAt.includes("+") || startAt.includes("Z") ? startAt : `${startAt}+09:00`;
@@ -72,7 +72,7 @@ export async function addBlockedSlot(
 
 export async function removeBlockedSlot(slotId: number) {
   const providerId = await getProviderId();
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   const { error } = await supabase
     .from("blocked_slots")

@@ -1,8 +1,7 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getCurrentUser, resolveUser } from "@/lib/auth/session";
+import { resolveUser } from "@/lib/auth/session";
 import { revalidatePath } from "next/cache";
 import { log, logError } from "@/lib/log";
 
@@ -57,10 +56,10 @@ export async function registerProvider(formData: FormData) {
 }
 
 export async function updateProfile(formData: FormData) {
-  const user = await getCurrentUser();
+  const user = await resolveUser();
   if (!user) throw new Error("Not authenticated");
 
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   const { data: provider } = await supabase
     .from("providers")

@@ -1,7 +1,7 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
-import { getCurrentUser } from "@/lib/auth/session";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { resolveUser } from "@/lib/auth/session";
 import { revalidatePath } from "next/cache";
 import { notifyBookingConfirmed, notifyBookingCancelled } from "@/lib/line/notify";
 import { log, logError } from "@/lib/log";
@@ -11,7 +11,7 @@ export async function getAvailableSlots(
   serviceId: number,
   date: string
 ) {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const { data, error } = await supabase.rpc("get_available_slots", {
     p_provider_id: providerId,
     p_service_id: serviceId,
@@ -29,13 +29,13 @@ export async function createBooking(
   customerName?: string
 ) {
   log("createBooking", "start", { providerId, serviceId, startAt });
-  const user = await getCurrentUser();
+  const user = await resolveUser();
   if (!user) {
     logError("createBooking", "not authenticated");
     throw new Error("ログインが必要です");
   }
 
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const { data, error } = await supabase.rpc("create_booking", {
     p_provider_id: providerId,
     p_service_id: serviceId,
@@ -68,7 +68,7 @@ export async function createBooking(
 
 export async function cancelBooking(bookingId: string) {
   log("cancelBooking", "start", { bookingId });
-  const user = await getCurrentUser();
+  const user = await resolveUser();
   if (!user) {
     logError("cancelBooking", "not authenticated");
     throw new Error("ログインが必要です");
@@ -76,7 +76,7 @@ export async function cancelBooking(bookingId: string) {
 
   const cancelledBy = user.role === "provider" ? "provider" : "customer";
 
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const { data, error } = await supabase.rpc("cancel_booking", {
     p_booking_id: bookingId,
     p_line_user_id: user.lineUserId,
