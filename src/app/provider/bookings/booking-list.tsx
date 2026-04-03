@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 
 interface BookingItem {
   id: string;
@@ -34,6 +34,11 @@ export function BookingList({
   const [filter, setFilter] = useState<FilterType>(
     (FILTERS.find((f) => f.value === initialFilter)?.value) || "all"
   );
+  const [navigatingId, setNavigatingId] = useState<string | null>(null);
+
+  const handleCardClick = useCallback((bookingId: string) => {
+    setNavigatingId(bookingId);
+  }, []);
 
   const now = useMemo(() => new Date(), []);
   const todayStart = useMemo(
@@ -189,10 +194,16 @@ export function BookingList({
                     )}
                     <a
                       href={`/provider/bookings/${booking.id}`}
-                      className={`block rounded-2xl bg-card p-4 shadow-sm ring-1 ring-border active:scale-[0.99] ${
+                      onClick={() => handleCardClick(booking.id)}
+                      className={`relative block rounded-2xl bg-card p-4 shadow-sm ring-1 ring-border active:scale-[0.99] ${
                         isCancelled ? "opacity-60" : ""
-                      }`}
+                      } ${navigatingId === booking.id ? "opacity-70" : ""}`}
                     >
+                      {navigatingId === booking.id && (
+                        <div className="absolute inset-0 flex items-center justify-center rounded-2xl bg-card/80">
+                          <div className="h-5 w-5 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+                        </div>
+                      )}
                       <div className="flex items-start justify-between">
                         <div>
                           <p className="text-xs text-muted">

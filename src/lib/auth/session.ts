@@ -16,7 +16,6 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   const { data: { user: authUser } } = await supabase.auth.getUser();
 
   if (!authUser) {
-    log("auth", "getCurrentUser: no auth session");
     return null;
   }
 
@@ -31,7 +30,6 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
     return null;
   }
 
-  log("auth", "getCurrentUser: resolved", { id: data.id, role: data.role });
   return {
     id: data.id,
     lineUserId: data.line_user_id,
@@ -41,12 +39,9 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   };
 });
 
-export async function resolveUser(lineUserId?: string | null): Promise<CurrentUser | null> {
-  // 1. Supabase Authセッション
-  const authUser = await getCurrentUser();
-  if (authUser) return authUser;
-
-  // 2. cookieからlineUserId取得（Server Componentのフォールバック）
+// cookie → DB（高速パス）を最初に試行
+export const resolveUser = cache(async (lineUserId?: string | null): Promise<CurrentUser | null> => {
+  // 1. cookieからlineUserId取得（最速パス）
   if (!lineUserId) {
     try {
       const { cookies } = await import("next/headers");
@@ -55,54 +50,51 @@ export async function resolveUser(lineUserId?: string | null): Promise<CurrentUs
     } catch { /* ignore */ }
   }
 
-  if (!lineUserId) {
-    log("auth", "resolveUser: no auth session and no lineUserId");
-    return null;
+  // 2. lineUserIdがあればDB直接検索（Supabase Authスキップ）
+  if (lineUserId) {
+    const supabase = createAdminClient();
+    const { data } = await supabase
+      .from("users")
+      .select("id, line_user_id, display_name, role, auth_uid")
+      .eq("line_user_id", lineUserId)
+      .single();
+
+    if (data) {
+      return {
+        id: data.id,
+        lineUserId: data.line_user_id,
+        displayName: data.display_name,
+        role: data.role,
+        authUid: data.auth_uid || "",
+      };
+    }
+
+    // ユーザーが存在しない場合は自動作成
+    log("auth", "resolveUser: creating user", lineUserId);
+    const { data: created, error } = await supabase.rpc("upsert_user_from_line", {
+      p_line_user_id: lineUserId,
+      p_display_name: null,
+      p_role: "customer",
+      p_auth_uid: null,
+    });
+
+    if (error) {
+      logError("auth", "resolveUser: create failed", error);
+    } else if (created) {
+      return {
+        id: (created as { id: number }).id,
+        lineUserId,
+        displayName: null,
+        role: "customer",
+        authUid: "",
+      };
+    }
   }
 
-  // 2. lineUserIdでDB検索
-  const supabase = createAdminClient();
-  const { data } = await supabase
-    .from("users")
-    .select("id, line_user_id, display_name, role, auth_uid")
-    .eq("line_user_id", lineUserId)
-    .single();
+  // 3. フォールバック: Supabase Authセッション
+  const authUser = await getCurrentUser();
+  if (authUser) return authUser;
 
-  if (data) {
-    log("auth", "resolveUser: found by lineUserId", { id: data.id });
-    return {
-      id: data.id,
-      lineUserId: data.line_user_id,
-      displayName: data.display_name,
-      role: data.role,
-      authUid: data.auth_uid || "",
-    };
-  }
-
-  // 3. 自動作成
-  log("auth", "resolveUser: creating user", lineUserId);
-  const { data: created, error } = await supabase.rpc("upsert_user_from_line", {
-    p_line_user_id: lineUserId,
-    p_display_name: null,
-    p_role: "customer",
-    p_auth_uid: null,
-  });
-
-  if (error) {
-    logError("auth", "resolveUser: create failed", error);
-    return null;
-  }
-
-  if (created) {
-    log("auth", "resolveUser: user created", created);
-    return {
-      id: (created as { id: number }).id,
-      lineUserId,
-      displayName: null,
-      role: "customer",
-      authUid: "",
-    };
-  }
-
+  log("auth", "resolveUser: no user found");
   return null;
-}
+});
