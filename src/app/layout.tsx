@@ -47,16 +47,15 @@ export default function RootLayout({
           <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
         </div>
         <script dangerouslySetInnerHTML={{ __html: `
-          // Reactがhydrateしたら即座にローダーを消す
+          // LiffProviderがmount後にchildrenを表示 → DOMが変化 → ローダーを消す
           new MutationObserver((_, obs) => {
-            const el = document.getElementById('initial-loader');
-            if (el && document.querySelector('[data-liff-ready]')) {
+            var el = document.getElementById('initial-loader');
+            if (el && document.body.children.length > 3) {
               el.remove();
               obs.disconnect();
             }
-          }).observe(document.body, { childList: true, subtree: true, attributes: true });
-          // フォールバック: 5秒後に必ず消す
-          setTimeout(() => { const el = document.getElementById('initial-loader'); if (el) el.remove(); }, 5000);
+          }).observe(document.body, { childList: true, subtree: true });
+          setTimeout(function() { var el = document.getElementById('initial-loader'); if (el) el.remove(); }, 5000);
         `}} />
         <LiffProvider>
           {children}

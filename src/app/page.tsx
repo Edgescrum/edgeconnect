@@ -25,15 +25,12 @@ export default function Home() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [showWelcome, setShowWelcome] = useState(false);
   const [showProviderCta, setShowProviderCta] = useState(false);
-  const [bannersLoaded, setBannersLoaded] = useState(false);
   const [activeSlide, setActiveSlide] = useState(0);
 
+  // localStorage読み込み（LiffProviderがmountedガードしているので安全）
   useEffect(() => {
-    const welcomeDismissed = localStorage.getItem(WELCOME_DISMISSED_KEY);
-    const providerDismissed = localStorage.getItem(PROVIDER_BANNER_DISMISSED_KEY);
-    if (!welcomeDismissed) setShowWelcome(true);
-    if (!providerDismissed) setShowProviderCta(true);
-    setBannersLoaded(true);
+    if (!localStorage.getItem(WELCOME_DISMISSED_KEY)) setShowWelcome(true);
+    if (!localStorage.getItem(PROVIDER_BANNER_DISMISSED_KEY)) setShowProviderCta(true);
   }, []);
 
   function dismissWelcome() {
@@ -68,11 +65,11 @@ export default function Home() {
 
   const hasRecent = userInfo?.recentProviders && userInfo.recentProviders.length > 0;
   const isProvider = userInfo?.role === "provider";
-  const showProviderBanner = bannersLoaded && isLoggedIn && !isProvider && showProviderCta;
+  const showProviderBanner = isLoggedIn && !isProvider && showProviderCta;
 
   // バナーカード定義
   const bannerCards: { key: string; node: React.ReactNode }[] = [];
-  if (bannersLoaded && showWelcome) {
+  if (showWelcome) {
     bannerCards.push({
       key: "welcome",
       node: (

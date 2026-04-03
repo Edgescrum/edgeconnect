@@ -19,14 +19,13 @@ interface LiffState {
   user: LiffUser | null;
   isReady: boolean;
   isLoggedIn: boolean;
-  isFriend: boolean | null; // null=未チェック
+  isFriend: boolean | null;
   error: string | null;
 }
 
 interface LiffContextValue extends LiffState {
   login: () => void;
   checkFriendship: () => Promise<boolean>;
-  addFriend: () => void;
 }
 
 const LiffContext = createContext<LiffContextValue>({
@@ -37,7 +36,6 @@ const LiffContext = createContext<LiffContextValue>({
   error: null,
   login: () => {},
   checkFriendship: async () => false,
-  addFriend: () => {},
 });
 
 export function useLiff() {
@@ -48,23 +46,29 @@ const SESSION_KEY = "edgeconnect_user";
 const FRIEND_KEY = "edgeconnect_is_friend";
 
 export function LiffProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<LiffState>(() => {
-    if (typeof window !== "undefined") {
-      const cached = sessionStorage.getItem(SESSION_KEY);
-      if (cached) {
-        try {
-          const user = JSON.parse(cached) as LiffUser;
-          const isFriend = sessionStorage.getItem(FRIEND_KEY) === "1" ? true : null;
-          return { user, isReady: true, isLoggedIn: true, isFriend, error: null };
-        } catch { /* ignore */ }
-      }
-    }
-    return { user: null, isReady: false, isLoggedIn: false, isFriend: null, error: null };
+  const [state, setState] = useState<LiffState>({
+    user: null,
+    isReady: false,
+    isLoggedIn: false,
+    isFriend: null,
+    error: null,
   });
-
+  const [mounted, setMounted] = useState(false);
   const [liffInstance, setLiffInstance] = useState<typeof import("@line/liff").default | null>(null);
 
   useEffect(() => {
+    setMounted(true);
+
+    // キャッシュ復元
+    const cached = sessionStorage.getItem(SESSION_KEY);
+    if (cached) {
+      try {
+        const user = JSON.parse(cached) as LiffUser;
+        const isFriend = sessionStorage.getItem(FRIEND_KEY) === "1" ? true : null;
+        setState({ user, isReady: true, isLoggedIn: true, isFriend, error: null });
+      } catch { /* ignore */ }
+    }
+
     async function init() {
       try {
         const liff = (await import("@line/liff")).default;
@@ -74,10 +78,7 @@ export function LiffProvider({ children }: { children: ReactNode }) {
         if (liff.isLoggedIn()) {
           const accessToken = liff.getAccessToken();
           if (accessToken) {
-            const cached = sessionStorage.getItem(SESSION_KEY);
-
-            if (cached) {
-              // バックグラウンドでセッション維持
+            if (sessionStorage.getItem(SESSION_KEY)) {
               fetch("/api/auth/login", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -120,13 +121,10 @@ export function LiffProvider({ children }: { children: ReactNode }) {
     }
   }, [liffInstance]);
 
-  // 友だち追加チェック（予約時に呼ぶ）
   const checkFriendship = useCallback(async (): Promise<boolean> => {
     if (!liffInstance) return false;
 
-    // キャッシュ済み
-    const cached = sessionStorage.getItem(FRIEND_KEY);
-    if (cached === "1") {
+    if (sessionStorage.getItem(FRIEND_KEY) === "1") {
       setState((prev) => ({ ...prev, isFriend: true }));
       return true;
     }
@@ -142,21 +140,14 @@ export function LiffProvider({ children }: { children: ReactNode }) {
     }
   }, [liffInstance]);
 
-  // 友だち追加画面を開く
-  const addFriend = useCallback(() => {
-    const liffId = process.env.NEXT_PUBLIC_LIFF_ID!;
-    // LINE公式アカウントのプロフィールページを開く
-    if (liffInstance) {
-      liffInstance.openWindow({
-        url: `https://line.me/R/ti/p/@${liffId}`,
-        external: false,
-      });
-    }
-  }, [liffInstance]);
+  // サーバーとクライアント初回レンダリングを一致させる
+  // mountedになるまではchildrenを表示しない（layout.tsxのローダーが見える）
+  if (!mounted) {
+    return null;
+  }
 
   return (
-    <LiffContext.Provider value={{ ...state, login, checkFriendship, addFriend }}>
-      {state.isReady && <div data-liff-ready="true" style={{ display: "none" }} />}
+    <LiffContext.Provider value={{ ...state, login, checkFriendship }}>
       {children}
     </LiffContext.Provider>
   );

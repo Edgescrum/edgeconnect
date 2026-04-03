@@ -39,15 +39,14 @@ export function RegisterWizard() {
   }, []);
 
   // Form state
-  const [name, setName] = useState(user?.displayName || "");
+  const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
   const [slugStatus, setSlugStatus] = useState<"idle" | "checking" | "available" | "taken">("idle");
   const [bio, setBio] = useState("");
   const [iconFile, setIconFile] = useState<File | null>(null);
   const [contactMethod, setContactMethod] = useState<ContactMethod>("line");
-  const [lineContactUrl] = useState(
-    user ? `https://line.me/ti/p/~${user.lineUserId}` : ""
-  );
+  // userはuseEffect後に設定されるので、動的に生成
+  const lineContactUrl = user ? `https://line.me/ti/p/~${user.lineUserId}` : "";
   const [contactEmail, setContactEmail] = useState("");
 
   async function handleSlugChange(value: string) {
@@ -174,6 +173,8 @@ export function RegisterWizard() {
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter" && canNext()) { e.preventDefault(); (e.target as HTMLInputElement).blur(); setStep(2); } }}
+                enterKeyHint="next"
                 placeholder="例：山田サロン"
                 className="w-full rounded-xl border border-border bg-card px-4 py-3 text-lg"
               />
@@ -218,6 +219,11 @@ export function RegisterWizard() {
                     type="text"
                     value={slug}
                     onChange={(e) => handleSlugChange(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter" && canNext()) { e.preventDefault(); (e.target as HTMLInputElement).blur(); setStep(3); } }}
+                    enterKeyHint="next"
+                    inputMode="url"
+                    autoCapitalize="none"
+                    autoCorrect="off"
                     placeholder="your-name"
                     className="min-w-0 flex-1 border-b border-accent bg-transparent py-1 font-semibold text-accent focus:shadow-none"
                   />
@@ -327,9 +333,17 @@ export function RegisterWizard() {
                       メールアドレス
                     </label>
                     <input
+                      id="contact-email"
                       type="email"
                       value={contactEmail}
                       onChange={(e) => setContactEmail(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          document.getElementById("bio-input")?.focus();
+                        }
+                      }}
+                      enterKeyHint="next"
                       placeholder="you@example.com"
                       className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm"
                     />
@@ -343,9 +357,11 @@ export function RegisterWizard() {
                     <span className="ml-1 text-xs text-muted">（任意）</span>
                   </label>
                   <textarea
+                    id="bio-input"
                     value={bio}
                     onChange={(e) => setBio(e.target.value)}
                     rows={3}
+                    enterKeyHint="done"
                     placeholder="例：表参道で10年の経験を持つヘアスタイリストです。"
                     className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm"
                   />
