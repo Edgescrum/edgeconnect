@@ -1,5 +1,5 @@
 import { resolveUser } from "@/lib/auth/session";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
 import { ServiceList } from "./service-list";
 
@@ -8,7 +8,7 @@ export default async function ServicesPage() {
   if (!user) redirect("/");
   if (user.role !== "provider") redirect("/");
 
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const { data: provider } = await supabase
     .from("providers")
     .select("id")

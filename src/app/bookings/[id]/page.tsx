@@ -1,5 +1,5 @@
 import { resolveUser } from "@/lib/auth/session";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect, notFound } from "next/navigation";
 import { CancelButton } from "./cancel-button";
 import { generateGoogleCalendarUrl } from "@/lib/calendar/ics";
@@ -13,7 +13,7 @@ export default async function BookingDetailPage({
   if (!user) redirect("/");
 
   const { id } = await params;
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   const { data: booking } = await supabase
     .from("bookings")

@@ -1,5 +1,5 @@
 import { resolveUser } from "@/lib/auth/session";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
 import { BookingList } from "./booking-list";
 
@@ -14,7 +14,7 @@ export default async function ProviderBookingsPage({
 
   const { filter } = await searchParams;
 
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const { data: provider } = await supabase
     .from("providers")
     .select("id")
