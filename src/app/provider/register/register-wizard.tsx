@@ -26,7 +26,7 @@ export function RegisterWizard() {
   // 事業主登録済みならダッシュボードにリダイレクト
   useEffect(() => {
     if (!isLoggedIn || !user) return;
-    fetch(`/api/auth/me?lineUserId=${user.lineUserId}`)
+    fetch("/api/auth/me")
       .then((res) => res.ok ? res.json() : null)
       .then((data) => {
         if (data?.user?.role === "provider") {
@@ -78,7 +78,7 @@ export function RegisterWizard() {
     setSubmitting(true);
     try {
       const formData = new FormData();
-      if (user?.lineUserId) formData.set("line_user_id", user.lineUserId);
+      // lineUserIdはcookieから取得（formDataには含めない）
       formData.set("slug", slug);
       formData.set("name", name);
       formData.set("bio", bio);

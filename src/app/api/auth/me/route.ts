@@ -3,11 +3,9 @@ import { resolveUser } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { log } from "@/lib/log";
 
-export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const lineUserId = searchParams.get("lineUserId");
-
-  const user = await resolveUser(lineUserId);
+export async function GET() {
+  // cookieからのみ認証（クエリパラメータは受け付けない）
+  const user = await resolveUser();
   if (!user) {
     return NextResponse.json({ user: null }, { status: 401 });
   }

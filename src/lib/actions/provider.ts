@@ -6,11 +6,10 @@ import { revalidatePath } from "next/cache";
 import { log, logError } from "@/lib/log";
 
 export async function registerProvider(formData: FormData) {
-  const lineUserId = formData.get("line_user_id") as string | null;
-  log("registerProvider", "start", { lineUserId });
-  const user = await resolveUser(lineUserId);
+  // cookieからのみ認証（formDataのlineUserIdは受け付けない）
+  const user = await resolveUser();
   if (!user) {
-    logError("registerProvider", "user not resolved", { lineUserId });
+    logError("registerProvider", "user not resolved");
     throw new Error("Not authenticated");
   }
   log("registerProvider", "user resolved", { id: user.id });

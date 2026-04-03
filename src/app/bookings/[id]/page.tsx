@@ -18,7 +18,7 @@ export default async function BookingDetailPage({
   const { data: booking } = await supabase
     .from("bookings")
     .select(`
-      id, start_at, end_at, status, cancelled_by, created_at,
+      id, start_at, end_at, status, cancelled_by, created_at, customer_user_id,
       services:service_id ( name, duration_min, price, cancel_deadline_hours, cancel_policy_note ),
       providers:provider_id ( name, slug, line_contact_url, contact_email )
     `)
@@ -26,6 +26,9 @@ export default async function BookingDetailPage({
     .single();
 
   if (!booking) notFound();
+
+  // 所有権チェック: 予約者本人のみアクセス可能
+  if (booking.customer_user_id !== user.id) notFound();
 
   const rawService = booking.services;
   const service = (Array.isArray(rawService) ? rawService[0] : rawService) as {

@@ -15,9 +15,7 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   const supabase = await createClient();
   const { data: { user: authUser } } = await supabase.auth.getUser();
 
-  if (!authUser) {
-    return null;
-  }
+  if (!authUser) return null;
 
   const { data, error } = await supabase
     .from("users")
@@ -39,18 +37,17 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   };
 });
 
-// cookie → DB（高速パス）を最初に試行
-export const resolveUser = cache(async (lineUserId?: string | null): Promise<CurrentUser | null> => {
-  // 1. cookieからlineUserId取得（最速パス）
-  if (!lineUserId) {
-    try {
-      const { cookies } = await import("next/headers");
-      const cookieStore = await cookies();
-      lineUserId = cookieStore.get("line_user_id")?.value || null;
-    } catch { /* ignore */ }
-  }
+// httpOnly cookieからのみlineUserIdを取得（外部パラメータは受け付けない）
+export const resolveUser = cache(async (): Promise<CurrentUser | null> => {
+  // 1. httpOnly cookieからlineUserId取得
+  let lineUserId: string | null = null;
+  try {
+    const { cookies } = await import("next/headers");
+    const cookieStore = await cookies();
+    lineUserId = cookieStore.get("line_user_id")?.value || null;
+  } catch { /* ignore */ }
 
-  // 2. lineUserIdがあればDB直接検索（Supabase Authスキップ）
+  // 2. cookieのlineUserIdでDB検索
   if (lineUserId) {
     const supabase = createAdminClient();
     const { data } = await supabase
