@@ -41,16 +41,17 @@ export default async function ProviderProfilePage({
 
   return (
     <main className="min-h-screen bg-background">
-      {/* Back button */}
+      {/* Header */}
       <div className="sticky top-0 z-40 bg-gradient-to-b from-accent/10 to-accent/10">
         <div className="mx-auto flex max-w-lg items-center px-4 py-3">
           <a
             href="/"
-            className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/60 backdrop-blur active:bg-white/80"
+            className="flex items-center gap-1.5 rounded-lg px-2 py-1 active:bg-white/60"
           >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="m15 18-6-6 6-6" />
-            </svg>
+            <div className="flex h-6 w-6 items-center justify-center rounded-md bg-accent text-[10px] font-bold text-white">
+              E
+            </div>
+            <span className="text-xs font-semibold text-muted">EdgeConnect</span>
           </a>
         </div>
       </div>
@@ -114,9 +115,6 @@ export default async function ProviderProfilePage({
                 </li>
               ))}
             </ul>
-            <p className="mt-3 text-center text-xs text-muted">
-              予約にはEdgeConnect公式アカウントの友だち追加が必要です
-            </p>
           </section>
         )}
 

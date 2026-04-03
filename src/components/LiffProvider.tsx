@@ -19,23 +19,19 @@ interface LiffState {
   user: LiffUser | null;
   isReady: boolean;
   isLoggedIn: boolean;
-  isFriend: boolean | null;
   error: string | null;
 }
 
 interface LiffContextValue extends LiffState {
   login: () => void;
-  checkFriendship: () => Promise<boolean>;
 }
 
 const LiffContext = createContext<LiffContextValue>({
   user: null,
   isReady: false,
   isLoggedIn: false,
-  isFriend: null,
   error: null,
   login: () => {},
-  checkFriendship: async () => false,
 });
 
 export function useLiff() {
@@ -43,14 +39,12 @@ export function useLiff() {
 }
 
 const SESSION_KEY = "edgeconnect_user";
-const FRIEND_KEY = "edgeconnect_is_friend";
 
 export function LiffProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<LiffState>({
     user: null,
     isReady: false,
     isLoggedIn: false,
-    isFriend: null,
     error: null,
   });
   const [mounted, setMounted] = useState(false);
@@ -64,8 +58,7 @@ export function LiffProvider({ children }: { children: ReactNode }) {
     if (cached) {
       try {
         const user = JSON.parse(cached) as LiffUser;
-        const isFriend = sessionStorage.getItem(FRIEND_KEY) === "1" ? true : null;
-        setState({ user, isReady: true, isLoggedIn: true, isFriend, error: null });
+        setState({ user, isReady: true, isLoggedIn: true, error: null });
       } catch { /* ignore */ }
     }
 
@@ -96,7 +89,7 @@ export function LiffProvider({ children }: { children: ReactNode }) {
             if (res.ok) {
               const { user: serverUser } = await res.json();
               sessionStorage.setItem(SESSION_KEY, JSON.stringify(serverUser));
-              setState({ user: serverUser, isReady: true, isLoggedIn: true, isFriend: null, error: null });
+              setState({ user: serverUser, isReady: true, isLoggedIn: true, error: null });
               return;
             }
           }
@@ -106,7 +99,7 @@ export function LiffProvider({ children }: { children: ReactNode }) {
       } catch (e) {
         console.error("LIFF init error:", e);
         setState((prev) => prev.isReady ? prev : {
-          user: null, isReady: true, isLoggedIn: false, isFriend: null,
+          user: null, isReady: true, isLoggedIn: false,
           error: e instanceof Error ? e.message : "LIFF initialization failed",
         });
       }
@@ -120,31 +113,6 @@ export function LiffProvider({ children }: { children: ReactNode }) {
       liffInstance.login();
     }
   }, [liffInstance]);
-
-  const checkFriendship = useCallback(async (): Promise<boolean> => {
-    // キャッシュ確認
-    if (sessionStorage.getItem(FRIEND_KEY) === "1") {
-      setState((prev) => ({ ...prev, isFriend: true }));
-      return true;
-    }
-
-    // stateからlineUserIdを取得
-    const lineUserId = state.user?.lineUserId;
-    if (!lineUserId) return false;
-
-    try {
-      // サーバーサイドでMessaging API経由で友だち状態を確認
-      const res = await fetch(`/api/auth/check-friend?lineUserId=${lineUserId}`);
-      if (!res.ok) return false;
-      const { isFriend } = await res.json();
-      setState((prev) => ({ ...prev, isFriend }));
-      if (isFriend) sessionStorage.setItem(FRIEND_KEY, "1");
-      return isFriend;
-    } catch (e) {
-      console.error("checkFriendship error:", e);
-      return false;
-    }
-  }, [state.user?.lineUserId]);
 
   if (!mounted) {
     return (
@@ -168,7 +136,7 @@ export function LiffProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <LiffContext.Provider value={{ ...state, login, checkFriendship }}>
+    <LiffContext.Provider value={{ ...state, login }}>
       {children}
     </LiffContext.Provider>
   );
