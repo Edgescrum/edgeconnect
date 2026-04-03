@@ -59,7 +59,14 @@ export default function Home() {
   }, [isReady, isLoggedIn]);
 
   if (!isReady) {
-    return null;
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-background">
+        <div className="text-center">
+          <div className="mx-auto h-8 w-8 animate-spin rounded-full border-3 border-border border-t-accent" />
+          <p className="mt-3 text-xs text-muted">読み込み中...</p>
+        </div>
+      </main>
+    );
   }
 
   // 未ログイン → ランディングページ

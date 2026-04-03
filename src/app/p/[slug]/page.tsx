@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { headers } from "next/headers";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import { BookingButton } from "./booking-button";
@@ -29,6 +30,10 @@ export default async function ProviderProfilePage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
+  const headersList = await headers();
+  const ua = headersList.get("user-agent") || "";
+  const isLineApp = /\bLine\b/i.test(ua) || /\bLIFF\b/i.test(ua);
+
   const supabase = await createClient();
 
   // Database Function で連絡先を含むプロフィールを取得（一括取得不可）
@@ -110,7 +115,7 @@ export default async function ProviderProfilePage({
                         </p>
                       </div>
                     </div>
-                    <BookingButton slug={slug} serviceId={service.id} />
+                    <BookingButton slug={slug} serviceId={service.id} isLineApp={isLineApp} />
                   </div>
                 </li>
               ))}
