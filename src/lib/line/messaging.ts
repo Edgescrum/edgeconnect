@@ -1,4 +1,5 @@
 import { messagingApi } from "@line/bot-sdk";
+import { log, logError } from "@/lib/log";
 
 const client = new messagingApi.MessagingApiClient({
   channelAccessToken: process.env.LINE_CHANNEL_ACCESS_TOKEN!,
@@ -11,6 +12,7 @@ export async function pushFlexMessage(
   contents: Record<string, unknown>
 ) {
   try {
+    log("line", "pushFlexMessage", { to: lineUserId, altText });
     await client.pushMessage({
       to: lineUserId,
       messages: [
@@ -22,7 +24,8 @@ export async function pushFlexMessage(
         } as any,
       ],
     });
+    log("line", "pushFlexMessage success");
   } catch (e) {
-    console.error("LINE push failed:", e);
+    logError("line", "pushFlexMessage failed", e);
   }
 }

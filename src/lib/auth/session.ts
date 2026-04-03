@@ -1,6 +1,7 @@
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { log, logError } from "@/lib/log";
 
 export interface CurrentUser {
   id: number;
@@ -10,24 +11,27 @@ export interface CurrentUser {
   authUid: string;
 }
 
-// cache() で同一リクエスト内の複数呼び出しをメモ化
 export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   const supabase = await createClient();
+  const { data: { user: authUser } } = await supabase.auth.getUser();
 
-  const {
-    data: { user: authUser },
-  } = await supabase.auth.getUser();
+  if (!authUser) {
+    log("auth", "getCurrentUser: no auth session");
+    return null;
+  }
 
-  if (!authUser) return null;
-
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("users")
     .select("id, line_user_id, display_name, role, auth_uid")
     .eq("auth_uid", authUser.id)
     .single();
 
-  if (!data) return null;
+  if (error || !data) {
+    logError("auth", "getCurrentUser: user not found in DB", error);
+    return null;
+  }
 
+  log("auth", "getCurrentUser: resolved", { id: data.id, role: data.role });
   return {
     id: data.id,
     lineUserId: data.line_user_id,
@@ -37,16 +41,17 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   };
 });
 
-// Supabase Auth → lineUserIdフォールバック → 自動作成
-// sessionStorageキャッシュ残りでSupabase Authセッションがない場合でも動作する
 export async function resolveUser(lineUserId?: string | null): Promise<CurrentUser | null> {
-  // 1. Supabase Authセッションを試行
+  // 1. Supabase Authセッション
   const authUser = await getCurrentUser();
   if (authUser) return authUser;
 
-  // 2. lineUserIdでDB検索
-  if (!lineUserId) return null;
+  if (!lineUserId) {
+    log("auth", "resolveUser: no auth session and no lineUserId");
+    return null;
+  }
 
+  // 2. lineUserIdでDB検索
   const supabase = createAdminClient();
   const { data } = await supabase
     .from("users")
@@ -55,6 +60,7 @@ export async function resolveUser(lineUserId?: string | null): Promise<CurrentUs
     .single();
 
   if (data) {
+    log("auth", "resolveUser: found by lineUserId", { id: data.id });
     return {
       id: data.id,
       lineUserId: data.line_user_id,
@@ -64,16 +70,22 @@ export async function resolveUser(lineUserId?: string | null): Promise<CurrentUs
     };
   }
 
-  // 3. ユーザーが存在しない場合は自動作成
-  console.log("[resolveUser] creating user:", lineUserId);
-  const { data: created } = await supabase.rpc("upsert_user_from_line", {
+  // 3. 自動作成
+  log("auth", "resolveUser: creating user", lineUserId);
+  const { data: created, error } = await supabase.rpc("upsert_user_from_line", {
     p_line_user_id: lineUserId,
     p_display_name: null,
     p_role: "customer",
     p_auth_uid: null,
   });
 
+  if (error) {
+    logError("auth", "resolveUser: create failed", error);
+    return null;
+  }
+
   if (created) {
+    log("auth", "resolveUser: user created", created);
     return {
       id: (created as { id: number }).id,
       lineUserId,

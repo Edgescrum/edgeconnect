@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { pushFlexMessage } from "./messaging";
+import { log, logError } from "@/lib/log";
 import {
   bookingConfirmedCustomer,
   bookingConfirmedProvider,
@@ -95,8 +96,9 @@ async function getBookingDetails(bookingId: string) {
 
 // 予約確定通知（お客さん + 事業主）
 export async function notifyBookingConfirmed(bookingId: string) {
+  log("notify", "bookingConfirmed", { bookingId });
   const details = await getBookingDetails(bookingId);
-  if (!details) return;
+  if (!details) { logError("notify", "bookingConfirmed: details not found", { bookingId }); return; }
 
   const { info, customer, providerUser } = details;
 
@@ -120,8 +122,9 @@ export async function notifyBookingCancelled(
   bookingId: string,
   cancelledBy: "customer" | "provider"
 ) {
+  log("notify", "bookingCancelled", { bookingId, cancelledBy });
   const details = await getBookingDetails(bookingId);
-  if (!details) return;
+  if (!details) { logError("notify", "bookingCancelled: details not found", { bookingId }); return; }
 
   const { info, customer, providerUser } = details;
 
@@ -144,8 +147,9 @@ export async function notifyBookingCancelled(
 
 // リマインダー通知（前日）
 export async function notifyBookingReminder(bookingId: string) {
+  log("notify", "bookingReminder", { bookingId });
   const details = await getBookingDetails(bookingId);
-  if (!details) return;
+  if (!details) { logError("notify", "bookingReminder: details not found", { bookingId }); return; }
 
   const { info, customer } = details;
 

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createHmac } from "crypto";
+import { log, logError } from "@/lib/log";
 
 function deriveCredentials(lineUserId: string) {
   const email = `${lineUserId}@line.edgeconnect.local`;
@@ -32,36 +33,38 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "accessToken is required" }, { status: 400 });
     }
 
-    // 1. LINEプロフィール取得（verify APIスキップ、profile APIのみ）
+    log("login", "start", { hasToken: !!accessToken });
     const lineProfile = await getLineProfile(accessToken);
+    log("login", "LINE profile", { userId: lineProfile.userId, name: lineProfile.displayName });
 
-    // 2. Supabase Auth サインイン
     const { email, password } = deriveCredentials(lineProfile.userId);
     const supabase = await createClient();
     let { data: signInData, error: signInError } =
       await supabase.auth.signInWithPassword({ email, password });
 
-    // 3. 初回のみ: ユーザー作成 → サインイン
     if (signInError) {
+      log("login", "signIn failed, creating user");
       const admin = createAdminClient();
-      await admin.auth.admin.createUser({
+      const { error: createError } = await admin.auth.admin.createUser({
         email,
         password,
         email_confirm: true,
         user_metadata: { line_user_id: lineProfile.userId },
       });
+      if (createError) logError("login", "createUser failed", createError);
 
       ({ data: signInData, error: signInError } =
         await supabase.auth.signInWithPassword({ email, password }));
 
       if (signInError) {
+        logError("login", "signIn after create failed", signInError);
         return NextResponse.json({ error: "Auth failed" }, { status: 500 });
       }
     }
 
-    // 4. users テーブル UPSERT（バックグラウンド、レスポンスをブロックしない）
     const authUid = signInData.user?.id;
-    // fire-and-forget
+    log("login", "auth success", { authUid });
+
     void supabase.rpc("upsert_user_from_line", {
       p_line_user_id: lineProfile.userId,
       p_display_name: lineProfile.displayName,

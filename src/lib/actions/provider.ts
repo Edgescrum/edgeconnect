@@ -4,11 +4,17 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser, resolveUser } from "@/lib/auth/session";
 import { revalidatePath } from "next/cache";
+import { log, logError } from "@/lib/log";
 
 export async function registerProvider(formData: FormData) {
   const lineUserId = formData.get("line_user_id") as string | null;
+  log("registerProvider", "start", { lineUserId });
   const user = await resolveUser(lineUserId);
-  if (!user) throw new Error("Not authenticated");
+  if (!user) {
+    logError("registerProvider", "user not resolved", { lineUserId });
+    throw new Error("Not authenticated");
+  }
+  log("registerProvider", "user resolved", { id: user.id });
 
   const slug = (formData.get("slug") as string).toLowerCase().trim();
   const name = formData.get("name") as string;

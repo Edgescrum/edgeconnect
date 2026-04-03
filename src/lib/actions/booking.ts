@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth/session";
 import { revalidatePath } from "next/cache";
 import { notifyBookingConfirmed, notifyBookingCancelled } from "@/lib/line/notify";
+import { log, logError } from "@/lib/log";
 
 export async function getAvailableSlots(
   providerId: number,
@@ -27,8 +28,12 @@ export async function createBooking(
   startAt: string,
   customerName?: string
 ) {
+  log("createBooking", "start", { providerId, serviceId, startAt });
   const user = await getCurrentUser();
-  if (!user) throw new Error("ログインが必要です");
+  if (!user) {
+    logError("createBooking", "not authenticated");
+    throw new Error("ログインが必要です");
+  }
 
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("create_booking", {
@@ -40,6 +45,7 @@ export async function createBooking(
   });
 
   if (error) {
+    logError("createBooking", "rpc failed", error);
     if (error.message.includes("not available")) {
       throw new Error("この時間帯は既に予約が入っています");
     }
@@ -49,10 +55,11 @@ export async function createBooking(
     throw new Error(error.message);
   }
 
-  // LINE通知（バックグラウンド、エラーでも予約自体は成功）
   const bookingId = typeof data === "object" && data !== null ? (data as { id: string }).id : null;
+  log("createBooking", "success", { bookingId });
+
   if (bookingId) {
-    notifyBookingConfirmed(bookingId).catch(console.error);
+    notifyBookingConfirmed(bookingId).catch((e) => logError("createBooking", "notify failed", e));
   }
 
   revalidatePath("/bookings");
@@ -60,10 +67,13 @@ export async function createBooking(
 }
 
 export async function cancelBooking(bookingId: string) {
+  log("cancelBooking", "start", { bookingId });
   const user = await getCurrentUser();
-  if (!user) throw new Error("ログインが必要です");
+  if (!user) {
+    logError("cancelBooking", "not authenticated");
+    throw new Error("ログインが必要です");
+  }
 
-  // キャンセル者の判定のためにrole確認
   const cancelledBy = user.role === "provider" ? "provider" : "customer";
 
   const supabase = await createClient();
