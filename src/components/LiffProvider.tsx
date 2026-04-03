@@ -19,19 +19,25 @@ interface LiffState {
   user: LiffUser | null;
   isReady: boolean;
   isLoggedIn: boolean;
+  isFriend: boolean | null; // null=未チェック
   error: string | null;
 }
 
 interface LiffContextValue extends LiffState {
   login: () => void;
+  checkFriendship: () => Promise<boolean>;
+  addFriend: () => void;
 }
 
 const LiffContext = createContext<LiffContextValue>({
   user: null,
   isReady: false,
   isLoggedIn: false,
+  isFriend: null,
   error: null,
   login: () => {},
+  checkFriendship: async () => false,
+  addFriend: () => {},
 });
 
 export function useLiff() {
@@ -39,7 +45,7 @@ export function useLiff() {
 }
 
 const SESSION_KEY = "edgeconnect_user";
-const DEBUG_PERF = false;
+const FRIEND_KEY = "edgeconnect_is_friend";
 
 export function LiffProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<LiffState>(() => {
@@ -48,52 +54,30 @@ export function LiffProvider({ children }: { children: ReactNode }) {
       if (cached) {
         try {
           const user = JSON.parse(cached) as LiffUser;
-          return { user, isReady: true, isLoggedIn: true, error: null };
+          const isFriend = sessionStorage.getItem(FRIEND_KEY) === "1" ? true : null;
+          return { user, isReady: true, isLoggedIn: true, isFriend, error: null };
         } catch { /* ignore */ }
       }
     }
-    return { user: null, isReady: false, isLoggedIn: false, error: null };
+    return { user: null, isReady: false, isLoggedIn: false, isFriend: null, error: null };
   });
 
   const [liffInstance, setLiffInstance] = useState<typeof import("@line/liff").default | null>(null);
-  const [perfLogs, setPerfLogs] = useState<string[]>([]);
-
-  function addLog(msg: string) {
-    if (DEBUG_PERF) {
-      setPerfLogs((prev) => [...prev, msg]);
-    }
-  }
 
   useEffect(() => {
-    const pageStart = performance.now();
-    addLog(`page load: ${Math.round(pageStart)}ms from origin`);
-
     async function init() {
       try {
-        const t0 = performance.now();
-
-        addLog("1. importing liff...");
         const liff = (await import("@line/liff")).default;
-        const importTime = Math.round(performance.now() - t0);
-        addLog(`2. liff import: ${importTime}ms`);
-
-        const t1 = performance.now();
-        addLog("3. liff.init() starting...");
         await liff.init({ liffId: process.env.NEXT_PUBLIC_LIFF_ID! });
-        const initTime = Math.round(performance.now() - t1);
-        addLog(`4. liff.init(): ${initTime}ms`);
         setLiffInstance(liff);
-
-        addLog(`   isInClient=${liff.isInClient()} isLoggedIn=${liff.isLoggedIn()}`);
 
         if (liff.isLoggedIn()) {
           const accessToken = liff.getAccessToken();
           if (accessToken) {
             const cached = sessionStorage.getItem(SESSION_KEY);
 
-            // キャッシュあり → UIは即表示済み、バックグラウンドでセッション維持
             if (cached) {
-              addLog(`5. cached, refreshing session in bg...`);
+              // バックグラウンドでセッション維持
               fetch("/api/auth/login", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -102,41 +86,32 @@ export function LiffProvider({ children }: { children: ReactNode }) {
               return;
             }
 
-            // キャッシュなし → サーバー認証
-            const t2 = performance.now();
-            addLog("5. calling /api/auth/login...");
             const res = await fetch("/api/auth/login", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ accessToken }),
             });
-            const loginTime = Math.round(performance.now() - t2);
-            addLog(`6. /api/auth/login: ${loginTime}ms (status=${res.status})`);
 
             if (res.ok) {
               const { user: serverUser } = await res.json();
               sessionStorage.setItem(SESSION_KEY, JSON.stringify(serverUser));
-              const total = Math.round(performance.now() - t0);
-              addLog(`7. done! total: ${total}ms`);
-              setState({ user: serverUser, isReady: true, isLoggedIn: true, error: null });
+              setState({ user: serverUser, isReady: true, isLoggedIn: true, isFriend: null, error: null });
               return;
             }
           }
         }
 
-        addLog(`5. not logged in (${Math.round(performance.now() - t0)}ms)`);
         setState((prev) => prev.isReady ? prev : { ...prev, isReady: true });
       } catch (e) {
-        addLog(`ERROR: ${e}`);
+        console.error("LIFF init error:", e);
         setState((prev) => prev.isReady ? prev : {
-          user: null, isReady: true, isLoggedIn: false,
+          user: null, isReady: true, isLoggedIn: false, isFriend: null,
           error: e instanceof Error ? e.message : "LIFF initialization failed",
         });
       }
     }
 
     init();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const login = useCallback(() => {
@@ -145,18 +120,44 @@ export function LiffProvider({ children }: { children: ReactNode }) {
     }
   }, [liffInstance]);
 
+  // 友だち追加チェック（予約時に呼ぶ）
+  const checkFriendship = useCallback(async (): Promise<boolean> => {
+    if (!liffInstance) return false;
+
+    // キャッシュ済み
+    const cached = sessionStorage.getItem(FRIEND_KEY);
+    if (cached === "1") {
+      setState((prev) => ({ ...prev, isFriend: true }));
+      return true;
+    }
+
+    try {
+      const friendship = await liffInstance.getFriendship();
+      const isFriend = friendship.friendFlag;
+      setState((prev) => ({ ...prev, isFriend }));
+      if (isFriend) sessionStorage.setItem(FRIEND_KEY, "1");
+      return isFriend;
+    } catch {
+      return false;
+    }
+  }, [liffInstance]);
+
+  // 友だち追加画面を開く
+  const addFriend = useCallback(() => {
+    const liffId = process.env.NEXT_PUBLIC_LIFF_ID!;
+    // LINE公式アカウントのプロフィールページを開く
+    if (liffInstance) {
+      liffInstance.openWindow({
+        url: `https://line.me/R/ti/p/@${liffId}`,
+        external: false,
+      });
+    }
+  }, [liffInstance]);
+
   return (
-    <LiffContext.Provider value={{ ...state, login }}>
+    <LiffContext.Provider value={{ ...state, login, checkFriendship, addFriend }}>
       {state.isReady && <div data-liff-ready="true" style={{ display: "none" }} />}
       {children}
-      {/* デバッグ用パフォーマンスログ */}
-      {DEBUG_PERF && perfLogs.length > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 z-50 max-h-40 overflow-auto bg-black/90 p-3 text-[11px] font-mono text-green-400">
-          {perfLogs.map((log, i) => (
-            <div key={i}>{log}</div>
-          ))}
-        </div>
-      )}
     </LiffContext.Provider>
   );
 }

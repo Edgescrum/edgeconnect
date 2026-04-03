@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import Image from "next/image";
 import { notFound } from "next/navigation";
+import { BookingButton } from "./booking-button";
 
 // 60秒キャッシュ（予約が入った時にrevalidatePathで無効化される）
 export const revalidate = 60;
@@ -89,10 +90,7 @@ export default async function ProviderProfilePage({
             <ul className="space-y-2.5">
               {provider.services.map((service) => (
                 <li key={service.id}>
-                  <a
-                    href={`/p/${slug}/book/${service.id}`}
-                    className="block rounded-2xl bg-card p-4 shadow-sm ring-1 ring-border active:scale-[0.99]"
-                  >
+                  <div className="rounded-2xl bg-card p-4 shadow-sm ring-1 ring-border">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <p className="font-semibold">{service.name}</p>
@@ -111,13 +109,14 @@ export default async function ProviderProfilePage({
                         </p>
                       </div>
                     </div>
-                    <div className="mt-3 flex items-center justify-center rounded-xl bg-accent-bg py-2 text-sm font-semibold text-accent">
-                      予約する
-                    </div>
-                  </a>
+                    <BookingButton slug={slug} serviceId={service.id} />
+                  </div>
                 </li>
               ))}
             </ul>
+            <p className="mt-3 text-center text-xs text-muted">
+              予約にはEdgeConnect公式アカウントの友だち追加が必要です
+            </p>
           </section>
         )}
 
