@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import Link from "next/link";
 
 interface BookingItem {
@@ -35,6 +35,8 @@ export function BookingList({
   const [filter, setFilter] = useState<FilterType>(
     (FILTERS.find((f) => f.value === initialFilter)?.value) || "all"
   );
+  const [visibleCount, setVisibleCount] = useState(20);
+  const sentinelRef = useRef<HTMLDivElement>(null);
   const [navigatingId, setNavigatingId] = useState<string | null>(null);
 
   const handleCardClick = useCallback((bookingId: string) => {
@@ -74,6 +76,21 @@ export function BookingList({
       }
     });
   }, [bookings, filter, now, todayStart, tomorrowStart, weekEnd]);
+
+  const visible = useMemo(() => filtered.slice(0, visibleCount), [filtered, visibleCount]);
+  const hasMore = visibleCount < filtered.length;
+
+  useEffect(() => setVisibleCount(20), [filter]);
+
+  useEffect(() => {
+    if (!sentinelRef.current || !hasMore) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) setVisibleCount((c) => c + 20); },
+      { rootMargin: "200px" }
+    );
+    observer.observe(sentinelRef.current);
+    return () => observer.disconnect();
+  }, [hasMore, visibleCount]);
 
   // 統計
   const todayCount = bookings.filter(
@@ -145,21 +162,23 @@ export function BookingList({
         </button>
       </div>
 
-      {/* フィルタータブ */}
-      <div className="mt-4 flex gap-1 overflow-x-auto rounded-xl bg-card p-1 ring-1 ring-border">
-        {FILTERS.map((f) => (
-          <button
-            key={f.value}
-            onClick={() => setFilter(f.value)}
-            className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
-              filter === f.value
-                ? "bg-accent text-white"
-                : "text-muted active:bg-accent-bg"
-            }`}
-          >
-            {f.label}
-          </button>
-        ))}
+      {/* フィルタータブ — sticky */}
+      <div className="sticky top-[49px] z-30 mt-4 bg-background py-2">
+        <div className="flex gap-1 overflow-x-auto rounded-xl bg-card p-1 ring-1 ring-border">
+          {FILTERS.map((f) => (
+            <button
+              key={f.value}
+              onClick={() => setFilter(f.value)}
+              className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+                filter === f.value
+                  ? "bg-accent text-white"
+                  : "text-muted active:bg-accent-bg"
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* 予約リスト */}
@@ -177,7 +196,7 @@ export function BookingList({
           <div className="space-y-2">
             {(() => {
               let lastDateKey = "";
-              return filtered.map((booking) => {
+              return visible.map((booking) => {
                 const isCancelled = booking.status === "cancelled";
                 const dateKey = toDateKey(booking.start_at);
                 const showHeader = dateKey !== lastDateKey;
@@ -242,6 +261,11 @@ export function BookingList({
                 );
               });
             })()}
+            {hasMore && (
+              <div ref={sentinelRef} className="flex justify-center py-4">
+                <div className="h-5 w-5 animate-spin rounded-full border-2 border-border border-t-accent" />
+              </div>
+            )}
           </div>
         )}
       </div>

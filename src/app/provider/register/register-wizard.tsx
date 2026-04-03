@@ -453,16 +453,10 @@ export function RegisterWizard() {
             <div className={`fixed bottom-0 left-0 right-0 bg-background px-4 pb-8 pt-3 transition-opacity ${keyboardOpen ? "pointer-events-none opacity-0" : ""}`}>
               <div className="mx-auto max-w-lg space-y-2">
                 <button
-                  onClick={() => router.push("/provider/qrcode")}
+                  onClick={() => router.push("/provider")}
                   className="w-full rounded-xl bg-accent py-3.5 font-semibold text-white shadow-lg shadow-accent/25 active:scale-[0.98]"
                 >
-                  QRコードを見る
-                </button>
-                <button
-                  onClick={() => router.push(`/p/${slug}`)}
-                  className="w-full rounded-xl border border-border py-3.5 font-semibold active:scale-[0.98]"
-                >
-                  予約ページをプレビュー
+                  管理画面へ進む
                 </button>
               </div>
             </div>

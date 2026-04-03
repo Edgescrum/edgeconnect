@@ -23,7 +23,12 @@ export default async function ProviderPage() {
   const tomorrowStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).toISOString();
   const weekEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 7).toISOString();
 
-  const [{ count: todayCount }, { count: weekCount }] = await Promise.all([
+  const [
+    { count: todayCount },
+    { count: weekCount },
+    { count: serviceCount },
+    { data: settings },
+  ] = await Promise.all([
     supabase
       .from("bookings")
       .select("id", { count: "exact", head: true })
@@ -38,13 +43,33 @@ export default async function ProviderPage() {
       .eq("status", "confirmed")
       .gte("start_at", todayStart)
       .lt("start_at", weekEnd),
+    supabase
+      .from("services")
+      .select("id", { count: "exact", head: true })
+      .eq("provider_id", provider.id),
+    supabase
+      .from("provider_settings")
+      .select("business_hours")
+      .eq("provider_id", provider.id)
+      .single(),
   ]);
+
+  const hasBusinessHours = settings?.business_hours
+    ? Object.values(settings.business_hours as Record<string, unknown>).some((v) => v !== null)
+    : false;
+
+  const onboarding = {
+    hasService: (serviceCount || 0) > 0,
+    hasSchedule: hasBusinessHours,
+    hasProfile: !!(provider.icon_url || provider.name),
+  };
 
   return (
     <ProviderDashboard
       provider={provider}
       todayCount={todayCount || 0}
       weekCount={weekCount || 0}
+      onboarding={onboarding}
     />
   );
 }

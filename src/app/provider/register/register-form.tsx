@@ -32,7 +32,7 @@ export function RegisterForm() {
     try {
       const formData = new FormData(e.currentTarget);
       await registerProvider(formData);
-      router.push("/provider/qrcode");
+      router.push("/provider");
     } catch (e) {
       setError(e instanceof Error ? e.message : "登録に失敗しました");
     } finally {

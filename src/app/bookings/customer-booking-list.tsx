@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import Link from "next/link";
 
 interface BookingItem {
@@ -26,6 +26,8 @@ const DAYS = ["日", "月", "火", "水", "木", "金", "土"];
 
 export function CustomerBookingList({ bookings }: { bookings: BookingItem[] }) {
   const [filter, setFilter] = useState<FilterType>("all");
+  const [visibleCount, setVisibleCount] = useState(20);
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
   const [navigatingId, setNavigatingId] = useState<string | null>(null);
   const handleCardClick = useCallback((id: string) => setNavigatingId(id), []);
@@ -60,6 +62,23 @@ export function CustomerBookingList({ bookings }: { bookings: BookingItem[] }) {
     });
   }, [bookings, filter, now, todayStart, tomorrowStart, weekEnd]);
 
+  const visible = useMemo(() => filtered.slice(0, visibleCount), [filtered, visibleCount]);
+  const hasMore = visibleCount < filtered.length;
+
+  // フィルター変更時にリセット
+  useEffect(() => setVisibleCount(20), [filter]);
+
+  // 無限スクロール
+  useEffect(() => {
+    if (!sentinelRef.current || !hasMore) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) setVisibleCount((c) => c + 20); },
+      { rootMargin: "200px" }
+    );
+    observer.observe(sentinelRef.current);
+    return () => observer.disconnect();
+  }, [hasMore, visibleCount]);
+
   function toDateKey(dateStr: string) {
     const d = new Date(dateStr);
     return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
@@ -85,7 +104,8 @@ export function CustomerBookingList({ bookings }: { bookings: BookingItem[] }) {
   return (
     <div>
       {/* フィルタータブ */}
-      <div className="flex gap-1 overflow-x-auto rounded-xl bg-card p-1 ring-1 ring-border">
+      <div className="sticky top-[49px] z-30 -mx-4 flex gap-1 overflow-x-auto bg-background px-4 py-2">
+        <div className="flex gap-1 rounded-xl bg-card p-1 ring-1 ring-border">
         {FILTERS.map((f) => (
           <button
             key={f.value}
@@ -99,6 +119,7 @@ export function CustomerBookingList({ bookings }: { bookings: BookingItem[] }) {
             {f.label}
           </button>
         ))}
+        </div>
       </div>
 
       {/* 予約リスト */}
@@ -116,7 +137,7 @@ export function CustomerBookingList({ bookings }: { bookings: BookingItem[] }) {
           <div className="space-y-2">
             {(() => {
               let lastDateKey = "";
-              return filtered.map((booking) => {
+              return visible.map((booking) => {
                 const isCancelled = booking.status === "cancelled";
                 const dateKey = toDateKey(booking.start_at);
                 const showHeader = dateKey !== lastDateKey;
@@ -179,6 +200,11 @@ export function CustomerBookingList({ bookings }: { bookings: BookingItem[] }) {
                 );
               });
             })()}
+            {hasMore && (
+              <div ref={sentinelRef} className="flex justify-center py-4">
+                <div className="h-5 w-5 animate-spin rounded-full border-2 border-border border-t-accent" />
+              </div>
+            )}
           </div>
         )}
       </div>

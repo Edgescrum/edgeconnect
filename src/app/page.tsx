@@ -23,7 +23,6 @@ const PROVIDER_BANNER_DISMISSED_KEY = "edgeconnect_provider_banner_dismissed";
 export default function Home() {
   const { user, isReady, isLoggedIn } = useLiff();
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
-  const [menuOpen, setMenuOpen] = useState(false);
   const [showWelcome, setShowWelcome] = useState(false);
   const [showProviderCta, setShowProviderCta] = useState(false);
   const [activeSlide, setActiveSlide] = useState(0);
@@ -162,48 +161,6 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="sticky top-0 z-40 border-b border-border bg-card/80 backdrop-blur-lg">
-        <div className="mx-auto flex max-w-lg items-center justify-between px-4 py-3">
-          <div className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent text-xs font-bold text-white">
-              E
-            </div>
-            <span className="font-semibold">EdgeConnect</span>
-          </div>
-          {isLoggedIn && user && (
-            <div className="relative">
-              <button
-                onClick={() => setMenuOpen(!menuOpen)}
-                className="flex h-8 w-8 items-center justify-center rounded-full bg-accent-bg text-sm font-bold text-accent"
-              >
-                {user.displayName[0]}
-              </button>
-              {menuOpen && (
-                <>
-                  <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
-                  <div className="absolute right-0 top-10 z-50 w-48 rounded-xl bg-card p-1 shadow-lg ring-1 ring-border">
-                    <div className="border-b border-border px-3 py-2">
-                      <p className="text-sm font-semibold">{user.displayName}</p>
-                    </div>
-                    {isProvider && (
-                      <a href="/provider" className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm hover:bg-accent-bg">
-                        <span>📊</span> 管理画面へ
-                      </a>
-                    )}
-                    {!isProvider && (
-                      <a href="/provider/register" className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm hover:bg-accent-bg">
-                        <span>🏠</span> 事業主として登録
-                      </a>
-                    )}
-                  </div>
-                </>
-              )}
-            </div>
-          )}
-        </div>
-      </header>
-
       <div className="mx-auto max-w-lg">
         {/* バナーカルーセル */}
         {bannerCards.length > 0 && (
@@ -243,97 +200,95 @@ export default function Home() {
           </div>
         )}
 
-        <div className="px-4 pb-4 space-y-4">
-          {/* 事業主セクション */}
-          {isLoggedIn && isProvider && (
-            <section>
-              <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted">
-                あなたのサービス
-              </h2>
-              <a
-                href="/provider"
-                className="flex items-center gap-4 rounded-2xl bg-accent/5 p-4 ring-1 ring-accent/20 active:scale-[0.99]"
-              >
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent text-sm font-bold text-white">
-                  {userInfo?.provider?.name?.[0] || "E"}
-                </div>
-                <div className="flex-1">
-                  <p className="font-semibold">{userInfo?.provider?.name || "管理画面"}</p>
-                  <p className="text-xs text-muted">予約・メニュー・スケジュールを管理</p>
-                </div>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-muted">
+        {/* 事業主管理セクション — 左ボーダーアクセントで「管理者向け」を示す */}
+        {isLoggedIn && isProvider && (
+          <div className="mx-4 mt-4">
+            <a
+              href="/provider"
+              className="flex items-center gap-4 rounded-2xl border-l-4 border-accent bg-card p-4 shadow-sm ring-1 ring-border active:scale-[0.99]"
+            >
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-accent text-sm font-bold text-white shadow-sm shadow-accent/30">
+                {userInfo?.provider?.name?.[0] || "E"}
+              </div>
+              <div className="flex-1">
+                <p className="font-semibold">{userInfo?.provider?.name || "管理画面"}</p>
+                <p className="text-xs text-muted">予約・メニュー・スケジュールを管理</p>
+              </div>
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent-bg">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-accent">
                   <path d="m9 18 6-6-6-6" />
                 </svg>
-              </a>
-            </section>
-          )}
+              </div>
+            </a>
+          </div>
+        )}
 
-          {/* 予約セクション */}
-          {isLoggedIn && (
-            <section>
-              <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted">
-                予約
-              </h2>
+        {/* ユーザーセクション — 背景色を変えて領域を分離 */}
+        {isLoggedIn && (
+          <div className="mt-4 bg-card/60 py-4">
+            <div className="space-y-3 px-4">
+              {/* 予約一覧 */}
               <a
                 href="/bookings"
-                className="flex items-center gap-4 rounded-2xl bg-card p-4 shadow-sm ring-1 ring-border active:scale-[0.99]"
+                className="flex items-center gap-3.5 rounded-xl bg-background p-3.5 ring-1 ring-border active:scale-[0.99]"
               >
-                <span className="text-2xl">📅</span>
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-accent-bg">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-accent">
+                    <rect x="3" y="4" width="18" height="18" rx="2" />
+                    <path d="M16 2v4M8 2v4M3 10h18" />
+                  </svg>
+                </div>
                 <div className="flex-1">
-                  <p className="font-semibold">予約一覧</p>
+                  <p className="text-sm font-semibold">予約一覧</p>
                   <p className="text-xs text-muted">予約の確認・キャンセル</p>
                 </div>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-muted">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-muted">
                   <path d="m9 18 6-6-6-6" />
                 </svg>
               </a>
-            </section>
-          )}
 
-          {/* 最近利用した事業主 */}
-          {hasRecent && (
-            <section>
-              <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted">
-                最近利用した事業主
-              </h2>
-              <div className="space-y-2">
-                {userInfo!.recentProviders!.map((rp) => {
-                  const d = new Date(rp.lastDate);
-                  const dateLabel = `${d.getMonth() + 1}/${d.getDate()}`;
-                  return (
-                    <a
-                      key={rp.slug}
-                      href={`/p/${rp.slug}`}
-                      className="flex items-center gap-3 rounded-2xl bg-card p-4 shadow-sm ring-1 ring-border active:scale-[0.99]"
-                    >
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent text-sm font-bold text-white">
-                        {rp.name[0]}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-semibold truncate">{rp.name}</p>
-                        <p className="text-xs text-muted truncate">
-                          {dateLabel} {rp.lastService}
-                        </p>
-                      </div>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0 text-muted">
-                        <path d="m9 18 6-6-6-6" />
-                      </svg>
-                    </a>
-                  );
-                })}
-              </div>
-            </section>
-          )}
-
-          {/* ガイド */}
-          {!showWelcome && !hasRecent && !showProviderBanner && (
-            <div className="pt-4 text-center">
-              <p className="text-sm text-muted">
-                事業主のQRコードやURLから予約ページにアクセスしてください
-              </p>
+              {/* 最近利用した事業主 */}
+              {hasRecent && (
+                <>
+                  <p className="pt-1 text-xs font-medium text-muted">最近の利用</p>
+                  {userInfo!.recentProviders!.map((rp) => {
+                    const d = new Date(rp.lastDate);
+                    const dateLabel = `${d.getMonth() + 1}/${d.getDate()}`;
+                    return (
+                      <a
+                        key={rp.slug}
+                        href={`/p/${rp.slug}`}
+                        className="flex items-center gap-3.5 rounded-xl bg-background p-3.5 ring-1 ring-border active:scale-[0.99]"
+                      >
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-sm font-semibold text-slate-500">
+                          {rp.name[0]}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold truncate">{rp.name}</p>
+                          <p className="text-xs text-muted truncate">
+                            {dateLabel} {rp.lastService}
+                          </p>
+                        </div>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0 text-muted">
+                          <path d="m9 18 6-6-6-6" />
+                        </svg>
+                      </a>
+                    );
+                  })}
+                </>
+              )}
             </div>
-          )}
-        </div>
+          </div>
+        )}
+
+        {/* ガイド */}
+        {!showWelcome && !hasRecent && !showProviderBanner && (
+          <div className="px-4 pt-4 text-center">
+            <p className="text-sm text-muted">
+              事業主のQRコードやURLから予約ページにアクセスしてください
+            </p>
+          </div>
+        )}
       </div>
     </main>
   );

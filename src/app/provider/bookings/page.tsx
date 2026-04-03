@@ -50,8 +50,8 @@ export default async function ProviderBookingsPage({
   });
 
   return (
-    <main className="min-h-screen bg-background px-4 py-6">
-      <div className="mx-auto max-w-lg">
+    <main className="min-h-screen bg-background">
+      <div className="mx-auto max-w-lg px-4 py-6">
         <BookingList bookings={allBookings} initialFilter={filter || "all"} />
       </div>
     </main>
