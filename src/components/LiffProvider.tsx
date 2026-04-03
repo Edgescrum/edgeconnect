@@ -122,23 +122,29 @@ export function LiffProvider({ children }: { children: ReactNode }) {
   }, [liffInstance]);
 
   const checkFriendship = useCallback(async (): Promise<boolean> => {
-    if (!liffInstance) return false;
-
+    // キャッシュ確認
     if (sessionStorage.getItem(FRIEND_KEY) === "1") {
       setState((prev) => ({ ...prev, isFriend: true }));
       return true;
     }
 
+    // stateからlineUserIdを取得
+    const lineUserId = state.user?.lineUserId;
+    if (!lineUserId) return false;
+
     try {
-      const friendship = await liffInstance.getFriendship();
-      const isFriend = friendship.friendFlag;
+      // サーバーサイドでMessaging API経由で友だち状態を確認
+      const res = await fetch(`/api/auth/check-friend?lineUserId=${lineUserId}`);
+      if (!res.ok) return false;
+      const { isFriend } = await res.json();
       setState((prev) => ({ ...prev, isFriend }));
       if (isFriend) sessionStorage.setItem(FRIEND_KEY, "1");
       return isFriend;
-    } catch {
+    } catch (e) {
+      console.error("checkFriendship error:", e);
       return false;
     }
-  }, [liffInstance]);
+  }, [state.user?.lineUserId]);
 
   if (!mounted) {
     return (
