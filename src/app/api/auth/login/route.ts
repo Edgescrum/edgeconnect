@@ -5,7 +5,7 @@ import { createHmac } from "crypto";
 import { log, logError } from "@/lib/log";
 
 function deriveCredentials(lineUserId: string) {
-  const email = `${lineUserId}@line.edgeconnect.local`;
+  const email = `${lineUserId.toLowerCase()}@line.edgeconnect.local`;
   const password = createHmac("sha256", process.env.LINE_CHANNEL_SECRET!)
     .update(lineUserId)
     .digest("hex");
@@ -65,12 +65,14 @@ export async function POST(request: Request) {
     const authUid = signInData.user?.id;
     log("login", "auth success", { authUid });
 
-    void supabase.rpc("upsert_user_from_line", {
+    // auth_uidを確実に保存（awaitで完了を待つ）
+    const { error: upsertError } = await supabase.rpc("upsert_user_from_line", {
       p_line_user_id: lineProfile.userId,
       p_display_name: lineProfile.displayName,
       p_role: "customer",
       p_auth_uid: authUid,
     });
+    if (upsertError) logError("login", "upsert failed", upsertError);
 
     const response = NextResponse.json({
       user: {

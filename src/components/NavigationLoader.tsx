@@ -27,11 +27,14 @@ export function NavigationLoader() {
       if (
         href.startsWith("http") ||
         href.startsWith("#") ||
+        href.startsWith("blob:") ||
+        href.startsWith("data:") ||
         href.startsWith("line://") ||
         href.startsWith("mailto:") ||
         href.startsWith("tel:") ||
         href.startsWith("webcal://") ||
-        anchor.target === "_blank"
+        anchor.target === "_blank" ||
+        anchor.hasAttribute("download")
       ) {
         return;
       }

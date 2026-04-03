@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { resolveUser } from "@/lib/auth/session";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 import { log } from "@/lib/log";
 
 export async function GET() {
@@ -12,7 +12,7 @@ export async function GET() {
 
   log("me", "user resolved", { id: user.id, role: user.role });
 
-  const supabase = createAdminClient();
+  const supabase = await createClient();
 
   const [providerResult, bookingsResult] = await Promise.all([
     user.role === "provider"

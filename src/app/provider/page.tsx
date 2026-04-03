@@ -1,5 +1,5 @@
 import { resolveUser } from "@/lib/auth/session";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { ProviderDashboard } from "./dashboard-content";
 
@@ -8,7 +8,7 @@ export default async function ProviderPage() {
   if (!user) redirect("/");
   if (user.role !== "provider") redirect("/provider/register");
 
-  const supabase = createAdminClient();
+  const supabase = await createClient();
   const { data: provider } = await supabase
     .from("providers")
     .select("id, slug, name, icon_url")

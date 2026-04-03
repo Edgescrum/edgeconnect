@@ -1,5 +1,5 @@
 import { resolveUser } from "@/lib/auth/session";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { CustomerBookingList } from "./customer-booking-list";
@@ -8,7 +8,7 @@ export default async function BookingsPage() {
   const user = await resolveUser();
   if (!user) redirect("/");
 
-  const supabase = createAdminClient();
+  const supabase = await createClient();
   const { data: bookings } = await supabase
     .from("bookings")
     .select(`

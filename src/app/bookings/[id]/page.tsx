@@ -1,5 +1,5 @@
 import { resolveUser } from "@/lib/auth/session";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { CancelButton } from "./cancel-button";
@@ -14,7 +14,7 @@ export default async function BookingDetailPage({
   if (!user) redirect("/");
 
   const { id } = await params;
-  const supabase = createAdminClient();
+  const supabase = await createClient();
 
   const { data: booking } = await supabase
     .from("bookings")

@@ -1,5 +1,5 @@
 import { resolveUser } from "@/lib/auth/session";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 import { redirect, notFound } from "next/navigation";
 import { ProviderCancelButton } from "./provider-cancel-button";
 
@@ -13,7 +13,7 @@ export default async function ProviderBookingDetailPage({
   if (user.role !== "provider") redirect("/");
 
   const { id } = await params;
-  const supabase = createAdminClient();
+  const supabase = await createClient();
 
   const { data: provider } = await supabase
     .from("providers")

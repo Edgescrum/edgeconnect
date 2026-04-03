@@ -1,5 +1,6 @@
 "use server";
 
+import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { resolveUser } from "@/lib/auth/session";
 import { revalidatePath } from "next/cache";
@@ -20,21 +21,22 @@ export async function registerProvider(formData: FormData) {
   const lineContactUrl = (formData.get("line_contact_url") as string) || null;
   const contactEmail = (formData.get("contact_email") as string) || null;
 
-  const supabase = createAdminClient();
+  const supabase = await createClient();
+  const adminSupabase = createAdminClient();
 
-  // アイコン画像アップロード
+  // アイコン画像アップロード（Storage操作はadminClient使用）
   let iconUrl: string | null = null;
   const iconFile = formData.get("icon") as File | null;
   if (iconFile && iconFile.size > 0) {
     const ext = iconFile.name.split(".").pop();
     const path = `${user.lineUserId}/icon.${ext}`;
-    const { error: uploadError } = await supabase.storage
+    const { error: uploadError } = await adminSupabase.storage
       .from("avatars")
       .upload(path, iconFile, { upsert: true });
     if (uploadError) throw new Error("Icon upload failed");
     const {
       data: { publicUrl },
-    } = supabase.storage.from("avatars").getPublicUrl(path);
+    } = adminSupabase.storage.from("avatars").getPublicUrl(path);
     iconUrl = publicUrl;
   }
 
@@ -58,7 +60,8 @@ export async function updateProfile(formData: FormData) {
   const user = await resolveUser();
   if (!user) throw new Error("Not authenticated");
 
-  const supabase = createAdminClient();
+  const supabase = await createClient();
+  const adminSupabase = createAdminClient();
 
   const { data: provider } = await supabase
     .from("providers")
@@ -83,13 +86,13 @@ export async function updateProfile(formData: FormData) {
   if (iconFile && iconFile.size > 0) {
     const ext = iconFile.name.split(".").pop();
     const path = `${user.lineUserId}/icon.${ext}`;
-    const { error: uploadError } = await supabase.storage
+    const { error: uploadError } = await adminSupabase.storage
       .from("avatars")
       .upload(path, iconFile, { upsert: true });
     if (uploadError) throw new Error("Icon upload failed");
     const {
       data: { publicUrl },
-    } = supabase.storage.from("avatars").getPublicUrl(path);
+    } = adminSupabase.storage.from("avatars").getPublicUrl(path);
     updates.icon_url = publicUrl;
   }
 
@@ -105,7 +108,7 @@ export async function updateProfile(formData: FormData) {
 }
 
 export async function checkSlugAvailability(slug: string) {
-  const supabase = createAdminClient();
+  const supabase = await createClient();
   const { data } = await supabase
     .from("providers")
     .select("id")

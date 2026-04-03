@@ -1,5 +1,5 @@
 import { resolveUser } from "@/lib/auth/session";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 import { redirect, notFound } from "next/navigation";
 import { ServiceForm } from "../../service-form";
 import { updateService } from "@/lib/actions/service";
@@ -16,7 +16,7 @@ export default async function EditServicePage({
   const { id } = await params;
   const serviceId = parseInt(id, 10);
 
-  const supabase = createAdminClient();
+  const supabase = await createClient();
 
   const { data: provider } = await supabase
     .from("providers")

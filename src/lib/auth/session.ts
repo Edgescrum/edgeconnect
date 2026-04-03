@@ -37,9 +37,13 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   };
 });
 
-// httpOnly cookieからのみlineUserIdを取得（外部パラメータは受け付けない）
+// Supabase Auth優先 → cookie fallback でユーザーを解決（RLS対応）
 export const resolveUser = cache(async (): Promise<CurrentUser | null> => {
-  // 1. httpOnly cookieからlineUserId取得
+  // 1. Supabase Authセッション（RLSが効くメインパス）
+  const authUser = await getCurrentUser();
+  if (authUser) return authUser;
+
+  // 2. フォールバック: httpOnly cookieからlineUserId取得
   let lineUserId: string | null = null;
   try {
     const { cookies } = await import("next/headers");
@@ -47,7 +51,6 @@ export const resolveUser = cache(async (): Promise<CurrentUser | null> => {
     lineUserId = cookieStore.get("line_user_id")?.value || null;
   } catch { /* ignore */ }
 
-  // 2. cookieのlineUserIdでDB検索
   if (lineUserId) {
     const supabase = createAdminClient();
     const { data } = await supabase
@@ -87,10 +90,6 @@ export const resolveUser = cache(async (): Promise<CurrentUser | null> => {
       };
     }
   }
-
-  // 3. フォールバック: Supabase Authセッション
-  const authUser = await getCurrentUser();
-  if (authUser) return authUser;
 
   log("auth", "resolveUser: no user found");
   return null;

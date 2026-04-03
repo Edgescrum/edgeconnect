@@ -1,5 +1,5 @@
 import { resolveUser } from "@/lib/auth/session";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { ScheduleEditor } from "./schedule-editor";
 
@@ -8,7 +8,7 @@ export default async function SchedulePage() {
   if (!user) redirect("/");
   if (user.role !== "provider") redirect("/");
 
-  const supabase = createAdminClient();
+  const supabase = await createClient();
 
   const { data: provider } = await supabase
     .from("providers")

@@ -1,6 +1,6 @@
 import { cache } from "react";
 import { resolveUser } from "@/lib/auth/session";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 import { log, logError } from "@/lib/log";
 
 export const getProviderId = cache(async () => {
@@ -10,7 +10,7 @@ export const getProviderId = cache(async () => {
     throw new Error("Not authorized");
   }
 
-  const supabase = createAdminClient();
+  const supabase = await createClient();
   const { data, error } = await supabase
     .from("providers")
     .select("id, slug")

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 
 export function QrCodeView({
   url,
@@ -11,37 +11,13 @@ export function QrCodeView({
   slug: string;
   name: string;
 }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
   const [copied, setCopied] = useState(false);
-  const [qrLoaded, setQrLoaded] = useState(false);
-
-  useEffect(() => {
-    async function generateQr() {
-      const QRCode = (await import("qrcode")).default;
-      if (canvasRef.current) {
-        await QRCode.toCanvas(canvasRef.current, url, {
-          width: 220,
-          margin: 2,
-          color: { dark: "#0f172a", light: "#ffffff" },
-        });
-        setQrLoaded(true);
-      }
-    }
-    generateQr();
-  }, [url]);
+  const qrImageUrl = `/api/qrcode?url=${encodeURIComponent(url)}`;
 
   async function handleCopy() {
     await navigator.clipboard.writeText(url);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
-  }
-
-  function handleDownload() {
-    if (!canvasRef.current) return;
-    const link = document.createElement("a");
-    link.download = `edgeconnect-${slug}.png`;
-    link.href = canvasRef.current.toDataURL("image/png");
-    link.click();
   }
 
   return (
@@ -55,17 +31,27 @@ export function QrCodeView({
           <p className="mt-2 font-semibold">{name}</p>
 
           <div className="mt-4 rounded-xl bg-white p-3">
-            <canvas ref={canvasRef} />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={qrImageUrl}
+              alt={`${name} QRコード`}
+              width={220}
+              height={220}
+            />
           </div>
 
-          <div className="mt-4 w-full rounded-xl bg-background p-3">
+          <p className="mt-3 text-xs text-muted">
+            画像を長押しして保存できます
+          </p>
+
+          <div className="mt-3 w-full rounded-xl bg-background p-3">
             <p className="break-all text-center text-xs text-muted">{url}</p>
           </div>
         </div>
       </div>
 
       {/* Actions */}
-      <div className="mt-4 w-full space-y-2.5">
+      <div className="mt-4 w-full">
         <button
           onClick={handleCopy}
           className={`w-full rounded-xl py-3.5 font-semibold ring-1 active:scale-[0.98] ${
@@ -76,22 +62,13 @@ export function QrCodeView({
         >
           {copied ? "✓ コピーしました" : "URLをコピー"}
         </button>
-
-        {qrLoaded && (
-          <button
-            onClick={handleDownload}
-            className="w-full rounded-xl bg-accent py-3.5 font-semibold text-white shadow-lg shadow-accent/25 active:scale-[0.98]"
-          >
-            QRコードを保存
-          </button>
-        )}
       </div>
 
       {/* Tips */}
       <div className="mt-6 w-full rounded-xl bg-accent-bg p-4">
         <p className="text-xs font-semibold text-accent">💡 使い方</p>
         <ul className="mt-2 space-y-1 text-xs leading-relaxed text-accent">
-          <li>・ QRコードを名刺やチラシに印刷</li>
+          <li>・ QRコードを長押しして保存</li>
           <li>・ URLをSNSやプロフィールに貼付</li>
           <li>・ LINEのトークでお客さまに送信</li>
         </ul>
