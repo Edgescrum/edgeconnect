@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { registerProvider, checkSlugAvailability } from "@/lib/actions/provider";
 import { useLiff } from "@/components/LiffProvider";
 import { useRouter } from "next/navigation";
@@ -21,6 +21,22 @@ export function RegisterWizard() {
   const [step, setStep] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
+
+  // キーボードの開閉検知（フォーカスベース）
+  useEffect(() => {
+    function onFocus() { setKeyboardOpen(true); }
+    function onBlur() { setKeyboardOpen(false); }
+    document.addEventListener("focusin", (e) => {
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") onFocus();
+    });
+    document.addEventListener("focusout", onBlur);
+    return () => {
+      document.removeEventListener("focusin", onFocus);
+      document.removeEventListener("focusout", onBlur);
+    };
+  }, []);
 
   // Form state
   const [name, setName] = useState(user?.displayName || "");
@@ -51,6 +67,7 @@ export function RegisterWizard() {
     setSubmitting(true);
     try {
       const formData = new FormData();
+      if (user?.lineUserId) formData.set("line_user_id", user.lineUserId);
       formData.set("slug", slug);
       formData.set("name", name);
       formData.set("bio", bio);
@@ -84,7 +101,7 @@ export function RegisterWizard() {
   };
 
   return (
-    <main className="flex min-h-screen flex-col bg-background">
+    <main className="flex flex-col bg-background">
       {/* Progress bar */}
       {step < 4 && (
         <div className="px-4 pt-4">
@@ -104,157 +121,153 @@ export function RegisterWizard() {
         </div>
       )}
 
-      <div className="flex flex-1 flex-col px-4 py-6">
+      <div className="px-4">
         {/* Step 0: Welcome */}
         {step === 0 && (
-          <div className="flex flex-1 flex-col">
-            <div className="flex-1">
-              <p className="text-4xl">{STEPS[0].icon}</p>
-              <h1 className="mt-4 text-2xl font-bold">
-                EdgeConnectへようこそ
-              </h1>
-              <p className="mt-3 leading-relaxed text-muted">
-                3つのステップであなたの予約ページを作成します。
-                お客さまはLINEから簡単に予約できるようになります。
-              </p>
+          <div className="pt-4">
+            <h1 className="text-xl font-bold">
+              {STEPS[0].icon} 予約ページを作成
+            </h1>
+            <p className="mt-2 text-sm text-muted">
+              3ステップで完了します
+            </p>
 
-              <div className="mt-8 space-y-4">
-                {[
-                  { step: "1", title: "お店の名前を決める", desc: "お客さまに表示される名前です" },
-                  { step: "2", title: "予約ページのURLを決める", desc: "あなた専用のURLを作成します" },
-                  { step: "3", title: "連絡先・プロフィールを設定", desc: "お客さまとの連絡方法を選びます" },
-                ].map((item) => (
-                  <div key={item.step} className="flex gap-3">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent-bg text-sm font-bold text-accent">
-                      {item.step}
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold">{item.title}</p>
-                      <p className="text-xs text-muted">{item.desc}</p>
-                    </div>
+            <div className="mt-5 space-y-3">
+              {[
+                { step: "1", title: "お店の名前を決める" },
+                { step: "2", title: "予約ページのURLを決める" },
+                { step: "3", title: "連絡先・プロフィールを設定" },
+              ].map((item) => (
+                <div key={item.step} className="flex items-center gap-3">
+                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent-bg text-xs font-bold text-accent">
+                    {item.step}
                   </div>
-                ))}
-              </div>
+                  <p className="text-sm font-medium">{item.title}</p>
+                </div>
+              ))}
             </div>
 
-            <button
-              onClick={() => setStep(1)}
-              className="mt-8 w-full rounded-xl bg-accent py-3.5 font-semibold text-white shadow-lg shadow-accent/25 active:scale-[0.98]"
-            >
-              はじめる
-            </button>
+            <div className={`fixed bottom-0 left-0 right-0 bg-background px-4 pb-8 pt-3 transition-opacity ${keyboardOpen ? "pointer-events-none opacity-0" : ""}`}>
+              <div className="mx-auto max-w-lg">
+                <button
+                  onClick={() => setStep(1)}
+                  className="w-full rounded-xl bg-accent py-3.5 font-semibold text-white shadow-lg shadow-accent/25 active:scale-[0.98]"
+                >
+                  はじめる
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
         {/* Step 1: Business Name */}
         {step === 1 && (
-          <div className="flex flex-1 flex-col">
-            <div className="flex-1">
-              <p className="text-4xl">{STEPS[1].icon}</p>
-              <h1 className="mt-4 text-2xl font-bold">お店の名前</h1>
-              <p className="mt-2 text-sm text-muted">
-                お客さまに表示されるあなたのお店・サービスの名前です。
-                あとから変更できます。
-              </p>
-
-              <div className="mt-6">
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="例：山田サロン"
-                  className="w-full rounded-xl border border-border bg-card px-4 py-3 text-lg"
-                />
-              </div>
+          <div className="pt-4 pb-24">
+            <p className="text-4xl">{STEPS[1].icon}</p>
+            <h1 className="mt-4 text-2xl font-bold">お店の名前</h1>
+            <p className="mt-2 text-sm text-muted">
+              お客さまに表示されるあなたのお店・サービスの名前です。
+              あとから変更できます。
+            </p>
+            <div className="mt-6">
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="例：山田サロン"
+                className="w-full rounded-xl border border-border bg-card px-4 py-3 text-lg"
+              />
             </div>
 
-            <div className="mt-8 flex gap-3">
-              <button
-                onClick={() => setStep(0)}
-                className="rounded-xl border border-border px-6 py-3.5 font-semibold active:scale-[0.98]"
-              >
-                戻る
-              </button>
-              <button
-                onClick={() => setStep(2)}
-                disabled={!canNext()}
-                className="flex-1 rounded-xl bg-accent py-3.5 font-semibold text-white shadow-lg shadow-accent/25 disabled:opacity-40 active:scale-[0.98]"
-              >
-                次へ
-              </button>
+            <div className={`fixed bottom-0 left-0 right-0 bg-background px-4 pb-8 pt-3 transition-opacity ${keyboardOpen ? "pointer-events-none opacity-0" : ""}`}>
+              <div className="mx-auto flex max-w-lg gap-3">
+                <button
+                  onClick={() => setStep(0)}
+                  className="rounded-xl border border-border px-6 py-3.5 font-semibold active:scale-[0.98]"
+                >
+                  戻る
+                </button>
+                <button
+                  onClick={() => setStep(2)}
+                  disabled={!canNext()}
+                  className="flex-1 rounded-xl bg-accent py-3.5 font-semibold text-white shadow-lg shadow-accent/25 disabled:opacity-40 active:scale-[0.98]"
+                >
+                  次へ
+                </button>
+              </div>
             </div>
           </div>
         )}
 
         {/* Step 2: Slug */}
         {step === 2 && (
-          <div className="flex flex-1 flex-col">
-            <div className="flex-1">
-              <p className="text-4xl">{STEPS[2].icon}</p>
-              <h1 className="mt-4 text-2xl font-bold">予約ページURL</h1>
-              <p className="mt-2 text-sm text-muted">
-                あなた専用のURLを決めましょう。
-                お客さまはこのURLから予約ページにアクセスします。
-              </p>
+          <div className="pt-4 pb-24">
+            <p className="text-4xl">{STEPS[2].icon}</p>
+            <h1 className="mt-4 text-2xl font-bold">予約ページURL</h1>
+            <p className="mt-2 text-sm text-muted">
+              あなた専用のURLを決めましょう。
+              お客さまはこのURLから予約ページにアクセスします。
+            </p>
 
-              <div className="mt-6">
-                <div className="rounded-xl border border-border bg-card p-4">
-                  <p className="mb-2 text-xs text-muted">あなたのURL</p>
-                  <div className="flex items-center gap-1 text-sm">
-                    <span className="text-muted">edgeconnect.app/p/</span>
-                    <input
-                      type="text"
-                      value={slug}
-                      onChange={(e) => handleSlugChange(e.target.value)}
-                      placeholder="your-name"
-                      className="min-w-0 flex-1 border-b border-accent bg-transparent py-1 font-semibold text-accent focus:shadow-none"
-                    />
-                  </div>
+            <div className="mt-6">
+              <div className="rounded-xl border border-border bg-card p-4">
+                <p className="mb-2 text-xs text-muted">あなたのURL</p>
+                <div className="flex items-center gap-1 text-sm">
+                  <span className="text-muted">edgeconnect.app/p/</span>
+                  <input
+                    type="text"
+                    value={slug}
+                    onChange={(e) => handleSlugChange(e.target.value)}
+                    placeholder="your-name"
+                    className="min-w-0 flex-1 border-b border-accent bg-transparent py-1 font-semibold text-accent focus:shadow-none"
+                  />
                 </div>
+              </div>
 
-                <div className="mt-2 h-5">
-                  {slugStatus === "checking" && (
-                    <p className="text-xs text-muted">確認中...</p>
-                  )}
-                  {slugStatus === "available" && (
-                    <p className="text-xs text-green-600">このURLは利用可能です</p>
-                  )}
-                  {slugStatus === "taken" && (
-                    <p className="text-xs text-red-500">このURLは既に使われています</p>
-                  )}
-                </div>
+              <div className="mt-2 h-5">
+                {slugStatus === "checking" && (
+                  <p className="text-xs text-muted">確認中...</p>
+                )}
+                {slugStatus === "available" && (
+                  <p className="text-xs text-green-600">このURLは利用可能です</p>
+                )}
+                {slugStatus === "taken" && (
+                  <p className="text-xs text-red-500">このURLは既に使われています</p>
+                )}
+              </div>
 
-                <div className="mt-4 rounded-xl bg-accent-bg p-3">
-                  <p className="text-xs leading-relaxed text-accent">
-                    💡 半角英数字とハイフン（-）が使えます。
-                    お店の名前やあなたの名前がおすすめです。
-                  </p>
-                </div>
+              <div className="mt-4 rounded-xl bg-accent-bg p-3">
+                <p className="text-xs leading-relaxed text-accent">
+                  💡 半角英数字とハイフン（-）が使えます。
+                  お店の名前やあなたの名前がおすすめです。
+                </p>
               </div>
             </div>
 
-            <div className="mt-8 flex gap-3">
-              <button
-                onClick={() => setStep(1)}
-                className="rounded-xl border border-border px-6 py-3.5 font-semibold active:scale-[0.98]"
-              >
-                戻る
-              </button>
-              <button
-                onClick={() => setStep(3)}
-                disabled={!canNext()}
-                className="flex-1 rounded-xl bg-accent py-3.5 font-semibold text-white shadow-lg shadow-accent/25 disabled:opacity-40 active:scale-[0.98]"
-              >
-                次へ
-              </button>
+            <div className={`fixed bottom-0 left-0 right-0 bg-background px-4 pb-8 pt-3 transition-opacity ${keyboardOpen ? "pointer-events-none opacity-0" : ""}`}>
+              <div className="mx-auto flex max-w-lg gap-3">
+                <button
+                  onClick={() => setStep(1)}
+                  className="rounded-xl border border-border px-6 py-3.5 font-semibold active:scale-[0.98]"
+                >
+                  戻る
+                </button>
+                <button
+                  onClick={() => setStep(3)}
+                  disabled={!canNext()}
+                  className="flex-1 rounded-xl bg-accent py-3.5 font-semibold text-white shadow-lg shadow-accent/25 disabled:opacity-40 active:scale-[0.98]"
+                >
+                  次へ
+                </button>
+              </div>
             </div>
           </div>
         )}
 
         {/* Step 3: Contact & Profile */}
         {step === 3 && (
-          <div className="flex flex-1 flex-col">
-            <div className="flex-1">
+          <div className="pt-4 pb-24">
+            <div>
               <p className="text-4xl">{STEPS[3].icon}</p>
               <h1 className="mt-4 text-2xl font-bold">連絡先・プロフィール</h1>
               <p className="mt-2 text-sm text-muted">
@@ -373,30 +386,32 @@ export function RegisterWizard() {
               </div>
             )}
 
-            <div className="mt-8 flex gap-3">
-              <button
-                onClick={() => setStep(2)}
-                className="rounded-xl border border-border px-6 py-3.5 font-semibold active:scale-[0.98]"
-              >
-                戻る
-              </button>
-              <button
-                onClick={handleSubmit}
-                disabled={submitting || !canNext()}
-                className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-accent py-3.5 font-semibold text-white shadow-lg shadow-accent/25 disabled:opacity-40 active:scale-[0.98]"
-              >
-                {submitting && (
-                  <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                )}
-                {submitting ? "処理中..." : "登録を完了する"}
-              </button>
+            <div className={`fixed bottom-0 left-0 right-0 bg-background px-4 pb-8 pt-3 transition-opacity ${keyboardOpen ? "pointer-events-none opacity-0" : ""}`}>
+              <div className="mx-auto flex max-w-lg gap-3">
+                <button
+                  onClick={() => setStep(2)}
+                  className="rounded-xl border border-border px-6 py-3.5 font-semibold active:scale-[0.98]"
+                >
+                  戻る
+                </button>
+                <button
+                  onClick={handleSubmit}
+                  disabled={submitting || !canNext()}
+                  className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-accent py-3.5 font-semibold text-white shadow-lg shadow-accent/25 disabled:opacity-40 active:scale-[0.98]"
+                >
+                  {submitting && (
+                    <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  )}
+                  {submitting ? "処理中..." : "登録を完了する"}
+                </button>
+              </div>
             </div>
           </div>
         )}
 
         {/* Step 4: Complete */}
         {step === 4 && (
-          <div className="flex flex-1 flex-col items-center justify-center text-center">
+          <div className="flex flex-col items-center pt-8 pb-24 text-center">
             <div className="text-6xl">🎉</div>
             <h1 className="mt-6 text-2xl font-bold">登録完了！</h1>
             <p className="mt-3 leading-relaxed text-muted">
@@ -405,19 +420,21 @@ export function RegisterWizard() {
               QRコードをお客さまに共有しましょう。
             </p>
 
-            <div className="mt-8 w-full max-w-xs space-y-3">
-              <button
-                onClick={() => router.push("/provider/qrcode")}
-                className="w-full rounded-xl bg-accent py-3.5 font-semibold text-white shadow-lg shadow-accent/25 active:scale-[0.98]"
-              >
-                QRコードを見る
-              </button>
-              <button
-                onClick={() => router.push(`/p/${slug}`)}
-                className="w-full rounded-xl border border-border py-3.5 font-semibold active:scale-[0.98]"
-              >
-                予約ページをプレビュー
-              </button>
+            <div className={`fixed bottom-0 left-0 right-0 bg-background px-4 pb-8 pt-3 transition-opacity ${keyboardOpen ? "pointer-events-none opacity-0" : ""}`}>
+              <div className="mx-auto max-w-lg space-y-2">
+                <button
+                  onClick={() => router.push("/provider/qrcode")}
+                  className="w-full rounded-xl bg-accent py-3.5 font-semibold text-white shadow-lg shadow-accent/25 active:scale-[0.98]"
+                >
+                  QRコードを見る
+                </button>
+                <button
+                  onClick={() => router.push(`/p/${slug}`)}
+                  className="w-full rounded-xl border border-border py-3.5 font-semibold active:scale-[0.98]"
+                >
+                  予約ページをプレビュー
+                </button>
+              </div>
             </div>
           </div>
         )}

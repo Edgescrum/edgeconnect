@@ -1,23 +1,8 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentUser } from "@/lib/auth/session";
+import { getProviderId } from "@/lib/auth/provider-session";
 import { revalidatePath } from "next/cache";
-
-async function getProviderId() {
-  const user = await getCurrentUser();
-  if (!user || user.role !== "provider") throw new Error("Not authorized");
-
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("providers")
-    .select("id, slug")
-    .eq("user_id", user.id)
-    .single();
-
-  if (!data) throw new Error("Provider not found");
-  return data;
-}
 
 export async function createService(formData: FormData) {
   const provider = await getProviderId();

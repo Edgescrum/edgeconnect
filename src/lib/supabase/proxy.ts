@@ -54,10 +54,11 @@ export async function updateSession(request: NextRequest) {
     }
   }
 
-  // 認証不要パス: API、公開プロフィール、静的ファイル
+  // 認証不要パス: API、公開プロフィール、事業主登録、トップ
   const isPublicPath =
     pathname.startsWith("/api/") ||
     pathname.startsWith("/p/") ||
+    pathname === "/provider/register" ||
     pathname === "/";
 
   // 未認証ユーザーを認証不要パス以外からリダイレクト

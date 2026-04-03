@@ -17,21 +17,33 @@ interface UserInfo {
 }
 
 const WELCOME_DISMISSED_KEY = "edgeconnect_welcome_dismissed";
+const PROVIDER_BANNER_DISMISSED_KEY = "edgeconnect_provider_banner_dismissed";
 
 export default function Home() {
   const { user, isReady, isLoggedIn } = useLiff();
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [showWelcome, setShowWelcome] = useState(false);
+  const [showProviderCta, setShowProviderCta] = useState(false);
+  const [bannersLoaded, setBannersLoaded] = useState(false);
+  const [activeSlide, setActiveSlide] = useState(0);
 
   useEffect(() => {
-    const dismissed = localStorage.getItem(WELCOME_DISMISSED_KEY);
-    if (!dismissed) setShowWelcome(true);
+    const welcomeDismissed = localStorage.getItem(WELCOME_DISMISSED_KEY);
+    const providerDismissed = localStorage.getItem(PROVIDER_BANNER_DISMISSED_KEY);
+    if (!welcomeDismissed) setShowWelcome(true);
+    if (!providerDismissed) setShowProviderCta(true);
+    setBannersLoaded(true);
   }, []);
 
   function dismissWelcome() {
     setShowWelcome(false);
     localStorage.setItem(WELCOME_DISMISSED_KEY, "1");
+  }
+
+  function dismissProviderBanner() {
+    setShowProviderCta(false);
+    localStorage.setItem(PROVIDER_BANNER_DISMISSED_KEY, "1");
   }
 
   useEffect(() => {
@@ -56,14 +68,11 @@ export default function Home() {
 
   const hasRecent = userInfo?.recentProviders && userInfo.recentProviders.length > 0;
   const isProvider = userInfo?.role === "provider";
-  // userInfoロード前はバナーを表示（ロード後にproviderならバナー非表示に切り替わる）
-  const showProviderBanner = isLoggedIn && !isProvider;
-
-  const [activeSlide, setActiveSlide] = useState(0);
+  const showProviderBanner = bannersLoaded && isLoggedIn && !isProvider && showProviderCta;
 
   // バナーカード定義
   const bannerCards: { key: string; node: React.ReactNode }[] = [];
-  if (showWelcome) {
+  if (bannersLoaded && showWelcome) {
     bannerCards.push({
       key: "welcome",
       node: (
@@ -87,15 +96,21 @@ export default function Home() {
       key: "provider-cta",
       node: (
         <>
+          <button
+            onClick={(e) => { e.stopPropagation(); dismissProviderBanner(); }}
+            className="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full bg-white/20 text-xs active:bg-white/30"
+          >
+            ✕
+          </button>
           <h2 className="text-lg font-bold text-white">予約を受け付けませんか？</h2>
           <p className="mt-2 text-sm leading-relaxed text-white/90">
             無料であなた専用の予約ページを作成できます。
           </p>
           <a
             href="/provider/register"
-            className="mt-3 inline-block rounded-xl bg-white/20 px-5 py-2.5 text-sm font-semibold text-white active:bg-white/30"
+            className="mt-4 block w-full rounded-xl bg-white py-3 text-center text-sm font-bold text-orange-500 shadow active:scale-[0.98]"
           >
-            事業主として始める →
+            事業主として始める
           </a>
         </>
       ),
@@ -163,7 +178,7 @@ export default function Home() {
               {bannerCards.map((card, i) => (
                 <div
                   key={card.key}
-                  className={`relative h-[140px] w-[80vw] max-w-[360px] shrink-0 snap-center overflow-hidden rounded-2xl p-5 shadow-lg ${
+                  className={`relative flex h-[180px] w-[80vw] max-w-[360px] shrink-0 snap-center flex-col overflow-hidden rounded-2xl p-5 shadow-lg ${
                     i === 0 && card.key === "welcome"
                       ? "bg-gradient-to-br from-accent to-accent-light"
                       : "bg-gradient-to-br from-amber-400 to-orange-400"

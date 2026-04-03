@@ -1,21 +1,11 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentUser } from "@/lib/auth/session";
+import { getProviderId as getProviderData } from "@/lib/auth/provider-session";
 import { revalidatePath } from "next/cache";
 
 async function getProviderId() {
-  const user = await getCurrentUser();
-  if (!user || user.role !== "provider") throw new Error("Not authorized");
-
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("providers")
-    .select("id")
-    .eq("user_id", user.id)
-    .single();
-
-  if (!data) throw new Error("Provider not found");
+  const data = await getProviderData();
   return data.id;
 }
 

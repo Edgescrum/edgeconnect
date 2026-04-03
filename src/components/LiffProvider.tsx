@@ -86,14 +86,23 @@ export function LiffProvider({ children }: { children: ReactNode }) {
 
         addLog(`   isInClient=${liff.isInClient()} isLoggedIn=${liff.isLoggedIn()}`);
 
-        if (sessionStorage.getItem(SESSION_KEY)) {
-          addLog(`5. cached → done (${Math.round(performance.now() - t0)}ms total)`);
-          return;
-        }
-
         if (liff.isLoggedIn()) {
           const accessToken = liff.getAccessToken();
           if (accessToken) {
+            const cached = sessionStorage.getItem(SESSION_KEY);
+
+            // キャッシュあり → UIは即表示済み、バックグラウンドでセッション維持
+            if (cached) {
+              addLog(`5. cached, refreshing session in bg...`);
+              fetch("/api/auth/login", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ accessToken }),
+              }).catch(() => {});
+              return;
+            }
+
+            // キャッシュなし → サーバー認証
             const t2 = performance.now();
             addLog("5. calling /api/auth/login...");
             const res = await fetch("/api/auth/login", {

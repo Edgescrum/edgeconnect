@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>EdgeConnect リッチメニュー画像生成</title>
+<style>
+body { margin: 20px; font-family: -apple-system, sans-serif; background: #f5f5f5; }
+h1 { font-size: 18px; }
+canvas { border: 1px solid #ddd; max-width: 100%; border-radius: 8px; }
+button { margin-top: 16px; padding: 14px 32px; background: #6366f1; color: white; border: none; border-radius: 10px; font-size: 16px; font-weight: 600; cursor: pointer; }
+button:hover { background: #5558e6; }
+p { color: #666; font-size: 14px; }
+</style>
+</head>
+<body>
+<h1>EdgeConnect リッチメニュー画像生成</h1>
+<p>2500 x 843px</p>
+<canvas id="canvas" width="2500" height="843"></canvas>
+<br>
+<button onclick="download()">PNG をダウンロード</button>
+
+<script>
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const W = 2500;
+const H = 843;
+const COL_W = W / 3;
+
+// === 背景 ===
+ctx.fillStyle = '#ffffff';
+ctx.fillRect(0, 0, W, H);
+
+// 各カラムに薄い背景色
+ctx.fillStyle = '#f0f2ff';
+ctx.fillRect(0, 0, COL_W, H);
+ctx.fillStyle = '#eef8f0';
+ctx.fillRect(COL_W, 0, COL_W, H);
+ctx.fillStyle = '#f0f2ff';
+ctx.fillRect(COL_W * 2, 0, COL_W, H);
+
+// 区切り線
+ctx.fillStyle = '#e0e4f0';
+ctx.fillRect(COL_W - 1, 0, 2, H);
+ctx.fillRect(COL_W * 2 - 1, 0, 2, H);
+
+// === アイコン描画 ===
+const iconY = H * 0.38;
+const textY = H * 0.82;
+
+// --- 左: 予約一覧（カレンダー） ---
+function drawCalendar(cx, cy) {
+  const s = 320;
+  const x = cx - s/2;
+  const y = cy - s/2;
+  const r = 36;
+
+  ctx.save();
+  ctx.shadowColor = 'rgba(79,70,229,0.35)';
+  ctx.shadowBlur = 40;
+  ctx.shadowOffsetY = 15;
+
+  ctx.beginPath();
+  ctx.roundRect(x, y, s, s, r);
+  ctx.fillStyle = '#6366f1';
+  ctx.fill();
+  ctx.restore();
+
+  // ヘッダー
+  ctx.beginPath();
+  ctx.roundRect(x, y, s, s * 0.3, [r, r, 0, 0]);
+  ctx.fillStyle = '#4f46e5';
+  ctx.fill();
+
+  // ピン
+  ctx.fillStyle = '#fff';
+  [0.3, 0.7].forEach(px => {
+    ctx.beginPath();
+    ctx.roundRect(x + s * px - 9, y - 14, 18, 44, 9);
+    ctx.fill();
+  });
+
+  // グリッド
+  const gs = 42, gap = 14;
+  const cols = 4, rows = 3;
+  const gridW = cols * gs + (cols-1) * gap;
+  const gridH = rows * gs + (rows-1) * gap;
+  const gx0 = x + (s - gridW) / 2;
+  const gy0 = y + s * 0.36 + (s * 0.6 - gridH) / 2;
+
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      ctx.fillStyle = 'rgba(255,255,255,0.85)';
+      ctx.beginPath();
+      ctx.roundRect(gx0 + c*(gs+gap), gy0 + r*(gs+gap), gs, gs, 7);
+      ctx.fill();
+    }
+  }
+  // ハイライト
+  ctx.fillStyle = '#fbbf24';
+  ctx.beginPath();
+  ctx.roundRect(gx0 + 2*(gs+gap), gy0 + 1*(gs+gap), gs, gs, 7);
+  ctx.fill();
+}
+
+// --- 中央: ホーム ---
+function drawHome(cx, cy) {
+  const r = 160;
+
+  ctx.save();
+  ctx.shadowColor = 'rgba(34,197,94,0.3)';
+  ctx.shadowBlur = 40;
+  ctx.shadowOffsetY = 15;
+
+  const g = ctx.createRadialGradient(cx, cy - 20, 0, cx, cy, r);
+  g.addColorStop(0, '#4ade80');
+  g.addColorStop(1, '#22c55e');
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.fillStyle = g;
+  ctx.fill();
+  ctx.restore();
+
+  // 家アイコン
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth = 16;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+
+  const hs = 80;
+  // 屋根
+  ctx.beginPath();
+  ctx.moveTo(cx - hs * 1.2, cy + 5);
+  ctx.lineTo(cx, cy - hs);
+  ctx.lineTo(cx + hs * 1.2, cy + 5);
+  ctx.stroke();
+
+  // 壁
+  ctx.lineWidth = 12;
+  ctx.beginPath();
+  ctx.moveTo(cx - hs * 0.9, cy + 2);
+  ctx.lineTo(cx - hs * 0.9, cy + hs * 0.85);
+  ctx.lineTo(cx + hs * 0.9, cy + hs * 0.85);
+  ctx.lineTo(cx + hs * 0.9, cy + 2);
+  ctx.stroke();
+
+  // ドア
+  ctx.fillStyle = 'rgba(255,255,255,0.3)';
+  ctx.beginPath();
+  ctx.roundRect(cx - 22, cy + 18, 44, 52, 8);
+  ctx.fill();
+}
+
+// --- 右: マイページ ---
+function drawUser(cx, cy) {
+  const r = 160;
+
+  ctx.save();
+  ctx.shadowColor = 'rgba(79,70,229,0.35)';
+  ctx.shadowBlur = 40;
+  ctx.shadowOffsetY = 15;
+
+  const g = ctx.createRadialGradient(cx, cy - 20, 0, cx, cy, r);
+  g.addColorStop(0, '#a5b4fc');
+  g.addColorStop(1, '#6366f1');
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.fillStyle = g;
+  ctx.fill();
+  ctx.restore();
+
+  ctx.fillStyle = '#fff';
+
+  // 頭
+  ctx.beginPath();
+  ctx.arc(cx, cy - 42, 48, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 体
+  ctx.beginPath();
+  ctx.arc(cx, cy + 80, 80, Math.PI * 1.12, Math.PI * 1.88);
+  ctx.fill();
+}
+
+// === 描画実行 ===
+drawCalendar(COL_W * 0.5, iconY);
+drawHome(COL_W * 1.5, iconY);
+drawUser(COL_W * 2.5, iconY);
+
+// テキスト
+ctx.textAlign = 'center';
+ctx.textBaseline = 'middle';
+ctx.font = 'bold 100px -apple-system, "Hiragino Sans", sans-serif';
+
+ctx.fillStyle = '#312e81';
+ctx.fillText('予約一覧', COL_W * 0.5, textY);
+
+ctx.fillStyle = '#166534';
+ctx.fillText('ホーム', COL_W * 1.5, textY);
+
+ctx.fillStyle = '#312e81';
+ctx.fillText('マイページ', COL_W * 2.5, textY);
+
+function download() {
+  const link = document.createElement('a');
+  link.download = 'edgeconnect-richmenu.png';
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+}
+</script>
+</body>
+</html>

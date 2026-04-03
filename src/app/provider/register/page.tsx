@@ -1,10 +1,7 @@
-import { getCurrentUser } from "@/lib/auth/session";
-import { redirect } from "next/navigation";
 import { RegisterWizard } from "./register-wizard";
 
-export default async function RegisterPage() {
-  const user = await getCurrentUser();
-  if (!user) redirect("/");
-
+export default function RegisterPage() {
+  // 認証はLiffProvider（クライアント側）で管理
+  // RegisterWizard内でuseLiff()のisLoggedInをチェック
   return <RegisterWizard />;
 }

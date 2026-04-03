@@ -1,11 +1,13 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentUser } from "@/lib/auth/session";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { getCurrentUser, resolveUser } from "@/lib/auth/session";
 import { revalidatePath } from "next/cache";
 
 export async function registerProvider(formData: FormData) {
-  const user = await getCurrentUser();
+  const lineUserId = formData.get("line_user_id") as string | null;
+  const user = await resolveUser(lineUserId);
   if (!user) throw new Error("Not authenticated");
 
   const slug = (formData.get("slug") as string).toLowerCase().trim();
@@ -14,7 +16,7 @@ export async function registerProvider(formData: FormData) {
   const lineContactUrl = (formData.get("line_contact_url") as string) || null;
   const contactEmail = (formData.get("contact_email") as string) || null;
 
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   // アイコン画像アップロード
   let iconUrl: string | null = null;
@@ -32,7 +34,6 @@ export async function registerProvider(formData: FormData) {
     iconUrl = publicUrl;
   }
 
-  // Database Function で事業主登録
   const { data, error } = await supabase.rpc("register_provider", {
     p_line_user_id: user.lineUserId,
     p_slug: slug,
@@ -74,7 +75,6 @@ export async function updateProfile(formData: FormData) {
   updates.line_contact_url = lineContactUrl || null;
   updates.contact_email = contactEmail || null;
 
-  // アイコン画像アップロード
   const iconFile = formData.get("icon") as File | null;
   if (iconFile && iconFile.size > 0) {
     const ext = iconFile.name.split(".").pop();
@@ -101,7 +101,7 @@ export async function updateProfile(formData: FormData) {
 }
 
 export async function checkSlugAvailability(slug: string) {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const { data } = await supabase
     .from("providers")
     .select("id")

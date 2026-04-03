@@ -10,28 +10,25 @@ export async function GET() {
 
   const supabase = await createClient();
 
-  let provider = null;
-  if (user.role === "provider") {
-    const { data } = await supabase
-      .from("providers")
-      .select("slug, name, icon_url")
-      .eq("user_id", user.id)
-      .single();
-    provider = data;
-  }
+  // provider取得とbookings取得を並列実行
+  const [providerResult, bookingsResult] = await Promise.all([
+    user.role === "provider"
+      ? supabase.from("providers").select("slug, name, icon_url").eq("user_id", user.id).single()
+      : Promise.resolve({ data: null }),
+    supabase
+      .from("bookings")
+      .select("start_at, providers:provider_id ( name, slug ), services:service_id ( name )")
+      .eq("customer_user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(10),
+  ]);
 
-  // 最近予約した事業主を取得（重複排除、直近3件）
-  const { data: recentBookings } = await supabase
-    .from("bookings")
-    .select("start_at, providers:provider_id ( name, slug ), services:service_id ( name )")
-    .eq("customer_user_id", user.id)
-    .order("created_at", { ascending: false })
-    .limit(10);
+  const provider = providerResult.data;
 
   const seen = new Set<string>();
   const recentProviders: { slug: string; name: string; lastService: string; lastDate: string }[] = [];
 
-  for (const b of recentBookings || []) {
+  for (const b of bookingsResult.data || []) {
     const p = Array.isArray(b.providers) ? b.providers[0] : b.providers;
     const s = Array.isArray(b.services) ? b.services[0] : b.services;
     if (p && !seen.has(p.slug)) {
