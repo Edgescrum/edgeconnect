@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 interface Provider {
   slug: string;
   name: string;
@@ -61,30 +63,30 @@ export function ProviderDashboard({
             <p className="text-sm text-muted">管理画面</p>
             <h1 className="text-xl font-bold">{provider.name}</h1>
           </div>
-          <a
+          <Link
             href={`/p/${provider.slug}`}
             className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent text-sm font-bold text-white"
           >
             {provider.name[0]}
-          </a>
+          </Link>
         </div>
 
         {/* Quick Stats */}
         <div className="mt-6 grid grid-cols-2 gap-3">
-          <a
+          <Link
             href="/provider/bookings?filter=today"
             className="rounded-2xl bg-card p-4 shadow-sm ring-1 ring-border active:scale-[0.98]"
           >
             <p className="text-2xl font-bold">{todayCount}</p>
             <p className="text-xs text-muted">今日の予約 →</p>
-          </a>
-          <a
+          </Link>
+          <Link
             href="/provider/bookings?filter=week"
             className="rounded-2xl bg-card p-4 shadow-sm ring-1 ring-border active:scale-[0.98]"
           >
             <p className="text-2xl font-bold">{weekCount}</p>
             <p className="text-xs text-muted">今週の予約 →</p>
-          </a>
+          </Link>
         </div>
 
         {/* Menu */}
@@ -94,7 +96,7 @@ export function ProviderDashboard({
           </h2>
           <div className="space-y-2">
             {menuItems.map((item) => (
-              <a
+              <Link
                 key={item.href}
                 href={item.href}
                 className="flex min-h-[4.5rem] items-center gap-4 rounded-2xl bg-card p-4 shadow-sm ring-1 ring-border active:scale-[0.99]"
@@ -115,16 +117,16 @@ export function ProviderDashboard({
                 >
                   <path d="m9 18 6-6-6-6" />
                 </svg>
-              </a>
+              </Link>
             ))}
           </div>
         </div>
 
         {/* Switch to customer */}
         <div className="mt-6 text-center">
-          <a href="/" className="text-sm text-muted underline">
+          <Link href="/" className="text-sm text-muted underline">
             お客さま画面に戻る
-          </a>
+          </Link>
         </div>
       </div>
     </main>

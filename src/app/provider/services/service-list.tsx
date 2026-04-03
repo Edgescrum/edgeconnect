@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { toggleServicePublished } from "@/lib/actions/service";
 
 interface Service {
@@ -43,7 +44,7 @@ export function ServiceList({ services }: { services: Service[] }) {
 
       <div className="space-y-3">
         {services.map((service) => (
-          <a
+          <Link
             key={service.id}
             href={`/provider/services/${service.id}/edit`}
             className={`block rounded-2xl bg-card p-4 shadow-sm ring-1 ring-border active:scale-[0.99] transition-opacity ${
@@ -111,7 +112,7 @@ export function ServiceList({ services }: { services: Service[] }) {
                 </svg>
               </div>
             </div>
-          </a>
+          </Link>
         ))}
       </div>
     </div>

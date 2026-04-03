@@ -2,6 +2,7 @@
 
 import { useLiff } from "@/components/LiffProvider";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 
 interface RecentProvider {
   slug: string;

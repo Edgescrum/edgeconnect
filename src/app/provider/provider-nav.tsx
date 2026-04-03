@@ -1,6 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
+import Link from "next/link";
 
 const PAGE_TITLES: Record<string, string> = {
   "/provider/services": "サービスメニュー",
@@ -39,7 +40,7 @@ export function ProviderNav() {
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-card/80 backdrop-blur-lg">
       <div className="mx-auto flex max-w-lg items-center gap-3 px-4 py-3">
-        <a
+        <Link
           href={backHref}
           className="flex h-8 w-8 items-center justify-center rounded-lg active:bg-accent-bg"
           aria-label="戻る"
@@ -47,7 +48,7 @@ export function ProviderNav() {
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="m15 18-6-6 6-6" />
           </svg>
-        </a>
+        </Link>
         <h1 className="text-base font-semibold">{title}</h1>
       </div>
     </header>

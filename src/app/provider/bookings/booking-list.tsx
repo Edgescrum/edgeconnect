@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
+import Link from "next/link";
 
 interface BookingItem {
   id: string;
@@ -192,7 +193,7 @@ export function BookingList({
                         <div className="h-px flex-1 bg-border" />
                       </div>
                     )}
-                    <a
+                    <Link
                       href={`/provider/bookings/${booking.id}`}
                       onClick={() => handleCardClick(booking.id)}
                       className={`relative block rounded-2xl bg-card p-4 shadow-sm ring-1 ring-border active:scale-[0.99] ${
@@ -236,7 +237,7 @@ export function BookingList({
                           )}
                         </div>
                       </div>
-                    </a>
+                    </Link>
                   </div>
                 );
               });
