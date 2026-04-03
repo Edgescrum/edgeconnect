@@ -1,10 +1,10 @@
-import { getCurrentUser } from "@/lib/auth/session";
+import { resolveUser } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { ProviderDashboard } from "./dashboard-content";
 
 export default async function ProviderPage() {
-  const user = await getCurrentUser();
+  const user = await resolveUser();
   if (!user) redirect("/");
   if (user.role !== "provider") redirect("/provider/register");
 

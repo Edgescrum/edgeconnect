@@ -72,13 +72,24 @@ export async function POST(request: Request) {
       p_auth_uid: authUid,
     });
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       user: {
         lineUserId: lineProfile.userId,
         displayName: lineProfile.displayName,
         pictureUrl: lineProfile.pictureUrl,
       },
     });
+
+    // lineUserIdをcookieに保存（Server Componentで使用）
+    response.cookies.set("line_user_id", lineProfile.userId, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 30, // 30日
+    });
+
+    return response;
   } catch (error) {
     const message = error instanceof Error ? error.message : "Authentication failed";
     return NextResponse.json({ error: message }, { status: 401 });

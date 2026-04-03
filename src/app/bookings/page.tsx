@@ -1,10 +1,10 @@
-import { getCurrentUser } from "@/lib/auth/session";
+import { resolveUser } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { CustomerBookingList } from "./customer-booking-list";
 
 export default async function BookingsPage() {
-  const user = await getCurrentUser();
+  const user = await resolveUser();
   if (!user) redirect("/");
 
   const supabase = await createClient();

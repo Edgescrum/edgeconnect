@@ -140,10 +140,25 @@ export function LiffProvider({ children }: { children: ReactNode }) {
     }
   }, [liffInstance]);
 
-  // サーバーとクライアント初回レンダリングを一致させる
-  // mountedになるまではchildrenを表示しない（layout.tsxのローダーが見える）
   if (!mounted) {
-    return null;
+    return (
+      <div style={{
+        position: "fixed", inset: 0, zIndex: 9999,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        background: "#f8fafc",
+      }}>
+        <div style={{ textAlign: "center" }}>
+          <div style={{
+            width: 36, height: 36, margin: "0 auto",
+            border: "3px solid #e2e8f0", borderTopColor: "#6366f1",
+            borderRadius: "50%",
+            animation: "spin 0.8s linear infinite",
+          }} />
+          <p style={{ marginTop: 12, fontSize: 13, color: "#94a3b8" }}>読み込み中...</p>
+          <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
+        </div>
+      </div>
+    );
   }
 
   return (

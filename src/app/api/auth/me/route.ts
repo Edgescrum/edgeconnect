@@ -1,16 +1,21 @@
 import { NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/auth/session";
-import { createClient } from "@/lib/supabase/server";
+import { resolveUser } from "@/lib/auth/session";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { log } from "@/lib/log";
 
-export async function GET() {
-  const user = await getCurrentUser();
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const lineUserId = searchParams.get("lineUserId");
+
+  const user = await resolveUser(lineUserId);
   if (!user) {
     return NextResponse.json({ user: null }, { status: 401 });
   }
 
-  const supabase = await createClient();
+  log("me", "user resolved", { id: user.id, role: user.role });
 
-  // provider取得とbookings取得を並列実行
+  const supabase = createAdminClient();
+
   const [providerResult, bookingsResult] = await Promise.all([
     user.role === "provider"
       ? supabase.from("providers").select("slug, name, icon_url").eq("user_id", user.id).single()

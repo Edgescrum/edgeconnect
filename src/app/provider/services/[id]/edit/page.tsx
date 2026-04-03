@@ -1,4 +1,4 @@
-import { getCurrentUser } from "@/lib/auth/session";
+import { resolveUser } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { redirect, notFound } from "next/navigation";
 import { ServiceForm } from "../../service-form";
@@ -9,7 +9,7 @@ export default async function EditServicePage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const user = await getCurrentUser();
+  const user = await resolveUser();
   if (!user) redirect("/");
   if (user.role !== "provider") redirect("/");
 

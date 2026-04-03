@@ -1,10 +1,10 @@
-import { getCurrentUser } from "@/lib/auth/session";
+import { resolveUser } from "@/lib/auth/session";
 import { redirect } from "next/navigation";
 import { ServiceForm } from "../service-form";
 import { createService } from "@/lib/actions/service";
 
 export default async function NewServicePage() {
-  const user = await getCurrentUser();
+  const user = await resolveUser();
   if (!user) redirect("/");
   if (user.role !== "provider") redirect("/");
 

@@ -78,6 +78,8 @@ export function RegisterWizard() {
       }
       if (iconFile) formData.set("icon", iconFile);
       await registerProvider(formData);
+      // sessionStorageのキャッシュをクリア（roleがproviderに変わったため再取得させる）
+      sessionStorage.removeItem("edgeconnect_user");
       setStep(4);
     } catch (e) {
       setError(e instanceof Error ? e.message : "登録に失敗しました");

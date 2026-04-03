@@ -1,10 +1,10 @@
-import { getCurrentUser } from "@/lib/auth/session";
+import { resolveUser } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { ScheduleEditor } from "./schedule-editor";
 
 export default async function SchedulePage() {
-  const user = await getCurrentUser();
+  const user = await resolveUser();
   if (!user) redirect("/");
   if (user.role !== "provider") redirect("/");
 

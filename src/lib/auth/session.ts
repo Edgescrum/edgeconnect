@@ -46,6 +46,15 @@ export async function resolveUser(lineUserId?: string | null): Promise<CurrentUs
   const authUser = await getCurrentUser();
   if (authUser) return authUser;
 
+  // 2. cookieからlineUserId取得（Server Componentのフォールバック）
+  if (!lineUserId) {
+    try {
+      const { cookies } = await import("next/headers");
+      const cookieStore = await cookies();
+      lineUserId = cookieStore.get("line_user_id")?.value || null;
+    } catch { /* ignore */ }
+  }
+
   if (!lineUserId) {
     log("auth", "resolveUser: no auth session and no lineUserId");
     return null;

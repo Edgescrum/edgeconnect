@@ -1,10 +1,10 @@
-import { getCurrentUser } from "@/lib/auth/session";
+import { resolveUser } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { ServiceList } from "./service-list";
 
 export default async function ServicesPage() {
-  const user = await getCurrentUser();
+  const user = await resolveUser();
   if (!user) redirect("/");
   if (user.role !== "provider") redirect("/");
 

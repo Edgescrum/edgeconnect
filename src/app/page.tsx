@@ -44,8 +44,8 @@ export default function Home() {
   }
 
   useEffect(() => {
-    if (!isReady || !isLoggedIn) return;
-    fetch("/api/auth/me")
+    if (!isReady || !isLoggedIn || !user) return;
+    fetch(`/api/auth/me?lineUserId=${user.lineUserId}`)
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (data?.user) {
