@@ -9,6 +9,20 @@ import { isReservedSlug } from "@/lib/constants/reserved-slugs";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import sharp from "sharp";
 
+async function cleanOldIcons(adminSupabase: SupabaseClient, lineUserId: string) {
+  const { data: files } = await adminSupabase.storage
+    .from("avatars")
+    .list(lineUserId);
+  if (!files) return;
+  // icon-default.png以外の古いファイルを削除
+  const toDelete = files
+    .filter((f) => f.name !== "icon-default.png")
+    .map((f) => `${lineUserId}/${f.name}`);
+  if (toDelete.length > 0) {
+    await adminSupabase.storage.from("avatars").remove(toDelete);
+  }
+}
+
 async function uploadIcon(
   adminSupabase: SupabaseClient,
   lineUserId: string,
@@ -20,6 +34,8 @@ async function uploadIcon(
     .resize(512, 512, { fit: "cover" })
     .png({ quality: 85 })
     .toBuffer();
+  // 古いアイコンを削除（デフォルトは残す）
+  await cleanOldIcons(adminSupabase, lineUserId);
   // キャッシュバスティング: タイムスタンプをファイル名に含める
   const path = `${lineUserId}/icon-${Date.now()}.png`;
   const { error } = await adminSupabase.storage

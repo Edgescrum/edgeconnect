@@ -8,7 +8,19 @@ interface ImageCropperProps {
   onCancel: () => void;
 }
 
-export function ImageCropper({ src, onCrop, onCancel }: ImageCropperProps) {
+export function ImageCropper({ src: srcProp, onCrop, onCancel }: ImageCropperProps) {
+  // リモートURLの場合fetchしてBlob URLに変換（CORS対策）
+  const [src, setSrc] = useState(srcProp);
+  useEffect(() => {
+    if (srcProp.startsWith("blob:") || srcProp.startsWith("data:")) {
+      setSrc(srcProp);
+      return;
+    }
+    fetch(srcProp)
+      .then((res) => res.blob())
+      .then((blob) => setSrc(URL.createObjectURL(blob)))
+      .catch(() => setSrc(srcProp));
+  }, [srcProp]);
   const containerRef = useRef<HTMLDivElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
   const [scale, setScale] = useState(1);
