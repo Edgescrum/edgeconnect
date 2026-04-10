@@ -17,11 +17,15 @@ export default async function ProviderPage() {
 
   if (!provider) redirect("/provider/register");
 
-  // 予約統計を並列取得
-  const now = new Date();
-  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
-  const tomorrowStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).toISOString();
-  const weekEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 7).toISOString();
+  // 予約統計を並列取得（日本時間基準）
+  const jstNow = new Date(Date.now() + 9 * 60 * 60 * 1000);
+  const jstYear = jstNow.getUTCFullYear();
+  const jstMonth = jstNow.getUTCMonth();
+  const jstDate = jstNow.getUTCDate();
+  // JST 00:00 を UTC に変換（-9時間）
+  const todayStart = new Date(Date.UTC(jstYear, jstMonth, jstDate) - 9 * 60 * 60 * 1000).toISOString();
+  const tomorrowStart = new Date(Date.UTC(jstYear, jstMonth, jstDate + 1) - 9 * 60 * 60 * 1000).toISOString();
+  const weekEnd = new Date(Date.UTC(jstYear, jstMonth, jstDate + 7) - 9 * 60 * 60 * 1000).toISOString();
 
   const [
     { count: todayCount },

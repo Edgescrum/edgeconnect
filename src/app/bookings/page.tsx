@@ -4,7 +4,12 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { CustomerBookingList } from "./customer-booking-list";
 
-export default async function BookingsPage() {
+export default async function BookingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ filter?: string }>;
+}) {
+  const { filter } = await searchParams;
   const user = await resolveUser();
   if (!user) redirect("/");
 

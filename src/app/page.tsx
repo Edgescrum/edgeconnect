@@ -2,50 +2,29 @@
 
 import { useLiff } from "@/components/LiffProvider";
 import { useEffect, useState } from "react";
-import Link from "next/link";
 
 interface RecentProvider {
   slug: string;
   name: string;
+  icon_url: string | null;
   lastService: string;
   lastDate: string;
 }
 
 interface UserInfo {
   role: string;
-  provider?: { slug: string; name: string } | null;
+  provider?: { slug: string; name: string; icon_url: string | null } | null;
   recentProviders?: RecentProvider[];
 }
-
-const WELCOME_DISMISSED_KEY = "edgeconnect_welcome_dismissed";
-const PROVIDER_BANNER_DISMISSED_KEY = "edgeconnect_provider_banner_dismissed";
 
 export default function Home() {
   const { user, isReady, isLoggedIn } = useLiff();
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
-  const [showWelcome, setShowWelcome] = useState(false);
-  const [showProviderCta, setShowProviderCta] = useState(false);
   const [activeSlide, setActiveSlide] = useState(0);
-
-  // localStorage読み込み（LiffProviderがmountedガードしているので安全）
-  useEffect(() => {
-    if (!localStorage.getItem(WELCOME_DISMISSED_KEY)) setShowWelcome(true);
-    if (!localStorage.getItem(PROVIDER_BANNER_DISMISSED_KEY)) setShowProviderCta(true);
-  }, []);
-
-  function dismissWelcome() {
-    setShowWelcome(false);
-    localStorage.setItem(WELCOME_DISMISSED_KEY, "1");
-  }
-
-  function dismissProviderBanner() {
-    setShowProviderCta(false);
-    localStorage.setItem(PROVIDER_BANNER_DISMISSED_KEY, "1");
-  }
 
   useEffect(() => {
     if (!isReady || !isLoggedIn || !user) return;
-    fetch("/api/auth/me")
+    fetch("/api/auth/me", { cache: "no-store" })
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (data?.user) {
@@ -104,40 +83,25 @@ export default function Home() {
 
   const hasRecent = userInfo?.recentProviders && userInfo.recentProviders.length > 0;
   const isProvider = userInfo?.role === "provider";
-  const showProviderBanner = isLoggedIn && !isProvider && showProviderCta;
 
   // バナーカード定義
   const bannerCards: { key: string; node: React.ReactNode }[] = [];
-  if (showWelcome) {
-    bannerCards.push({
-      key: "welcome",
-      node: (
-        <>
-          <button
-            onClick={(e) => { e.stopPropagation(); dismissWelcome(); }}
-            className="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full bg-white/20 text-xs active:bg-white/30"
-          >
-            ✕
-          </button>
-          <h2 className="text-lg font-bold text-white">EdgeConnectへようこそ</h2>
-          <p className="mt-2 text-sm leading-relaxed text-white/90">
-            LINEで簡単に予約ができるサービスです。事業主のQRコードやURLから予約しましょう。
-          </p>
-        </>
-      ),
-    });
-  }
-  if (showProviderBanner) {
+  bannerCards.push({
+    key: "welcome",
+    node: (
+      <>
+        <h2 className="text-lg font-bold text-white">EdgeConnectへようこそ</h2>
+        <p className="mt-2 text-sm leading-relaxed text-white/90">
+          LINEで簡単に予約ができるサービスです。事業主のQRコードやURLから予約しましょう。
+        </p>
+      </>
+    ),
+  });
+  if (!isProvider) {
     bannerCards.push({
       key: "provider-cta",
       node: (
         <>
-          <button
-            onClick={(e) => { e.stopPropagation(); dismissProviderBanner(); }}
-            className="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full bg-white/20 text-xs active:bg-white/30"
-          >
-            ✕
-          </button>
           <h2 className="text-lg font-bold text-white">予約を受け付けませんか？</h2>
           <p className="mt-2 text-sm leading-relaxed text-white/90">
             無料であなた専用の予約ページを作成できます。
@@ -207,8 +171,16 @@ export default function Home() {
               href="/provider"
               className="flex items-center gap-4 rounded-2xl border-l-4 border-accent bg-card p-4 shadow-sm ring-1 ring-border active:scale-[0.99]"
             >
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-accent text-sm font-bold text-white shadow-sm shadow-accent/30">
-                {userInfo?.provider?.name?.[0] || "E"}
+              <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-xl bg-accent text-sm font-bold text-white shadow-sm shadow-accent/30">
+                {userInfo?.provider?.icon_url ? (
+                  <img
+                    src={userInfo.provider.icon_url}
+                    alt={userInfo.provider.name || ""}
+                    className="h-11 w-11 object-cover"
+                  />
+                ) : (
+                  userInfo?.provider?.name?.[0] || "E"
+                )}
               </div>
               <div className="flex-1">
                 <p className="font-semibold">{userInfo?.provider?.name || "管理画面"}</p>
@@ -260,8 +232,12 @@ export default function Home() {
                         href={`/p/${rp.slug}`}
                         className="flex items-center gap-3.5 rounded-xl bg-background p-3.5 ring-1 ring-border active:scale-[0.99]"
                       >
-                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-sm font-semibold text-slate-500">
-                          {rp.name[0]}
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-slate-100 text-sm font-semibold text-slate-500">
+                          {rp.icon_url ? (
+                            <img src={rp.icon_url} alt={rp.name} className="h-9 w-9 object-cover" />
+                          ) : (
+                            rp.name[0]
+                          )}
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-semibold truncate">{rp.name}</p>
@@ -281,14 +257,6 @@ export default function Home() {
           </div>
         )}
 
-        {/* ガイド */}
-        {!showWelcome && !hasRecent && !showProviderBanner && (
-          <div className="px-4 pt-4 text-center">
-            <p className="text-sm text-muted">
-              事業主のQRコードやURLから予約ページにアクセスしてください
-            </p>
-          </div>
-        )}
       </div>
     </main>
   );

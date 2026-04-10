@@ -17,11 +17,13 @@ export function BookingFlow({
   providerName,
   providerSlug,
   service,
+  brandColor = "#6366f1",
 }: {
   providerId: number;
   providerName: string;
   providerSlug: string;
   service: Service;
+  brandColor?: string;
 }) {
   const [step, setStep] = useState<"date" | "confirm" | "done">("date");
   const [customerName, setCustomerName] = useState("");
@@ -114,7 +116,6 @@ export function BookingFlow({
 
   function handleSlotSelect(slot: { slot_start: string; slot_end: string }) {
     setSelectedSlot(slot);
-    setStep("confirm");
   }
 
   async function handleConfirm() {
@@ -146,8 +147,13 @@ export function BookingFlow({
     return d.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" });
   }
 
+  const brandBg = `color-mix(in srgb, ${brandColor} 10%, transparent)`;
+
   return (
-    <main className="min-h-screen bg-background">
+    <main
+      className="min-h-screen bg-background"
+      style={{ "--accent": brandColor, "--accent-bg": brandBg, "--accent-light": brandColor } as React.CSSProperties}
+    >
       {/* Header */}
       <header className="sticky top-0 z-40 border-b border-border bg-card/80 backdrop-blur-lg">
         <div className="mx-auto flex max-w-lg items-center gap-3 px-4 py-3">
@@ -304,16 +310,33 @@ export function BookingFlow({
                   </div>
                 ) : (
                   <div className="grid grid-cols-3 gap-2">
-                    {slots.map((slot) => (
-                      <button
-                        key={slot.slot_start}
-                        onClick={() => handleSlotSelect(slot)}
-                        className="rounded-xl bg-card px-3 py-3 text-center text-sm font-medium ring-1 ring-border active:bg-accent active:text-white"
-                      >
-                        {formatTime(slot.slot_start)}
-                      </button>
-                    ))}
+                    {slots.map((slot) => {
+                      const isSelected = selectedSlot?.slot_start === slot.slot_start;
+                      return (
+                        <button
+                          key={slot.slot_start}
+                          onClick={() => handleSlotSelect(slot)}
+                          className={`rounded-xl px-3 py-3 text-center text-sm font-medium ring-1 transition-colors ${
+                            isSelected
+                              ? "bg-accent text-white ring-accent"
+                              : "bg-card ring-border active:bg-accent-bg"
+                          }`}
+                        >
+                          {formatTime(slot.slot_start)}
+                        </button>
+                      );
+                    })}
                   </div>
+                )}
+
+                {/* 予約に進むボタン */}
+                {selectedSlot && (
+                  <button
+                    onClick={() => setStep("confirm")}
+                    className="mt-6 flex w-full items-center justify-center rounded-xl bg-accent py-3.5 font-semibold text-white shadow-lg shadow-accent/25 active:scale-[0.98]"
+                  >
+                    予約に進む
+                  </button>
                 )}
               </div>
             )}

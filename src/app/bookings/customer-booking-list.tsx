@@ -24,8 +24,19 @@ const FILTERS: { value: FilterType; label: string }[] = [
 
 const DAYS = ["日", "月", "火", "水", "木", "金", "土"];
 
+const FILTER_STORAGE_KEY = "edgeconnect_bookings_filter";
+
 export function CustomerBookingList({ bookings }: { bookings: BookingItem[] }) {
-  const [filter, setFilter] = useState<FilterType>("all");
+  const [filter, setFilterState] = useState<FilterType>(() => {
+    if (typeof window === "undefined") return "all";
+    const saved = sessionStorage.getItem(FILTER_STORAGE_KEY);
+    return (FILTERS.find((f) => f.value === saved)?.value) || "all";
+  });
+
+  function setFilter(value: FilterType) {
+    setFilterState(value);
+    sessionStorage.setItem(FILTER_STORAGE_KEY, value);
+  }
   const [visibleCount, setVisibleCount] = useState(20);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
@@ -65,7 +76,6 @@ export function CustomerBookingList({ bookings }: { bookings: BookingItem[] }) {
   const visible = useMemo(() => filtered.slice(0, visibleCount), [filtered, visibleCount]);
   const hasMore = visibleCount < filtered.length;
 
-  // フィルター変更時にリセット
   useEffect(() => setVisibleCount(20), [filter]);
 
   // 無限スクロール

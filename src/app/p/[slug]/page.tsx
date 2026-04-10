@@ -1,8 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
-import { headers } from "next/headers";
 import Image from "next/image";
 import { notFound } from "next/navigation";
-import { BookingButton } from "./booking-button";
+import Link from "next/link";
+import { getCategoryLabel } from "@/lib/constants/categories";
 
 // 60秒キャッシュ（予約が入った時にrevalidatePathで無効化される）
 export const revalidate = 60;
@@ -15,6 +15,8 @@ interface ProviderProfile {
   icon_url: string | null;
   line_contact_url: string | null;
   contact_email: string | null;
+  brand_color: string;
+  category: string | null;
   services: {
     id: number;
     name: string;
@@ -30,10 +32,6 @@ export default async function ProviderProfilePage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const headersList = await headers();
-  const ua = headersList.get("user-agent") || "";
-  const isLineApp = /\bLine\b/i.test(ua) || /\bLIFF\b/i.test(ua);
-
   const supabase = await createClient();
 
   // Database Function で連絡先を含むプロフィールを取得（一括取得不可）
@@ -44,8 +42,15 @@ export default async function ProviderProfilePage({
   const provider = data as ProviderProfile | null;
   if (!provider) notFound();
 
+  const brandColor = provider.brand_color || "#6366f1";
+  // accent-bgは10%透明度のブランドカラー
+  const brandBg = `color-mix(in srgb, ${brandColor} 10%, transparent)`;
+
   return (
-    <main className="min-h-screen bg-background">
+    <main
+      className="min-h-screen bg-background"
+      style={{ "--accent": brandColor, "--accent-bg": brandBg, "--accent-light": brandColor } as React.CSSProperties}
+    >
       {/* Header */}
       <div className="sticky top-0 z-40 bg-gradient-to-b from-accent/10 to-accent/10">
         <div className="mx-auto flex max-w-lg items-center px-4 py-3">
@@ -78,6 +83,14 @@ export default async function ProviderProfilePage({
             </div>
           )}
           <h1 className="mt-5 text-2xl font-bold">{provider.name}</h1>
+          {getCategoryLabel(provider.category) && (
+            <span
+              className="mt-2 inline-block rounded-full px-3 py-1 text-xs font-medium"
+              style={{ backgroundColor: `${brandColor}1a`, color: brandColor }}
+            >
+              {getCategoryLabel(provider.category)}
+            </span>
+          )}
           {provider.bio && (
             <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-muted">
               {provider.bio}
@@ -96,17 +109,20 @@ export default async function ProviderProfilePage({
             <ul className="space-y-2.5">
               {provider.services.map((service) => (
                 <li key={service.id}>
-                  <div className="rounded-2xl bg-card p-4 shadow-sm ring-1 ring-border">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <p className="font-semibold">{service.name}</p>
-                        {service.description && (
-                          <p className="mt-1 text-xs text-muted">
-                            {service.description}
-                          </p>
-                        )}
-                      </div>
-                      <div className="ml-4 text-right">
+                  <Link
+                    href={`/p/${slug}/book/${service.id}`}
+                    className="flex items-center justify-between rounded-2xl bg-card p-4 shadow-sm ring-1 ring-border active:scale-[0.99]"
+                  >
+                    <div className="flex-1">
+                      <p className="font-semibold">{service.name}</p>
+                      {service.description && (
+                        <p className="mt-1 text-xs text-muted">
+                          {service.description}
+                        </p>
+                      )}
+                    </div>
+                    <div className="ml-4 flex items-center gap-2">
+                      <div className="text-right">
                         <p className="text-lg font-bold">
                           ¥{service.price.toLocaleString()}
                         </p>
@@ -114,9 +130,11 @@ export default async function ProviderProfilePage({
                           {service.duration_min}分
                         </p>
                       </div>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0 text-muted">
+                        <path d="m9 18 6-6-6-6" />
+                      </svg>
                     </div>
-                    <BookingButton slug={slug} serviceId={service.id} isLineApp={isLineApp} />
-                  </div>
+                  </Link>
                 </li>
               ))}
             </ul>

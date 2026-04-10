@@ -12,7 +12,7 @@ export default async function ServicesPage() {
   const supabase = await createClient();
   const { data: provider } = await supabase
     .from("providers")
-    .select("id")
+    .select("id, slug")
     .eq("user_id", user.id)
     .single();
 
@@ -40,7 +40,19 @@ export default async function ServicesPage() {
         </div>
 
         {services && services.length > 0 ? (
-          <ServiceList services={services} />
+          <>
+            <ServiceList services={services} />
+            <Link
+              href={`/p/${provider.slug}`}
+              className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-border py-3 text-sm font-semibold text-muted active:scale-[0.98]"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+                <circle cx="12" cy="12" r="3" />
+              </svg>
+              お客さまからの見え方を確認
+            </Link>
+          </>
         ) : (
           <div className="mt-12 text-center">
             <p className="text-4xl">📋</p>

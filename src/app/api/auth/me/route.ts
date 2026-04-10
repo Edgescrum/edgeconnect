@@ -20,7 +20,7 @@ export async function GET() {
       : Promise.resolve({ data: null }),
     supabase
       .from("bookings")
-      .select("start_at, providers:provider_id ( name, slug ), services:service_id ( name )")
+      .select("start_at, providers:provider_id ( name, slug, icon_url ), services:service_id ( name )")
       .eq("customer_user_id", user.id)
       .order("created_at", { ascending: false })
       .limit(10),
@@ -29,7 +29,7 @@ export async function GET() {
   const provider = providerResult.data;
 
   const seen = new Set<string>();
-  const recentProviders: { slug: string; name: string; lastService: string; lastDate: string }[] = [];
+  const recentProviders: { slug: string; name: string; icon_url: string | null; lastService: string; lastDate: string }[] = [];
 
   for (const b of bookingsResult.data || []) {
     const p = Array.isArray(b.providers) ? b.providers[0] : b.providers;
@@ -39,6 +39,7 @@ export async function GET() {
       recentProviders.push({
         slug: p.slug,
         name: p.name,
+        icon_url: p.icon_url || null,
         lastService: s?.name || "",
         lastDate: b.start_at,
       });
@@ -46,13 +47,16 @@ export async function GET() {
     }
   }
 
-  return NextResponse.json({
-    user: {
-      id: user.id,
-      displayName: user.displayName,
-      role: user.role,
+  return NextResponse.json(
+    {
+      user: {
+        id: user.id,
+        displayName: user.displayName,
+        role: user.role,
+      },
+      provider,
+      recentProviders,
     },
-    provider,
-    recentProviders,
-  });
+    { headers: { "Cache-Control": "no-store" } }
+  );
 }

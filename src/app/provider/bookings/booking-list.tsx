@@ -32,9 +32,19 @@ export function BookingList({
   bookings: BookingItem[];
   initialFilter: string;
 }) {
-  const [filter, setFilter] = useState<FilterType>(
-    (FILTERS.find((f) => f.value === initialFilter)?.value) || "all"
-  );
+  const FILTER_STORAGE_KEY = "edgeconnect_provider_bookings_filter";
+
+  const [filter, setFilterState] = useState<FilterType>(() => {
+    if (typeof window === "undefined") return (FILTERS.find((f) => f.value === initialFilter)?.value) || "all";
+    const saved = sessionStorage.getItem(FILTER_STORAGE_KEY);
+    return (FILTERS.find((f) => f.value === saved)?.value) || (FILTERS.find((f) => f.value === initialFilter)?.value) || "all";
+  });
+
+  function setFilter(value: FilterType) {
+    setFilterState(value);
+    sessionStorage.setItem(FILTER_STORAGE_KEY, value);
+  }
+
   const [visibleCount, setVisibleCount] = useState(20);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const [navigatingId, setNavigatingId] = useState<string | null>(null);

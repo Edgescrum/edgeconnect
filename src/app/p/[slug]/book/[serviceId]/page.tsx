@@ -19,6 +19,7 @@ export default async function BookingPage({
     id: number;
     slug: string;
     name: string;
+    brand_color: string;
     services: { id: number; name: string; duration_min: number; price: number }[];
   } | null;
 
@@ -35,6 +36,7 @@ export default async function BookingPage({
       providerName={profile.name}
       providerSlug={slug}
       service={service}
+      brandColor={profile.brand_color || "#6366f1"}
     />
   );
 }

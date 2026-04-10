@@ -9,7 +9,7 @@ export function RegisterForm() {
   const { user } = useLiff();
   const router = useRouter();
   const [slugStatus, setSlugStatus] = useState<
-    "idle" | "checking" | "available" | "taken"
+    "idle" | "checking" | "available" | "taken" | "reserved"
   >("idle");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -21,8 +21,8 @@ export function RegisterForm() {
       return;
     }
     setSlugStatus("checking");
-    const available = await checkSlugAvailability(value);
-    setSlugStatus(available ? "available" : "taken");
+    const result = await checkSlugAvailability(value);
+    setSlugStatus(result.available ? "available" : result.reason === "reserved" ? "reserved" : "taken");
   }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -64,6 +64,9 @@ export function RegisterForm() {
         )}
         {slugStatus === "taken" && (
           <p className="mt-1 text-sm text-red-600">既に使われています</p>
+        )}
+        {slugStatus === "reserved" && (
+          <p className="mt-1 text-sm text-red-600">このURLは使用できません</p>
         )}
       </div>
 
@@ -108,20 +111,25 @@ export function RegisterForm() {
 
       <div>
         <label
-          htmlFor="line_contact_url"
+          htmlFor="line_id"
           className="mb-1 block text-sm font-medium"
         >
-          個人LINE URL（必須）
+          LINE ID
+          <span className="ml-1 text-xs text-gray-500">（任意）</span>
         </label>
-        <input
-          id="line_contact_url"
-          name="line_contact_url"
-          type="url"
-          required
-          defaultValue={user ? `https://line.me/ti/p/~${user.lineUserId}` : ""}
-          placeholder="https://line.me/ti/p/xxxxx"
-          className="w-full rounded-lg border px-3 py-2"
-        />
+        <div className="flex items-center gap-2">
+          <span className="shrink-0 text-sm text-gray-500">@</span>
+          <input
+            id="line_id"
+            name="line_id"
+            type="text"
+            placeholder="your-line-id"
+            className="w-full rounded-lg border px-3 py-2"
+          />
+        </div>
+        <p className="mt-1 text-xs text-gray-500">
+          LINEアプリの設定 &gt; プロフィール &gt; LINE IDで確認できます
+        </p>
       </div>
 
       {error && <p className="text-sm text-red-600">{error}</p>}

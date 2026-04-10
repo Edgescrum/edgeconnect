@@ -257,39 +257,29 @@ export function ScheduleEditor({
               <label className="mb-1 block text-xs text-muted">
                 予約前
               </label>
-              <div className="flex items-center gap-1">
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  min="0"
-                  step="5"
-                  value={intervalBefore}
-                  onChange={(e) =>
-                    setIntervalBefore(parseInt(e.target.value) || 0)
-                  }
-                  className="w-20 rounded-lg border border-border bg-background px-3 py-2.5 text-center"
-                />
-                <span className="text-sm text-muted">分</span>
-              </div>
+              <select
+                value={intervalBefore}
+                onChange={(e) => setIntervalBefore(parseInt(e.target.value))}
+                className="w-full rounded-lg border border-border bg-background px-3 py-2.5"
+              >
+                {Array.from({ length: 13 }, (_, i) => i * 5).map((v) => (
+                  <option key={v} value={v}>{v}分</option>
+                ))}
+              </select>
             </div>
             <div className="flex-1">
               <label className="mb-1 block text-xs text-muted">
                 予約後
               </label>
-              <div className="flex items-center gap-1">
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  min="0"
-                  step="5"
-                  value={intervalAfter}
-                  onChange={(e) =>
-                    setIntervalAfter(parseInt(e.target.value) || 0)
-                  }
-                  className="w-20 rounded-lg border border-border bg-background px-3 py-2.5 text-center"
-                />
-                <span className="text-xs text-muted">分</span>
-              </div>
+              <select
+                value={intervalAfter}
+                onChange={(e) => setIntervalAfter(parseInt(e.target.value))}
+                className="w-full rounded-lg border border-border bg-background px-3 py-2.5"
+              >
+                {Array.from({ length: 13 }, (_, i) => i * 5).map((v) => (
+                  <option key={v} value={v}>{v}分</option>
+                ))}
+              </select>
             </div>
           </div>
         </div>

@@ -41,5 +41,11 @@ export async function GET(request: Request) {
     }
   }
 
-  return NextResponse.json({ sent, total: bookings?.length || 0 });
+  // 過去のブロック枠を削除
+  const { count: deletedBlocks } = await supabase
+    .from("blocked_slots")
+    .delete({ count: "exact" })
+    .lt("end_at", new Date().toISOString());
+
+  return NextResponse.json({ sent, total: bookings?.length || 0, deletedBlocks: deletedBlocks || 0 });
 }

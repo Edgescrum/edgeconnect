@@ -50,13 +50,12 @@ export function generateGoogleCalendarUrl(
   endAt: Date,
   details?: string
 ): string {
+  // GoogleカレンダーはUTC形式 YYYYMMDDTHHmmSSZ を要求
   const fmt = (d: Date) =>
     d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
-  const params = new URLSearchParams({
-    action: "TEMPLATE",
-    text: title,
-    dates: `${fmt(startAt)}/${fmt(endAt)}`,
-  });
-  if (details) params.set("details", details);
-  return `https://calendar.google.com/calendar/r/eventedit?${params.toString()}`;
+  const dates = `${fmt(startAt)}/${fmt(endAt)}`;
+  // calendar/event はモバイルでも安定動作する
+  let url = `https://www.google.com/calendar/event?action=TEMPLATE&text=${encodeURIComponent(title)}&dates=${dates}`;
+  if (details) url += `&details=${encodeURIComponent(details)}`;
+  return url;
 }

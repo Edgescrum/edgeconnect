@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { toggleServicePublished } from "@/lib/actions/service";
+import { Toggle } from "@/components/Toggle";
 
 interface Service {
   id: number;
@@ -78,27 +79,13 @@ export function ServiceList({ services }: { services: Service[] }) {
 
               {/* Toggle + Chevron */}
               <div className="ml-3 flex items-center gap-2">
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleToggle(service.id, isPublished(service));
-                  }}
-                  className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition-colors duration-200 ${
-                    isPublished(service) ? "bg-success" : "bg-gray-300"
-                  }`}
-                  aria-label={
-                    isPublished(service) ? "公開中（タップで非公開）" : "非公開（タップで公開）"
-                  }
-                >
-                  <span
-                    className={`inline-block h-5 w-5 rounded-full bg-white shadow-md transition-transform duration-200 ${
-                      isPublished(service)
-                        ? "translate-x-6"
-                        : "translate-x-1"
-                    }`}
+                <div onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
+                  <Toggle
+                    checked={isPublished(service)}
+                    onChange={() => handleToggle(service.id, isPublished(service))}
+                    ariaLabel={isPublished(service) ? "公開中（タップで非公開）" : "非公開（タップで公開）"}
                   />
-                </button>
+                </div>
                 <svg
                   width="16"
                   height="16"

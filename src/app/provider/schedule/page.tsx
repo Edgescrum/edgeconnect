@@ -28,6 +28,7 @@ export default async function SchedulePage() {
     .from("blocked_slots")
     .select("*")
     .eq("provider_id", provider.id)
+    .gte("end_at", new Date().toISOString())
     .order("start_at", { ascending: true });
 
   return (
