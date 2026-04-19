@@ -54,9 +54,9 @@ export default function TestLiffPage() {
         }
       };
       const origXHROpen = XMLHttpRequest.prototype.open;
-      const patchedOpen = function (this: XMLHttpRequest, method: string, url: string | URL) {
+      const patchedOpen = function (this: XMLHttpRequest, method: string, url: string | URL, async?: boolean, username?: string | null, password?: string | null) {
         addLog(`[XHR] ${method} ${String(url).slice(0, 120)}`);
-        return origXHROpen.call(this, method, url);
+        return origXHROpen.call(this, method, url, async ?? true, username, password);
       };
       XMLHttpRequest.prototype.open = patchedOpen as typeof XMLHttpRequest.prototype.open;
       cleanupMonitor = () => {
