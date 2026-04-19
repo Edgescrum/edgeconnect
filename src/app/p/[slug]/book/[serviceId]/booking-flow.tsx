@@ -3,11 +3,19 @@
 import { useState, useMemo } from "react";
 import { getAvailableSlots, createBooking } from "@/lib/actions/booking";
 
+interface CustomField {
+  label: string;
+  type: "input" | "textarea";
+  required: boolean;
+}
+
 interface Service {
   id: number;
   name: string;
+  description: string | null;
   duration_min: number;
   price: number;
+  custom_fields: CustomField[] | null;
 }
 
 const WEEKDAY_LABELS = ["日", "月", "火", "水", "木", "金", "土"];
@@ -18,15 +26,21 @@ export function BookingFlow({
   providerSlug,
   service,
   brandColor = "#6366f1",
+  isLineFriend = false,
 }: {
   providerId: number;
   providerName: string;
   providerSlug: string;
   service: Service;
   brandColor?: string;
+  isLineFriend?: boolean;
 }) {
   const [step, setStep] = useState<"date" | "confirm" | "done">("date");
   const [customerName, setCustomerName] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
+  const [customAnswers, setCustomAnswers] = useState<Record<number, string>>({});
+  const [descOpen, setDescOpen] = useState(false);
+  const [showFriendPrompt, setShowFriendPrompt] = useState(false);
 
   // カレンダー状態
   const today = useMemo(() => {
@@ -118,12 +132,60 @@ export function BookingFlow({
     setSelectedSlot(slot);
   }
 
-  async function handleConfirm() {
-    if (!selectedSlot) return;
+  function validateForm(): boolean {
+    if (!selectedSlot) return false;
+    if (!customerName.trim()) {
+      setError("お名前を入力してください");
+      return false;
+    }
+    if (!customerPhone.trim()) {
+      setError("電話番号を入力してください");
+      return false;
+    }
+    const fields = service.custom_fields || [];
+    for (let i = 0; i < fields.length; i++) {
+      if (fields[i].required && !customAnswers[i]?.trim()) {
+        setError(`「${fields[i].label}」を入力してください`);
+        return false;
+      }
+    }
     setError(null);
+    return true;
+  }
+
+  async function handleConfirm() {
+    if (!validateForm()) return;
+    // 最新の友だち状態をAPIで確認
+    try {
+      const res = await fetch("/api/user/friend-status");
+      const { isLineFriend: isFriend } = await res.json();
+      if (!isFriend) {
+        setShowFriendPrompt(true);
+        return;
+      }
+    } catch {
+      // 取得失敗時はそのまま予約に進む
+    }
+    submitBooking();
+  }
+
+  async function submitBooking() {
+    if (!selectedSlot) return;
+    setShowFriendPrompt(false);
     setSubmitting(true);
     try {
-      const result = await createBooking(providerId, service.id, selectedSlot.slot_start, customerName || undefined);
+      const fields = service.custom_fields || [];
+      const answers = fields.length > 0
+        ? fields.map((f, i) => ({ label: f.label, value: customAnswers[i] || "" })).filter((a) => a.value)
+        : undefined;
+      const result = await createBooking(
+        providerId,
+        service.id,
+        selectedSlot.slot_start,
+        customerName,
+        customerPhone,
+        answers
+      );
       setBookingId(typeof result === "object" && result !== null ? (result as { id: string }).id : null);
       setStep("done");
     } catch (e) {
@@ -156,7 +218,7 @@ export function BookingFlow({
     >
       {/* Header */}
       <header className="sticky top-0 z-40 border-b border-border bg-card/80 backdrop-blur-lg">
-        <div className="mx-auto flex max-w-lg items-center gap-3 px-4 py-3">
+        <div className="mx-auto flex max-w-lg items-center gap-3 px-4 py-3 sm:max-w-3xl sm:px-8">
           {step === "date" ? (
             <a
               href={`/p/${providerSlug}`}
@@ -184,30 +246,65 @@ export function BookingFlow({
         </div>
       </header>
 
-      <div className="mx-auto max-w-lg px-4 py-6">
+      <div className="mx-auto max-w-lg px-4 py-6 sm:max-w-3xl sm:px-8">
         {/* サービス情報 */}
         {step !== "done" && (
-          <div className="mb-6 rounded-2xl bg-card p-4 shadow-sm ring-1 ring-border">
-            <p className="text-xs text-muted">{providerName}</p>
-            <p className="mt-1 font-semibold">{service.name}</p>
-            <div className="mt-2 flex items-center gap-3 text-sm">
-              <span className="font-bold">¥{service.price.toLocaleString()}</span>
-              <span className="text-muted">{service.duration_min}分</span>
+          <div className={`mb-6 rounded-2xl bg-card shadow-sm ring-1 ring-border ${step === "confirm" ? "sm:mx-auto sm:max-w-lg" : ""}`}>
+            <div className="flex items-center justify-between px-4 pt-4 pb-3">
+              <div className="min-w-0 flex-1">
+                <p className="text-[11px] text-muted">{providerName}</p>
+                <p className="mt-0.5 text-sm font-semibold leading-snug">{service.name}</p>
+              </div>
+              <div className="ml-3 flex shrink-0 items-center gap-2 text-sm">
+                <span className="font-bold">¥{service.price.toLocaleString()}</span>
+                <span className="text-xs text-muted">{service.duration_min}分</span>
+              </div>
             </div>
+            {service.description && (
+              <>
+                <div className="border-t border-border">
+                  <button
+                    type="button"
+                    onClick={() => setDescOpen(!descOpen)}
+                    className="flex w-full items-center justify-between px-4 py-2.5 text-xs text-muted active:bg-background/50"
+                  >
+                    <span>詳しい説明</span>
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      className={`transition-transform ${descOpen ? "rotate-180" : ""}`}
+                    >
+                      <path d="m6 9 6 6 6-6" />
+                    </svg>
+                  </button>
+                </div>
+                {descOpen && (
+                  <div className="border-t border-border px-4 py-3">
+                    <p className="whitespace-pre-wrap text-xs leading-relaxed text-muted">
+                      {service.description}
+                    </p>
+                  </div>
+                )}
+              </>
+            )}
           </div>
         )}
 
         {error && (
-          <div className="mb-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">
+          <div className={`mb-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600 ${step === "confirm" ? "sm:mx-auto sm:max-w-lg" : ""}`}>
             {error}
           </div>
         )}
 
         {/* Step 1: 日時選択 */}
         {step === "date" && (
-          <div>
+          <><div className="sm:flex sm:gap-6 sm:items-start">
             {/* 月カレンダー */}
-            <div className="rounded-2xl bg-card p-4 shadow-sm ring-1 ring-border">
+            <div className="rounded-2xl bg-card p-4 shadow-sm ring-1 ring-border sm:w-[340px] sm:shrink-0 sm:p-5">
               {/* 月ナビ */}
               <div className="flex items-center justify-between">
                 <button
@@ -293,7 +390,7 @@ export function BookingFlow({
 
             {/* 時間帯選択 */}
             {selectedDate && (
-              <div className="mt-6">
+              <div className="mt-6 sm:mt-0 sm:flex-1 sm:min-w-0">
                 <h2 className="mb-3 text-sm font-semibold">
                   {(() => {
                     const { month, day, weekday } = formatDate(selectedDate);
@@ -309,7 +406,7 @@ export function BookingFlow({
                     <p className="text-sm text-muted">この日は空きがありません</p>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
                     {slots.map((slot) => {
                       const isSelected = selectedSlot?.slot_start === slot.slot_start;
                       return (
@@ -329,11 +426,11 @@ export function BookingFlow({
                   </div>
                 )}
 
-                {/* 予約に進むボタン */}
+                {/* 予約に進むボタン（モバイル） */}
                 {selectedSlot && (
                   <button
                     onClick={() => setStep("confirm")}
-                    className="mt-6 flex w-full items-center justify-center rounded-xl bg-accent py-3.5 font-semibold text-white shadow-lg shadow-accent/25 active:scale-[0.98]"
+                    className="mt-6 flex w-full items-center justify-center rounded-xl bg-accent py-3.5 font-semibold text-white shadow-lg shadow-accent/25 active:scale-[0.98] sm:hidden"
                   >
                     予約に進む
                   </button>
@@ -341,26 +438,75 @@ export function BookingFlow({
               </div>
             )}
           </div>
+          {/* 予約に進むボタン（PC: カレンダー+時間帯の下） */}
+          {selectedSlot && (
+            <button
+              onClick={() => setStep("confirm")}
+              className="mt-6 hidden w-full items-center justify-center rounded-xl bg-accent py-3.5 font-semibold text-white shadow-lg shadow-accent/25 active:scale-[0.98] sm:flex"
+            >
+              予約に進む
+            </button>
+          )}
+          </>
         )}
 
         {/* Step 2: 確認 */}
         {step === "confirm" && selectedSlot && (
-          <div>
-            {/* 氏名入力 */}
-            <div className="mb-4 rounded-2xl bg-card p-5 shadow-sm ring-1 ring-border">
-              <label className="mb-1.5 block text-sm font-medium">
-                お名前
-              </label>
-              <input
-                type="text"
-                value={customerName}
-                onChange={(e) => setCustomerName(e.target.value)}
-                placeholder="山田 太郎"
-                className="w-full rounded-xl border border-border bg-background px-4 py-3"
-              />
-              <p className="mt-1.5 text-xs text-muted">
-                事業主に表示されるお名前です（任意）
-              </p>
+          <div className="sm:mx-auto sm:max-w-lg">
+            {/* お客さま情報 */}
+            <div className="mb-4 space-y-4 rounded-2xl bg-card p-5 shadow-sm ring-1 ring-border">
+              <div>
+                <label className="mb-1.5 block text-sm font-medium">
+                  お名前 <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={customerName}
+                  onChange={(e) => setCustomerName(e.target.value)}
+                  placeholder="山田 太郎"
+                  className="w-full rounded-xl border border-border bg-background px-4 py-3"
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-sm font-medium">
+                  電話番号 <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="tel"
+                  value={customerPhone}
+                  onChange={(e) => setCustomerPhone(e.target.value)}
+                  placeholder="090-1234-5678"
+                  inputMode="tel"
+                  className="w-full rounded-xl border border-border bg-background px-4 py-3"
+                />
+              </div>
+              {(service.custom_fields || []).map((field, index) => (
+                <div key={index}>
+                  <label className="mb-1.5 block text-sm font-medium">
+                    {field.label}
+                    {field.required && <span className="text-red-500"> *</span>}
+                  </label>
+                  {field.type === "textarea" ? (
+                    <textarea
+                      value={customAnswers[index] || ""}
+                      onChange={(e) =>
+                        setCustomAnswers((prev) => ({ ...prev, [index]: e.target.value }))
+                      }
+                      rows={3}
+                      className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm"
+                    />
+                  ) : (
+                    <input
+                      type="text"
+                      value={customAnswers[index] || ""}
+                      onChange={(e) =>
+                        setCustomAnswers((prev) => ({ ...prev, [index]: e.target.value }))
+                      }
+                      className="w-full rounded-xl border border-border bg-background px-4 py-3"
+                    />
+                  )}
+                </div>
+              ))}
             </div>
 
             <div className="rounded-2xl bg-card p-5 shadow-sm ring-1 ring-border">
@@ -404,7 +550,7 @@ export function BookingFlow({
 
         {/* Step 3: 完了 */}
         {step === "done" && (
-          <div className="flex flex-col items-center pt-8 text-center">
+          <div className="flex flex-col items-center pt-8 text-center sm:mx-auto sm:max-w-lg">
             <div className="flex h-16 w-16 items-center justify-center rounded-full bg-green-50 text-3xl">
               ✓
             </div>
@@ -452,7 +598,7 @@ export function BookingFlow({
                 もう一度予約する
               </a>
               <a
-                href="/"
+                href="/home"
                 className="block w-full py-3 text-center text-sm text-muted"
               >
                 トップに戻る
@@ -461,6 +607,56 @@ export function BookingFlow({
           </div>
         )}
       </div>
+
+      {/* 友だち追加確認モーダル */}
+      {showFriendPrompt && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          onClick={() => setShowFriendPrompt(false)}
+        >
+          <div className="w-full max-w-sm rounded-2xl bg-card p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <div className="text-center">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-amber-50 text-amber-500">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z" />
+                  <line x1="12" y1="9" x2="12" y2="13" />
+                  <line x1="12" y1="17" x2="12.01" y2="17" />
+                </svg>
+              </div>
+              <h3 className="mt-4 font-bold">LINE通知が届きません</h3>
+              <p className="mt-2 text-sm text-muted">
+                友だち追加すると予約確認・リマインダーが届きます
+              </p>
+            </div>
+            <div className="mt-6 space-y-2.5">
+              {process.env.NEXT_PUBLIC_LINE_BOT_BASIC_ID && (
+                <a
+                  href={`https://line.me/R/ti/p/${process.env.NEXT_PUBLIC_LINE_BOT_BASIC_ID}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => setShowFriendPrompt(false)}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#06C755] py-3.5 font-semibold text-white active:scale-[0.98]"
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M19.365 9.863c.349 0 .63.285.63.631 0 .345-.281.63-.63.63H17.61v1.125h1.755c.349 0 .63.283.63.63 0 .344-.281.629-.63.629h-2.386c-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63h2.386c.346 0 .627.285.627.63 0 .349-.281.63-.63.63H17.61v1.125h1.755zm-3.855 3.016c0 .27-.174.51-.432.596-.064.021-.133.031-.199.031-.211 0-.391-.09-.51-.25l-2.443-3.317v2.94c0 .344-.279.629-.631.629-.346 0-.626-.285-.626-.629V8.108c0-.27.173-.51.43-.595.06-.023.136-.033.194-.033.195 0 .375.104.495.254l2.462 3.33V8.108c0-.345.282-.63.63-.63.345 0 .63.285.63.63v4.771zm-5.741 0c0 .344-.282.629-.631.629-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63.346 0 .628.285.628.63v4.771zm-2.466.629H4.917c-.345 0-.63-.285-.63-.629V8.108c0-.345.285-.63.63-.63.348 0 .63.285.63.63v4.141h1.756c.348 0 .629.283.629.63 0 .344-.282.629-.629.629M24 10.314C24 4.943 18.615.572 12 .572S0 4.943 0 10.314c0 4.811 4.27 8.842 10.035 9.608.391.082.923.258 1.058.59.12.301.079.766.038 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645 1.291-.539 6.916-4.078 9.436-6.975C23.176 14.393 24 12.458 24 10.314" />
+                  </svg>
+                  友だち追加してから予約する
+                </a>
+              )}
+              <button
+                onClick={submitBooking}
+                disabled={submitting}
+                className="flex w-full items-center justify-center gap-2 rounded-xl border border-border py-3.5 font-semibold text-muted active:scale-[0.98]"
+              >
+                {submitting && (
+                  <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                )}
+                {submitting ? "処理中..." : "友だち追加せずに予約する"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
