@@ -13,6 +13,7 @@ export function NavigationLoader() {
     setLoading(false);
   }, [pathname]);
 
+
   // リンククリックを検知してローディング開始
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -20,6 +21,7 @@ export function NavigationLoader() {
       const anchor = target.closest("a[href]") as HTMLAnchorElement | null;
 
       if (!anchor) return;
+      if (e.defaultPrevented) return;
       const href = anchor.getAttribute("href");
       if (!href) return;
 

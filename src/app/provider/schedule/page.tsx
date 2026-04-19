@@ -32,9 +32,13 @@ export default async function SchedulePage() {
     .order("start_at", { ascending: true });
 
   return (
-    <main className="min-h-screen bg-background px-4 py-6">
-      <div className="mx-auto max-w-lg">
-        <p className="text-sm text-muted">
+    <main className="min-h-screen bg-background px-4 py-6 sm:px-8 sm:py-8">
+      <div className="mx-auto max-w-lg sm:max-w-none">
+        <div className="hidden sm:mb-6 sm:block">
+          <h1 className="text-xl font-bold">スケジュール設定</h1>
+          <p className="mt-1 text-sm text-muted">営業時間やお休みを設定します</p>
+        </div>
+        <p className="text-sm text-muted sm:hidden">
           営業時間やお休みを設定します
         </p>
         <ScheduleEditor

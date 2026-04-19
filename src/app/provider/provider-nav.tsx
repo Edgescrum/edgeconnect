@@ -38,7 +38,7 @@ export function ProviderNav() {
         : "/provider";
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border bg-card/80 backdrop-blur-lg">
+    <header className="sticky top-0 z-40 border-b border-border bg-card/80 backdrop-blur-lg sm:hidden">
       <div className="mx-auto flex max-w-lg items-center gap-3 px-4 py-3">
         <Link
           href={backHref}

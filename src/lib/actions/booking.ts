@@ -26,7 +26,9 @@ export async function createBooking(
   providerId: number,
   serviceId: number,
   startAt: string,
-  customerName?: string
+  customerName: string,
+  customerPhone: string,
+  customAnswers?: { label: string; value: string }[]
 ) {
   log("createBooking", "start", { providerId, serviceId, startAt });
   const user = await resolveUser();
@@ -35,13 +37,18 @@ export async function createBooking(
     throw new Error("ログインが必要です");
   }
 
+  if (!customerName.trim()) throw new Error("お名前を入力してください");
+  if (!customerPhone.trim()) throw new Error("電話番号を入力してください");
+
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("create_booking", {
     p_provider_id: providerId,
     p_service_id: serviceId,
     p_customer_line_user_id: user.lineUserId,
     p_start_at: startAt,
-    p_customer_name: customerName || null,
+    p_customer_name: customerName,
+    p_customer_phone: customerPhone,
+    p_custom_answers: customAnswers && customAnswers.length > 0 ? customAnswers : null,
   });
 
   if (error) {

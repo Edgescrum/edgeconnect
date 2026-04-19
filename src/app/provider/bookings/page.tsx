@@ -51,7 +51,11 @@ export default async function ProviderBookingsPage({
 
   return (
     <main className="min-h-screen bg-background">
-      <div className="mx-auto max-w-lg px-4 py-6">
+      <div className="mx-auto max-w-lg px-4 py-6 sm:max-w-none sm:px-8 sm:py-8">
+        <div className="hidden sm:mb-6 sm:block">
+          <h1 className="text-xl font-bold">予約管理</h1>
+          <p className="mt-1 text-sm text-muted">予約の確認・キャンセル</p>
+        </div>
         <BookingList bookings={allBookings} initialFilter={filter || "all"} />
       </div>
     </main>

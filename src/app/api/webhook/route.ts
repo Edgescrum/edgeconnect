@@ -31,6 +31,12 @@ async function handleFollow(userId: string) {
     p_auth_uid: null,
   });
 
+  // 友だち追加フラグを更新
+  await supabase
+    .from("users")
+    .update({ is_line_friend: true })
+    .eq("line_user_id", userId);
+
   // ユーザーのroleを確認
   const { data: existingUser } = await supabase
     .from("users")
@@ -95,6 +101,17 @@ export async function POST(request: Request) {
   for (const event of events) {
     if (event.type === "follow" && event.source?.userId) {
       handleFollow(event.source.userId).catch((e) => logError("webhook", "follow failed", e));
+    }
+    if (event.type === "unfollow" && event.source?.userId) {
+      const userId = event.source.userId;
+      (async () => {
+        const supabase = createAdminClient();
+        await supabase
+          .from("users")
+          .update({ is_line_friend: false })
+          .eq("line_user_id", userId);
+        log("webhook", "unfollow", { userId });
+      })().catch((e: unknown) => logError("webhook", "unfollow failed", e));
     }
   }
 

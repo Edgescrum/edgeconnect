@@ -4,5 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 export async function POST() {
   const supabase = await createClient();
   await supabase.auth.signOut();
-  return NextResponse.json({ status: "ok" });
+  const response = NextResponse.json({ status: "ok" });
+  response.cookies.delete("line_user_id");
+  return response;
 }

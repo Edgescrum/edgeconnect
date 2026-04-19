@@ -25,16 +25,22 @@ export default async function CalendarPage() {
   const webcalUrl = icalUrl.replace("https://", "webcal://");
 
   return (
-    <main className="min-h-screen bg-background px-4 py-6">
-      <div className="mx-auto max-w-lg">
-        <p className="text-sm text-muted">
+    <main className="min-h-screen bg-background px-4 py-6 sm:px-8 sm:py-8">
+      <div className="mx-auto max-w-lg sm:max-w-none">
+        <div className="hidden sm:mb-6 sm:block">
+          <h1 className="text-xl font-bold">カレンダー連携</h1>
+          <p className="mt-1 text-sm text-muted">カレンダーアプリと連携して予約を自動同期します</p>
+        </div>
+        <p className="text-sm text-muted sm:hidden">
           カレンダーアプリと連携して予約を自動同期します
         </p>
-        <CalendarSettings
-          icalUrl={icalUrl}
-          webcalUrl={webcalUrl}
-          lastSyncedAt={provider.calendar_last_synced_at}
-        />
+        <div className="sm:max-w-2xl">
+          <CalendarSettings
+            icalUrl={icalUrl}
+            webcalUrl={webcalUrl}
+            lastSyncedAt={provider.calendar_last_synced_at}
+          />
+        </div>
       </div>
     </main>
   );

@@ -3,10 +3,8 @@
 import { useState } from "react";
 import { registerProvider, checkSlugAvailability } from "@/lib/actions/provider";
 import { useRouter } from "next/navigation";
-import { useLiff } from "@/components/LiffProvider";
 
 export function RegisterForm() {
-  const { user } = useLiff();
   const router = useRouter();
   const [slugStatus, setSlugStatus] = useState<
     "idle" | "checking" | "available" | "taken" | "reserved"
@@ -79,7 +77,7 @@ export function RegisterForm() {
           name="name"
           type="text"
           required
-          defaultValue={user?.displayName || ""}
+          defaultValue=""
           className="w-full rounded-lg border px-3 py-2"
         />
       </div>

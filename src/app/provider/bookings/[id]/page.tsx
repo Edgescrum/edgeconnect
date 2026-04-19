@@ -50,8 +50,8 @@ export default async function ProviderBookingDetailPage({
   const createdStr = `${createdAt.getMonth() + 1}/${createdAt.getDate()} ${createdAt.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })}`;
 
   return (
-    <main className="min-h-screen bg-background px-4 py-6">
-      <div className="mx-auto max-w-lg">
+    <main className="min-h-screen bg-background px-4 py-6 sm:px-8 sm:py-8">
+      <div className="mx-auto max-w-lg sm:max-w-2xl">
         {/* Status */}
         <div className="mb-4 flex justify-center">
           {isCancelled ? (

@@ -18,9 +18,15 @@ export default async function ProfileEditPage() {
   if (!provider) redirect("/provider/register");
 
   return (
-    <main className="min-h-screen bg-background px-4 py-8">
-      <div className="mx-auto max-w-lg">
-        <ProfileEditForm provider={provider} />
+    <main className="min-h-screen bg-background px-4 py-8 sm:px-8 sm:py-8">
+      <div className="mx-auto max-w-lg sm:max-w-none">
+        <div className="hidden sm:mb-6 sm:block">
+          <h1 className="text-xl font-bold">プロフィール編集</h1>
+          <p className="mt-1 text-sm text-muted">名前・紹介文・アイコンを変更</p>
+        </div>
+        <div className="sm:max-w-2xl">
+          <ProfileEditForm provider={provider} />
+        </div>
       </div>
     </main>
   );

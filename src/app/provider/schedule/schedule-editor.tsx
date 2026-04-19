@@ -4,6 +4,7 @@ import { useState } from "react";
 import {
   updateBusinessHours,
   updateInterval,
+  updateSlotStep,
   addBlockedSlot,
   removeBlockedSlot,
   type BusinessHours,
@@ -37,6 +38,7 @@ interface Settings {
   interval_before_min: number;
   interval_after_min: number;
   business_hours: BusinessHours | null;
+  slot_step_min: number;
 }
 
 export function ScheduleEditor({
@@ -54,6 +56,9 @@ export function ScheduleEditor({
   );
   const [intervalAfter, setIntervalAfter] = useState(
     settings?.interval_after_min || 0
+  );
+  const [slotStep, setSlotStep] = useState(
+    settings?.slot_step_min || 30
   );
   const [saving, setSaving] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -118,6 +123,20 @@ export function ScheduleEditor({
     }
   }
 
+  async function handleSaveSlotStep() {
+    setError(null);
+    setSaving("slotStep");
+    showSuccess("予約枠の刻みを保存しました");
+    try {
+      await updateSlotStep(slotStep);
+    } catch (e) {
+      setSuccess(null);
+      setError(e instanceof Error ? e.message : "保存に失敗しました");
+    } finally {
+      setSaving(null);
+    }
+  }
+
   async function handleAddBlock() {
     if (!blockDate) return;
     setError(null);
@@ -167,136 +186,74 @@ export function ScheduleEditor({
   }
 
   return (
-    <div className="mt-6 space-y-8">
+    <div className="mt-6">
       {error && (
-        <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">
+        <div className="mb-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">
           {error}
         </div>
       )}
       {success && (
-        <div className="rounded-xl bg-green-50 px-4 py-3 text-sm text-green-600">
+        <div className="mb-4 rounded-xl bg-green-50 px-4 py-3 text-sm text-green-600">
           ✓ {success}
         </div>
       )}
 
-      {/* 営業時間 */}
-      <section>
-        <h2 className="text-sm font-semibold">営業時間</h2>
-        <p className="mt-1 text-xs text-muted">
-          曜日ごとに営業時間を設定します。オフにすると定休日です。
-        </p>
-        <div className="mt-4 space-y-2">
-          {DAY_ORDER.map((i) => {
-            const day = String(i);
-            const label = DAY_LABELS[i];
-            const isOpen = hours[day] !== null;
-            return (
-              <div
-                key={day}
-                className="flex items-center gap-3 rounded-xl bg-card p-3 ring-1 ring-border"
-              >
-                <button
-                  onClick={() => toggleDay(day)}
-                  className={`relative inline-flex h-6 w-10 shrink-0 items-center rounded-full transition-colors duration-200 ${
-                    isOpen ? "bg-success" : "bg-gray-300"
-                  }`}
-                >
-                  <span
-                    className={`inline-block h-4 w-4 rounded-full bg-white shadow-md transition-transform duration-200 ${
-                      isOpen ? "translate-x-5" : "translate-x-1"
-                    }`}
-                  />
-                </button>
-                <span className={`w-6 text-center text-sm font-medium ${i === 0 ? "text-red-500" : i === 6 ? "text-blue-500" : ""}`}>
-                  {label}
-                </span>
-                {isOpen ? (
-                  <div className="flex flex-1 items-center gap-1">
-                    <input
-                      type="time"
-                      value={hours[day]!.open}
-                      onChange={(e) => updateTime(day, "open", e.target.value)}
-                      className="w-[5.5rem] rounded-lg border border-border bg-background px-2 py-1 text-sm"
-                    />
-                    <span className="text-xs text-muted">〜</span>
-                    <input
-                      type="time"
-                      value={hours[day]!.close}
-                      onChange={(e) => updateTime(day, "close", e.target.value)}
-                      className="w-[5.5rem] rounded-lg border border-border bg-background px-2 py-1 text-sm"
-                    />
-                  </div>
-                ) : (
-                  <span className="text-xs text-muted">定休日</span>
-                )}
-              </div>
-            );
-          })}
-        </div>
-        <button
-          onClick={saveHours}
-          disabled={saving === "hours"}
-          className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-accent py-3 font-semibold text-white shadow-lg shadow-accent/25 disabled:opacity-60 active:scale-[0.98]"
-        >
-          {saving === "hours" && (
-            <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-          )}
-          {saving === "hours" ? "処理中..." : "営業時間を保存"}
-        </button>
-      </section>
+      {/* --- モバイル版: 縦積み --- */}
+      <div className="space-y-8 sm:hidden">
+        {/* 営業時間 */}
+        <section>
+          <h2 className="text-sm font-semibold">営業時間</h2>
+          <p className="mt-1 text-xs text-muted">曜日ごとに営業時間を設定します。オフにすると定休日です。</p>
+          <BusinessHoursEditor hours={hours} toggleDay={toggleDay} updateTime={updateTime} />
+          <SaveButton onClick={saveHours} saving={saving === "hours"} label="営業時間を保存" />
+        </section>
 
-      {/* インターバル */}
-      <section>
-        <h2 className="text-sm font-semibold">予約のインターバル</h2>
-        <p className="mt-1 text-xs text-muted">
-          予約と予約の間に確保するバッファ時間です。準備や移動に必要な時間を設定してください。
-        </p>
-        <div className="mt-4 rounded-xl bg-card p-4 ring-1 ring-border">
-          <div className="flex items-center gap-4">
-            <div className="flex-1">
-              <label className="mb-1 block text-xs text-muted">
-                予約前
-              </label>
-              <select
-                value={intervalBefore}
-                onChange={(e) => setIntervalBefore(parseInt(e.target.value))}
-                className="w-full rounded-lg border border-border bg-background px-3 py-2.5"
-              >
-                {Array.from({ length: 13 }, (_, i) => i * 5).map((v) => (
-                  <option key={v} value={v}>{v}分</option>
-                ))}
-              </select>
-            </div>
-            <div className="flex-1">
-              <label className="mb-1 block text-xs text-muted">
-                予約後
-              </label>
-              <select
-                value={intervalAfter}
-                onChange={(e) => setIntervalAfter(parseInt(e.target.value))}
-                className="w-full rounded-lg border border-border bg-background px-3 py-2.5"
-              >
-                {Array.from({ length: 13 }, (_, i) => i * 5).map((v) => (
-                  <option key={v} value={v}>{v}分</option>
-                ))}
-              </select>
-            </div>
+        {/* インターバル */}
+        <section>
+          <h2 className="text-sm font-semibold">予約のインターバル</h2>
+          <p className="mt-1 text-xs text-muted">予約と予約の間に確保するバッファ時間です。</p>
+          <IntervalEditor intervalBefore={intervalBefore} intervalAfter={intervalAfter} setIntervalBefore={setIntervalBefore} setIntervalAfter={setIntervalAfter} />
+          <SaveButton onClick={saveInterval} saving={saving === "interval"} label="インターバルを保存" />
+        </section>
+
+        {/* 予約枠の刻み */}
+        <section>
+          <h2 className="text-sm font-semibold">予約枠の刻み</h2>
+          <p className="mt-1 text-xs text-muted">予約可能な時刻の間隔です。例：30分なら 9:00, 9:30, 10:00...</p>
+          <SlotStepEditor slotStep={slotStep} setSlotStep={setSlotStep} />
+          <SaveButton onClick={handleSaveSlotStep} saving={saving === "slotStep"} label="刻みを保存" />
+        </section>
+      </div>
+
+      {/* --- PC版: 2カラムパネル --- */}
+      <div className="hidden sm:grid sm:grid-cols-5 sm:items-start sm:gap-6">
+        {/* 左パネル: 営業時間 */}
+        <div className="col-span-3 rounded-2xl bg-card p-6 shadow-sm ring-1 ring-border">
+          <h2 className="font-semibold">営業時間</h2>
+          <p className="mt-1 text-xs text-muted">曜日ごとに営業時間を設定します。オフにすると定休日です。</p>
+          <BusinessHoursEditor hours={hours} toggleDay={toggleDay} updateTime={updateTime} />
+          <SaveButton onClick={saveHours} saving={saving === "hours"} label="営業時間を保存" />
+        </div>
+
+        {/* 右パネル: インターバル + 刻み */}
+        <div className="col-span-2 space-y-6">
+          <div className="rounded-2xl bg-card p-6 shadow-sm ring-1 ring-border">
+            <h2 className="font-semibold">予約のインターバル</h2>
+            <p className="mt-1 text-xs text-muted">予約と予約の間に確保するバッファ時間です。</p>
+            <IntervalEditor intervalBefore={intervalBefore} intervalAfter={intervalAfter} setIntervalBefore={setIntervalBefore} setIntervalAfter={setIntervalAfter} />
+            <SaveButton onClick={saveInterval} saving={saving === "interval"} label="インターバルを保存" />
+          </div>
+          <div className="rounded-2xl bg-card p-6 shadow-sm ring-1 ring-border">
+            <h2 className="font-semibold">予約枠の刻み</h2>
+            <p className="mt-1 text-xs text-muted">予約可能な時刻の間隔です。例：30分なら 9:00, 9:30, 10:00...</p>
+            <SlotStepEditor slotStep={slotStep} setSlotStep={setSlotStep} />
+            <SaveButton onClick={handleSaveSlotStep} saving={saving === "slotStep"} label="刻みを保存" />
           </div>
         </div>
-        <button
-          onClick={saveInterval}
-          disabled={saving === "interval"}
-          className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-accent py-3 font-semibold text-white shadow-lg shadow-accent/25 disabled:opacity-60 active:scale-[0.98]"
-        >
-          {saving === "interval" && (
-            <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-          )}
-          {saving === "interval" ? "処理中..." : "インターバルを保存"}
-        </button>
-      </section>
+      </div>
 
       {/* 手動ブロック */}
-      <section>
+      <section className="mt-8 sm:mt-6 sm:rounded-2xl sm:bg-card sm:p-6 sm:shadow-sm sm:ring-1 sm:ring-border">
         <h2 className="text-sm font-semibold">手動ブロック</h2>
         <p className="mt-1 text-xs text-muted">
           特定の日時を予約不可にします。
@@ -457,5 +414,91 @@ export function ScheduleEditor({
         )}
       </section>
     </div>
+  );
+}
+
+/* --- サブコンポーネント --- */
+
+function BusinessHoursEditor({ hours, toggleDay, updateTime }: {
+  hours: BusinessHours;
+  toggleDay: (day: string) => void;
+  updateTime: (day: string, field: "open" | "close", value: string) => void;
+}) {
+  return (
+    <div className="mt-4 space-y-2">
+      {DAY_ORDER.map((i) => {
+        const day = String(i);
+        const label = DAY_LABELS[i];
+        const isOpen = hours[day] !== null;
+        return (
+          <div key={day} className="flex items-center gap-2 sm:gap-3 rounded-xl bg-card p-2.5 sm:p-3 ring-1 ring-border sm:bg-background">
+            <button
+              onClick={() => toggleDay(day)}
+              className={`relative inline-flex h-6 w-10 shrink-0 items-center rounded-full transition-colors duration-200 ${isOpen ? "bg-success" : "bg-gray-300"}`}
+            >
+              <span className={`inline-block h-4 w-4 rounded-full bg-white shadow-md transition-transform duration-200 ${isOpen ? "translate-x-5" : "translate-x-1"}`} />
+            </button>
+            <span className={`w-5 shrink-0 text-center text-sm font-medium ${i === 0 ? "text-red-500" : i === 6 ? "text-blue-500" : ""}`}>{label}</span>
+            {isOpen ? (
+              <div className="flex min-w-0 flex-1 items-center gap-1">
+                <input type="time" value={hours[day]!.open} onChange={(e) => updateTime(day, "open", e.target.value)} className="min-w-0 flex-1 sm:flex-none sm:w-[7rem] rounded-lg border border-border bg-background sm:bg-card px-1.5 sm:px-3 py-1 sm:py-2 text-sm" />
+                <span className="text-xs text-muted">〜</span>
+                <input type="time" value={hours[day]!.close} onChange={(e) => updateTime(day, "close", e.target.value)} className="min-w-0 flex-1 sm:flex-none sm:w-[7rem] rounded-lg border border-border bg-background sm:bg-card px-1.5 sm:px-3 py-1 sm:py-2 text-sm" />
+              </div>
+            ) : (
+              <span className="text-xs text-muted">定休日</span>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function IntervalEditor({ intervalBefore, intervalAfter, setIntervalBefore, setIntervalAfter }: {
+  intervalBefore: number; intervalAfter: number;
+  setIntervalBefore: (v: number) => void; setIntervalAfter: (v: number) => void;
+}) {
+  return (
+    <div className="mt-4 rounded-xl bg-card p-4 ring-1 ring-border sm:bg-background sm:ring-0 sm:p-0 sm:mt-3">
+      <div className="flex items-center gap-4">
+        <div className="flex-1">
+          <label className="mb-1 block text-xs text-muted">予約前</label>
+          <select value={intervalBefore} onChange={(e) => setIntervalBefore(parseInt(e.target.value))} className="w-full rounded-lg border border-border bg-background sm:bg-card px-3 py-2.5">
+            {Array.from({ length: 13 }, (_, i) => i * 5).map((v) => (<option key={v} value={v}>{v}分</option>))}
+          </select>
+        </div>
+        <div className="flex-1">
+          <label className="mb-1 block text-xs text-muted">予約後</label>
+          <select value={intervalAfter} onChange={(e) => setIntervalAfter(parseInt(e.target.value))} className="w-full rounded-lg border border-border bg-background sm:bg-card px-3 py-2.5">
+            {Array.from({ length: 13 }, (_, i) => i * 5).map((v) => (<option key={v} value={v}>{v}分</option>))}
+          </select>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SlotStepEditor({ slotStep, setSlotStep }: { slotStep: number; setSlotStep: (v: number) => void }) {
+  return (
+    <div className="mt-4 rounded-xl bg-card p-4 ring-1 ring-border sm:bg-background sm:ring-0 sm:p-0 sm:mt-3">
+      <div className="flex items-center gap-2">
+        <input type="number" inputMode="numeric" min="5" step="5" value={slotStep} onChange={(e) => setSlotStep(parseInt(e.target.value) || 30)} className="w-24 rounded-lg border border-border bg-background sm:bg-card px-3 py-2.5" />
+        <span className="text-sm text-muted">分ごと</span>
+      </div>
+    </div>
+  );
+}
+
+function SaveButton({ onClick, saving, label }: { onClick: () => void; saving: boolean; label: string }) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={saving}
+      className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-accent py-3 font-semibold text-white shadow-lg shadow-accent/25 disabled:opacity-60 active:scale-[0.98]"
+    >
+      {saving && <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />}
+      {saving ? "処理中..." : label}
+    </button>
   );
 }

@@ -47,6 +47,20 @@ export async function updateInterval(
   revalidatePath("/provider/schedule");
 }
 
+export async function updateSlotStep(slotStepMin: number) {
+  if (slotStepMin < 5) throw new Error("予約枠の刻みは5分以上にしてください");
+  const providerId = await getProviderId();
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("provider_settings")
+    .update({ slot_step_min: slotStepMin })
+    .eq("provider_id", providerId);
+
+  if (error) throw new Error(error.message);
+  revalidatePath("/provider/schedule");
+}
+
 export async function addBlockedSlot(
   startAt: string,
   endAt: string,

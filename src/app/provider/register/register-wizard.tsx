@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import { registerProvider, checkSlugAvailability } from "@/lib/actions/provider";
 import { Toggle } from "@/components/Toggle";
 import { PROVIDER_CATEGORIES } from "@/lib/constants/categories";
-import { useLiff } from "@/components/LiffProvider";
 import { useRouter } from "next/navigation";
 
 const STEPS = [
@@ -16,24 +15,11 @@ const STEPS = [
 ];
 
 export function RegisterWizard() {
-  const { user, isLoggedIn } = useLiff();
   const router = useRouter();
   const [step, setStep] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [keyboardOpen, setKeyboardOpen] = useState(false);
-
-  // 事業主登録済みならダッシュボードにリダイレクト
-  useEffect(() => {
-    if (!isLoggedIn || !user) return;
-    fetch("/api/auth/me")
-      .then((res) => res.ok ? res.json() : null)
-      .then((data) => {
-        if (data?.user?.role === "provider") {
-          router.replace("/provider");
-        }
-      });
-  }, [isLoggedIn, user, router]);
 
   // キーボードの開閉検知（フォーカスベース）
   useEffect(() => {
