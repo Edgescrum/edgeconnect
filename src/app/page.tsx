@@ -1,5 +1,6 @@
 import { LandingPage } from "@/components/LandingPage";
 import { FullScreenLoading } from "@/components/FullScreenLoading";
+import { LiffGate } from "./liff-gate";
 import { resolveUser } from "@/lib/auth/session";
 
 export default async function Home({
@@ -16,5 +17,9 @@ export default async function Home({
 
   const user = await resolveUser();
 
-  return <LandingPage isLoggedIn={!!user} />;
+  return (
+    <LiffGate fallback={<FullScreenLoading />}>
+      <LandingPage isLoggedIn={!!user} />
+    </LiffGate>
+  );
 }

@@ -10,7 +10,10 @@ export async function updateSession(request: NextRequest) {
     const liffRedirectUri = request.nextUrl.searchParams.get("liffRedirectUri") || request.nextUrl.origin;
     const liffState = request.nextUrl.searchParams.get("liff.state");
     const loginRedirect = request.cookies.get("login_redirect")?.value;
-    const dest = liffState || loginRedirect || "/home";
+    // liff.line.meから直接アクセス（liff.stateもlogin_redirectもない）→ /homeへ
+    // liff.stateが/の場合もLPを見せずに/homeへ
+    const rawDest = liffState || loginRedirect || "/home";
+    const dest = rawDest === "/" ? "/home" : rawDest;
 
     const url = request.nextUrl.clone();
     url.pathname = "/auth/callback";

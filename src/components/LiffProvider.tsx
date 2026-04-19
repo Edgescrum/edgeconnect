@@ -84,7 +84,7 @@ export function LiffProvider({ children }: { children: ReactNode }) {
               setState({ user: serverUser, isReady: true, isLoggedIn: true, error: null });
 
               if (hadCache) {
-                if (window.location.search) {
+                if (window.location.search || window.location.hash) {
                   window.history.replaceState({}, "", window.location.pathname);
                 }
                 return;
@@ -95,9 +95,17 @@ export function LiffProvider({ children }: { children: ReactNode }) {
                 || localStorage.getItem("login_redirect");
               sessionStorage.removeItem("login_redirect");
               localStorage.removeItem("login_redirect");
-              const destination = loginRedirect || "/home";
-              await new Promise((r) => setTimeout(r, 100));
-              window.location.replace(destination);
+              // LIFFアプリ内から/に来た場合は/homeにリダイレクト
+              const destination = loginRedirect || (window.location.pathname === "/" ? "/home" : null);
+              if (destination && destination !== window.location.pathname) {
+                await new Promise((r) => setTimeout(r, 100));
+                window.location.replace(destination);
+                return;
+              }
+              // URLクリーンアップ（ハッシュフラグメント含む）
+              if (window.location.search || window.location.hash) {
+                window.history.replaceState({}, "", window.location.pathname);
+              }
               return;
             }
           }
@@ -118,15 +126,17 @@ export function LiffProvider({ children }: { children: ReactNode }) {
                 sessionStorage.setItem(SESSION_KEY, JSON.stringify(serverUser));
                 setState({ user: serverUser, isReady: true, isLoggedIn: true, error: null });
 
-                // login_redirectがあればリダイレクト
+                // login_redirectがあればリダイレクト（現在のページと異なる場合のみ）
                 const loginRedirect = sessionStorage.getItem("login_redirect")
                   || localStorage.getItem("login_redirect");
-                if (loginRedirect) {
+                if (loginRedirect && loginRedirect !== window.location.pathname) {
                   sessionStorage.removeItem("login_redirect");
                   localStorage.removeItem("login_redirect");
                   window.location.replace(loginRedirect);
                   return;
                 }
+                sessionStorage.removeItem("login_redirect");
+                localStorage.removeItem("login_redirect");
 
                 // URLクリーンアップ
                 if (window.location.search) {
