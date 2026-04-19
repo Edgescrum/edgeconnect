@@ -4,6 +4,24 @@ import { NextResponse, type NextRequest } from "next/server";
 export async function updateSession(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
+  // OAuthコールバック: /auth/callback に302リダイレクト（LIFF SDKが認識しないパラメータ名でcodeを渡す）
+  if (request.nextUrl.searchParams.has("code") && request.nextUrl.searchParams.has("liffClientId")) {
+    const code = request.nextUrl.searchParams.get("code")!;
+    const liffRedirectUri = request.nextUrl.searchParams.get("liffRedirectUri") || request.nextUrl.origin;
+    const liffState = request.nextUrl.searchParams.get("liff.state");
+    const loginRedirect = request.cookies.get("login_redirect")?.value;
+    const dest = liffState || loginRedirect || "/home";
+
+    const url = request.nextUrl.clone();
+    url.pathname = "/auth/callback";
+    url.search = new URLSearchParams({
+      auth_code: code,
+      redirect_uri: liffRedirectUri,
+      redirect: dest,
+    }).toString();
+    return NextResponse.redirect(url);
+  }
+
   // トップページの ?path= / ?provider= パラメータをサーバーサイドでリダイレクト
   if (pathname === "/") {
     const path = request.nextUrl.searchParams.get("path");

@@ -18,13 +18,9 @@ export function LoginRequired({
         const path = redirectPath || sessionStorage.getItem("login_redirect") || window.location.pathname;
         sessionStorage.setItem("login_redirect", path);
         localStorage.setItem("login_redirect", path);
-        if (liff.isInClient()) {
-          // スマホLIFF内ブラウザ → LIFF URLに直接遷移
-          window.location.href = `https://liff.line.me/${process.env.NEXT_PUBLIC_LIFF_ID}`;
-        } else {
-          // PC → 従来のliff.login()
-          liff.login();
-        }
+        // Middleware用にcookieにも保存（サーバー側でリダイレクト先を判定）
+        document.cookie = `login_redirect=${encodeURIComponent(path)}; path=/; max-age=300; SameSite=Lax`;
+        liff.login();
       }
     });
   }

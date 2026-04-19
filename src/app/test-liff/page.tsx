@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export default function TestLiffPage() {
   const [log, setLog] = useState<string[]>([]);
@@ -10,7 +10,67 @@ export default function TestLiffPage() {
     setLog((prev) => [...prev, `${new Date().toLocaleTimeString()} ${msg}`]);
   }
 
-  async function runInit(testMode: "normal" | "stripped" | "monitor") {
+  function dumpStorage() {
+    addLog("--- localStorage全件 ---");
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i)!;
+      const val = localStorage.getItem(key) || "";
+      addLog(`  ${key} = ${val.slice(0, 80)}${val.length > 80 ? "..." : ""}`);
+    }
+    if (localStorage.length === 0) addLog("  (empty)");
+    addLog("--- sessionStorage全件 ---");
+    for (let i = 0; i < sessionStorage.length; i++) {
+      const key = sessionStorage.key(i)!;
+      const val = sessionStorage.getItem(key) || "";
+      addLog(`  ${key} = ${val.slice(0, 80)}${val.length > 80 ? "..." : ""}`);
+    }
+    if (sessionStorage.length === 0) addLog("  (empty)");
+  }
+
+  // E: autorunモード（URLに?autorun=1がある場合、LiffProviderのliff.init()だけで結果を確認）
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("autorun") === "1") {
+      // LiffProviderが先にliff.init()を呼ぶので、少し待ってから状態を確認
+      addLog("=== E: autorunモード（LiffProviderのliff.init()結果を確認）===");
+      addLog(`URL: ${window.location.href}`);
+      dumpStorage();
+
+      const check = async () => {
+        // LiffProviderのliff.init()完了を待つ
+        for (let i = 0; i < 20; i++) {
+          await new Promise(r => setTimeout(r, 500));
+          const liffModule = (await import("@line/liff")).default;
+          try {
+            // liff.getOS()はinit後しか呼べない
+            liffModule.getOS();
+            addLog(`LiffProvider init完了 (${(i + 1) * 500}ms後)`);
+            addLog(`  isLoggedIn: ${liffModule.isLoggedIn()}`);
+            addLog(`  isInClient: ${liffModule.isInClient()}`);
+            addLog(`  OS: ${liffModule.getOS()}`);
+            if (liffModule.isLoggedIn()) {
+              const token = liffModule.getAccessToken();
+              addLog(`  accessToken: ${token ? token.slice(0, 10) + "..." : "null"}`);
+            }
+            setLiff(liffModule);
+            addLog("--- localStorage（init後）---");
+            for (let j = 0; j < localStorage.length; j++) {
+              const key = localStorage.key(j)!;
+              const val = localStorage.getItem(key) || "";
+              addLog(`  ${key} = ${val.slice(0, 80)}${val.length > 80 ? "..." : ""}`);
+            }
+            return;
+          } catch {
+            // まだinit完了していない
+          }
+        }
+        addLog("LiffProvider init: 10秒待っても完了しなかった");
+      };
+      check();
+    }
+  }, []);
+
+  async function runInit(testMode: "normal" | "stripped" | "monitor" | "clean") {
     setLog([]);
 
     addLog(`=== テスト: ${testMode} ===`);
@@ -21,26 +81,29 @@ export default function TestLiffPage() {
     const hasOAuth = params.has("code") || params.has("liffClientId");
     addLog(`OAuth params: ${hasOAuth ? "あり" : "なし"}`);
 
-    // localStorage内のLIFF関連キーを表示
-    const liffKeys: string[] = [];
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key && (key.startsWith("LIFF") || key.startsWith("liff"))) {
-        liffKeys.push(`${key}=${localStorage.getItem(key)?.slice(0, 30)}...`);
-      }
-    }
-    addLog(`LIFF localStorage keys: ${liffKeys.length > 0 ? liffKeys.join(" | ") : "none"}`);
+    dumpStorage();
 
     if (testMode === "stripped" && hasOAuth) {
       addLog("OAuthパラメータを除去中...");
       window.history.replaceState({}, "", window.location.pathname);
     }
 
+    if (testMode === "clean") {
+      addLog("全LIFF_STORE削除中...");
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith("LIFF_STORE:")) {
+          addLog(`  削除: ${key}`);
+          localStorage.removeItem(key);
+        }
+      }
+    }
+
     // fetch/XHR監視
-    let cleanupMonitor: (() => void) | undefined;
-    if (testMode === "monitor") {
+    const origFetch = window.fetch;
+    const origXHROpen = XMLHttpRequest.prototype.open;
+    if (testMode === "monitor" || testMode === "clean") {
       addLog("--- fetch/XHR 監視ON ---");
-      const origFetch = window.fetch;
       window.fetch = async function (...args: Parameters<typeof fetch>) {
         const url = typeof args[0] === "string" ? args[0] : (args[0] as Request).url;
         addLog(`[fetch→] ${url.slice(0, 120)}`);
@@ -53,16 +116,11 @@ export default function TestLiffPage() {
           throw e;
         }
       };
-      const origXHROpen = XMLHttpRequest.prototype.open;
       const patchedOpen = function (this: XMLHttpRequest, method: string, url: string | URL, async?: boolean, username?: string | null, password?: string | null) {
         addLog(`[XHR] ${method} ${String(url).slice(0, 120)}`);
         return origXHROpen.call(this, method, url, async ?? true, username, password);
       };
       XMLHttpRequest.prototype.open = patchedOpen as typeof XMLHttpRequest.prototype.open;
-      cleanupMonitor = () => {
-        window.fetch = origFetch;
-        XMLHttpRequest.prototype.open = origXHROpen;
-      };
     }
 
     addLog("1. importing liff...");
@@ -74,7 +132,7 @@ export default function TestLiffPage() {
     try {
       await Promise.race([
         liffModule.init({ liffId: process.env.NEXT_PUBLIC_LIFF_ID! }),
-        new Promise((_, reject) => setTimeout(() => reject(new Error("TIMEOUT (30s)")), 30000)),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("TIMEOUT (15s)")), 15000)),
       ]);
       addLog(`3. liff.init() 成功 (${Date.now() - initStart}ms)`);
       addLog(`   isLoggedIn: ${liffModule.isLoggedIn()}`);
@@ -96,10 +154,17 @@ export default function TestLiffPage() {
       setLiff(liffModule);
     } catch (e) {
       addLog(`3. liff.init() 失敗 (${Date.now() - initStart}ms): ${e instanceof Error ? e.message : e}`);
+      addLog("--- localStorage（失敗後）---");
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i)!;
+        const val = localStorage.getItem(key) || "";
+        addLog(`  ${key} = ${val.slice(0, 80)}${val.length > 80 ? "..." : ""}`);
+      }
       setLiff(liffModule);
     }
 
-    cleanupMonitor?.();
+    window.fetch = origFetch;
+    XMLHttpRequest.prototype.open = origXHROpen;
   }
 
   async function handleFullLogout() {
@@ -144,6 +209,23 @@ export default function TestLiffPage() {
           >
             D: fetch/XHR監視つきでliff.init()
           </button>
+          <button
+            onClick={() => runInit("clean")}
+            className="w-full rounded-xl bg-teal-500 px-4 py-3 text-sm font-semibold text-white active:scale-[0.98]"
+          >
+            F: LIFF_STORE全削除してからliff.init()（監視つき）
+          </button>
+          <button
+            onClick={() => {
+              addLog(">> 全Storage削除 → ?autorun=1でリロード");
+              localStorage.clear();
+              sessionStorage.clear();
+              window.location.href = "/test-liff?autorun=1";
+            }}
+            className="w-full rounded-xl bg-cyan-600 px-4 py-3 text-sm font-semibold text-white active:scale-[0.98]"
+          >
+            E: 全削除→リロード（liff.init()1回だけ）
+          </button>
 
           <hr className="border-border" />
 
@@ -165,6 +247,12 @@ export default function TestLiffPage() {
             className="w-full rounded-xl bg-[#06C755] px-4 py-3 text-sm font-semibold text-white active:scale-[0.98]"
           >
             LINEでログイン
+          </button>
+          <button
+            onClick={() => dumpStorage()}
+            className="w-full rounded-xl bg-gray-400 px-4 py-3 text-sm font-semibold text-white active:scale-[0.98]"
+          >
+            Storage表示
           </button>
         </div>
 
