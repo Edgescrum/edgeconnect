@@ -177,7 +177,7 @@ export function ServiceList({ services: initialServices }: { services: Service[]
               <DragIcon />
             </div>
             <Link
-              href={`/provider/services/${service.id}/edit`}
+              href={`/provider/services/${service.id}/edit`} prefetch={false}
               className={`block flex-1 rounded-2xl bg-card p-4 shadow-sm ring-1 ring-border active:scale-[0.99] transition-opacity ${
                 !isPublished(service) ? "opacity-60" : ""
               }`}
@@ -243,7 +243,7 @@ export function ServiceList({ services: initialServices }: { services: Service[]
                 </div>
                 {/* メニュー名 */}
                 <div className="flex items-center gap-2 min-w-0">
-                  <Link href={`/provider/services/${service.id}/edit`} className="truncate font-medium hover:text-accent">
+                  <Link href={`/provider/services/${service.id}/edit`} prefetch={false} className="truncate font-medium hover:text-accent">
                     {service.name}
                   </Link>
                   {!isPublished(service) && <UnpublishedBadge />}
@@ -262,7 +262,7 @@ export function ServiceList({ services: initialServices }: { services: Service[]
                 </div>
                 {/* 編集リンク */}
                 <Link
-                  href={`/provider/services/${service.id}/edit`}
+                  href={`/provider/services/${service.id}/edit`} prefetch={false}
                   className="flex items-center justify-center rounded-lg px-3 py-1.5 text-xs text-accent hover:bg-accent/8"
                 >
                   編集
