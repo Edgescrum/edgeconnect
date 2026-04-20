@@ -45,8 +45,8 @@ export function NavigationLoader() {
       }
     }
 
-    document.addEventListener("click", handleClick);
-    return () => document.removeEventListener("click", handleClick);
+    document.addEventListener("click", handleClick, true);
+    return () => document.removeEventListener("click", handleClick, true);
   }, [pathname]);
 
   // グローバルにstartLoadingを公開（router.pushなどで使える）
