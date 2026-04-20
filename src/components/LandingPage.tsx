@@ -100,9 +100,9 @@ export function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boolean }) {
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3 sm:px-8">
           <div className="flex items-center gap-2">
             <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent text-xs font-bold text-white">
-              E
+              P
             </div>
-            <span className="text-sm font-bold">EdgeConnect</span>
+            <span className="text-sm font-bold">PeCo</span>
           </div>
           <div className="flex items-center gap-4">
             <Link href="/explore" className="hidden text-sm text-muted hover:text-foreground sm:block">
@@ -181,7 +181,7 @@ export function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boolean }) {
       <section className="bg-card/60 px-4 py-12 sm:px-8 sm:py-20">
         <div className="mx-auto max-w-5xl">
           <h2 className="text-center text-lg font-bold sm:text-2xl">
-            EdgeConnectが<span className="text-accent">すべて解決</span>
+            PeCoが<span className="text-accent">すべて解決</span>
           </h2>
           <p className="mt-2 text-center text-sm text-muted">
             必要な機能がすべて無料で使えます

@@ -24,7 +24,7 @@ const FILTERS: { value: FilterType; label: string }[] = [
 
 const DAYS = ["日", "月", "火", "水", "木", "金", "土"];
 
-const FILTER_STORAGE_KEY = "edgeconnect_bookings_filter";
+const FILTER_STORAGE_KEY = "peco_bookings_filter";
 
 export function CustomerBookingList({ bookings }: { bookings: BookingItem[] }) {
   const [filter, setFilterState] = useState<FilterType>(() => {
@@ -112,9 +112,9 @@ export function CustomerBookingList({ bookings }: { bookings: BookingItem[] }) {
   }
 
   return (
-    <div>
+    <div className="w-full">
       {/* フィルタータブ */}
-      <div className="sticky top-[49px] z-30 -mx-4 flex gap-1 overflow-x-auto bg-background px-4 py-2">
+      <div className="sticky top-[49px] z-30 -mx-2 flex gap-1 overflow-x-auto bg-background px-2 py-2 sm:-mx-4 sm:px-4">
         <div className="flex gap-1 rounded-xl bg-card p-1 ring-1 ring-border">
         {FILTERS.map((f) => (
           <button

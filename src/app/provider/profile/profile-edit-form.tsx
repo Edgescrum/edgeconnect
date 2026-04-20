@@ -14,6 +14,7 @@ interface Provider {
   icon_url: string | null;
   line_contact_url: string;
   contact_email: string | null;
+  contact_phone: string | null;
   brand_color: string | null;
   category: string | null;
 }
@@ -40,6 +41,8 @@ export function ProfileEditForm({ provider }: { provider: Provider }) {
   const [lineId, setLineId] = useState(extractLineId(provider.line_contact_url));
   const [emailEnabled, setEmailEnabled] = useState(!!provider.contact_email);
   const [emailValue, setEmailValue] = useState(provider.contact_email || "");
+  const [phoneEnabled, setPhoneEnabled] = useState(!!provider.contact_phone);
+  const [phoneValue, setPhoneValue] = useState(provider.contact_phone || "");
   const [category, setCategory] = useState(provider.category || "");
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -309,6 +312,43 @@ export function ProfileEditForm({ provider }: { provider: Provider }) {
               </div>
             )}
             <input type="hidden" name="email_enabled" value={emailEnabled ? "1" : "0"} />
+          </div>
+
+          {/* 電話 */}
+          <div className={`rounded-2xl p-4 ring-1 transition-colors ${
+            phoneEnabled ? "bg-orange-50/50 ring-orange-300/30" : "bg-card ring-border"
+          }`}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-orange-50">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f97316" strokeWidth="2">
+                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92Z" />
+                  </svg>
+                </div>
+                <p className="text-sm font-semibold">電話で連絡</p>
+              </div>
+              <Toggle
+                checked={phoneEnabled}
+                onChange={setPhoneEnabled}
+                activeColor="bg-success"
+                ariaLabel="電話で連絡を有効にする"
+              />
+            </div>
+            {phoneEnabled && (
+              <div className="mt-3">
+                <input
+                  name="contact_phone"
+                  type="tel"
+                  value={phoneValue}
+                  onChange={(e) => setPhoneValue(e.target.value)}
+                  placeholder="090-1234-5678"
+                  inputMode="tel"
+                  required
+                  className="w-full rounded-xl border border-border bg-white px-4 py-3"
+                />
+              </div>
+            )}
+            <input type="hidden" name="phone_enabled" value={phoneEnabled ? "1" : "0"} />
           </div>
         </div>
       </div>

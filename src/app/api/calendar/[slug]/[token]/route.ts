@@ -36,7 +36,7 @@ export async function GET(
     const customer = Array.isArray(b.users) ? b.users[0] : b.users;
     const customerName = b.customer_name || customer?.display_name || "お客さま";
     return {
-      uid: `${b.id}@edgeconnect`,
+      uid: `${b.id}@peco`,
       summary: `${customerName} - ${service?.name || "予約"}`,
       description: `お客さま: ${customerName}`,
       dtstart: new Date(b.start_at),

@@ -30,10 +30,10 @@ export function generateVCalendar(events: VEvent[]): string {
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//EdgeConnect//JP",
+    "PRODID:-//PeCo//JP",
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
-    "X-WR-CALNAME:EdgeConnect",
+    "X-WR-CALNAME:PeCo",
     "X-WR-TIMEZONE:Asia/Tokyo",
   ];
   for (const event of events) {

@@ -32,7 +32,7 @@ export function BookingList({
   bookings: BookingItem[];
   initialFilter: string;
 }) {
-  const FILTER_STORAGE_KEY = "edgeconnect_provider_bookings_filter";
+  const FILTER_STORAGE_KEY = "peco_provider_bookings_filter";
 
   const [filter, setFilterState] = useState<FilterType>(() => {
     if (typeof window === "undefined") return (FILTERS.find((f) => f.value === initialFilter)?.value) || "all";

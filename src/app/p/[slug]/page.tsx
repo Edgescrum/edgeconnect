@@ -21,7 +21,7 @@ export async function generateMetadata({
 
   if (!provider) return {};
 
-  const title = provider.name || "EdgeConnect";
+  const title = provider.name || "PeCo";
   const description = provider.bio
     ? provider.bio.slice(0, 80) + (provider.bio.length > 80 ? "..." : "")
     : `${title}の予約ページ`;
@@ -32,7 +32,7 @@ export async function generateMetadata({
   return {
     title,
     description,
-    openGraph: { title: `${title} - EdgeConnect`, description, images },
+    openGraph: { title: `${title} - PeCo`, description, images },
   };
 }
 
@@ -90,8 +90,8 @@ export default async function ProviderProfilePage({
         <div className="sticky top-0 z-40 bg-gradient-to-b from-accent/10 to-accent/10">
           <div className="mx-auto flex max-w-lg items-center px-4 py-3">
             <a href="/" className="flex items-center gap-1.5 rounded-lg px-2 py-1 active:bg-white/60">
-              <div className="flex h-6 w-6 items-center justify-center rounded-md bg-accent text-[10px] font-bold text-white">E</div>
-              <span className="text-xs font-semibold text-muted">EdgeConnect</span>
+              <div className="flex h-6 w-6 items-center justify-center rounded-md bg-accent text-[10px] font-bold text-white">P</div>
+              <span className="text-xs font-semibold text-muted">PeCo</span>
             </a>
           </div>
         </div>
@@ -125,8 +125,8 @@ export default async function ProviderProfilePage({
         <div className="sticky top-0 z-40 border-b border-border bg-card/80 backdrop-blur-lg">
           <div className="mx-auto flex max-w-5xl items-center justify-between px-8 py-3">
             <a href="/" className="flex items-center gap-2">
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent text-xs font-bold text-white">E</div>
-              <span className="text-sm font-bold">EdgeConnect</span>
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent text-xs font-bold text-white">P</div>
+              <span className="text-sm font-bold">PeCo</span>
             </a>
             <a href="/explore" className="text-sm text-muted hover:text-foreground">事業主を探す</a>
           </div>

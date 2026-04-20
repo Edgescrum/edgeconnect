@@ -44,7 +44,7 @@ export default async function BookingsPage({
   return (
     <main className="flex min-h-screen flex-col bg-background">
       <header className="sticky top-0 z-40 border-b border-border bg-card/80 backdrop-blur-lg">
-        <div className="mx-auto flex max-w-lg items-center gap-3 px-4 py-3">
+        <div className="mx-auto flex items-center gap-3 px-4 py-3">
           <Link href="/home" className="flex h-8 w-8 items-center justify-center rounded-lg active:bg-accent-bg">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="m15 18-6-6 6-6" />
@@ -54,7 +54,7 @@ export default async function BookingsPage({
         </div>
       </header>
 
-      <div className="mx-auto max-w-lg flex-1 px-4 py-6">
+      <div className="w-full flex-1 px-2 py-4 sm:px-4 sm:py-6">
         <div className="mb-4">
           <LineFriendBanner isLineFriend={user.isLineFriend ?? false} />
         </div>

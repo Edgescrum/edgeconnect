@@ -28,7 +28,7 @@ export async function GET(
 
   const ics = generateVCalendar([
     {
-      uid: `${booking.id}@edgeconnect`,
+      uid: `${booking.id}@peco`,
       summary: title,
       description,
       dtstart: new Date(booking.start_at),

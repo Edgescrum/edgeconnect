@@ -35,7 +35,7 @@ export function DashboardClient({
     key: "welcome",
     node: (
       <>
-        <h2 className="text-lg font-bold text-white">EdgeConnectへようこそ</h2>
+        <h2 className="text-lg font-bold text-white">PeCoへようこそ</h2>
         <p className="mt-2 text-sm leading-relaxed text-white/90">
           LINEで簡単に予約ができるサービスです。事業主のQRコードやURLから予約しましょう。
         </p>
@@ -72,7 +72,7 @@ export function DashboardClient({
     <>
       {/* --- モバイル版 --- */}
       <div className="sm:hidden">
-        <div className="mx-auto max-w-lg">
+        <div>
           {bannerCards.length > 0 && (
             <div className="pt-4 pb-2">
               <div
@@ -179,7 +179,7 @@ export function DashboardClient({
           <div className="relative flex items-center justify-between">
             <div>
               <p className="text-sm text-white/70">マイページ</p>
-              <h1 className="mt-1 text-2xl font-bold lg:text-3xl">EdgeConnectへようこそ</h1>
+              <h1 className="mt-1 text-2xl font-bold lg:text-3xl">PeCoへようこそ</h1>
               <p className="mt-2 max-w-md text-sm leading-relaxed text-white/80">
                 LINEで簡単に予約ができるサービスです。事業主のQRコードやURLから予約しましょう。
               </p>
@@ -206,7 +206,7 @@ export function DashboardClient({
             </div>
             <div className="hidden lg:block">
               <div className="flex h-24 w-24 items-center justify-center rounded-3xl bg-white/20 text-5xl font-bold backdrop-blur-sm">
-                E
+                P
               </div>
             </div>
           </div>

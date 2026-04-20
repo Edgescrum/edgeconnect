@@ -86,7 +86,7 @@ function separator() {
 function footerBrand() {
   return {
     type: "text" as const,
-    text: "EdgeConnect",
+    text: "PeCo",
     size: "xxs" as const,
     color: "#aaaaaa",
     align: "center" as const,

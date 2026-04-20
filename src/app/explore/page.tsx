@@ -6,10 +6,10 @@ import { PublicFooter } from "@/components/PublicFooter";
 
 export const metadata: Metadata = {
   title: "事業主を探す",
-  description: "EdgeConnectで予約できる事業主の一覧。カテゴリや検索で探せます。",
+  description: "PeCoで予約できる事業主の一覧。カテゴリや検索で探せます。",
   openGraph: {
-    title: "事業主を探す - EdgeConnect",
-    description: "EdgeConnectで予約できる事業主の一覧",
+    title: "事業主を探す - PeCo",
+    description: "PeCoで予約できる事業主の一覧",
     images: [{ url: "/og-default.png", width: 1200, height: 630 }],
   },
 };

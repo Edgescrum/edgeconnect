@@ -101,7 +101,7 @@ async function getBookingDetails(bookingId: string) {
         endAt,
         `料金: ¥${service.price.toLocaleString()}`
       ),
-      appleCalendarUrl: `${process.env.NEXT_PUBLIC_VERCEL_URL ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}` : "https://edgeconnect.vercel.app"}/api/calendar/event/${booking.id}.ics`,
+      appleCalendarUrl: `${process.env.NEXT_PUBLIC_VERCEL_URL ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}` : "https://peco-app.vercel.app"}/api/calendar/event/${booking.id}.ics`,
     },
   };
 }

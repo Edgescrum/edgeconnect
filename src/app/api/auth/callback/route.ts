@@ -5,7 +5,7 @@ import { createHmac } from "crypto";
 import { log, logError } from "@/lib/log";
 
 function deriveCredentials(lineUserId: string) {
-  const email = `${lineUserId.toLowerCase()}@line.edgeconnect.local`;
+  const email = `${lineUserId.toLowerCase()}@line.peco.local`;
   const password = createHmac("sha256", process.env.LINE_CHANNEL_SECRET!)
     .update(lineUserId)
     .digest("hex");

@@ -58,7 +58,7 @@ async function handleFollow(userId: string) {
     );
   }
 
-  await pushFlexMessage(userId, isProvider ? "おかえりなさい！" : "EdgeConnectへようこそ！", {
+  await pushFlexMessage(userId, isProvider ? "おかえりなさい！" : "PeCoへようこそ！", {
     type: "bubble",
     header: {
       type: "box",
@@ -66,7 +66,7 @@ async function handleFollow(userId: string) {
       backgroundColor: "#6366f1",
       paddingAll: "20px",
       contents: [
-        { type: "text", text: "EdgeConnect", color: "#ffffff", size: "xs" },
+        { type: "text", text: "PeCo", color: "#ffffff", size: "xs" },
         { type: "text", text: isProvider ? "おかえりなさい！" : "ようこそ！", color: "#ffffff", size: "xl", weight: "bold", margin: "sm" },
       ],
     },

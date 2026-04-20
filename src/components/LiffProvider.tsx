@@ -38,7 +38,7 @@ export function useLiff() {
   return useContext(LiffContext);
 }
 
-const SESSION_KEY = "edgeconnect_user";
+const SESSION_KEY = "peco_user";
 
 export function LiffProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<LiffState>({

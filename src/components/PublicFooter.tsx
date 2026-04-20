@@ -13,7 +13,7 @@ export function PublicFooter({
         <div className="border-b border-border px-4 py-6">
           <div className={`mx-auto ${maxWidth} rounded-2xl bg-gradient-to-br from-accent/8 to-accent/4 p-5 text-center ring-1 ring-accent/10`}>
             <p className="text-sm font-semibold">
-              あなたもEdgeConnectで
+              あなたもPeCoで
               <br />
               予約管理をはじめませんか？
             </p>
@@ -35,13 +35,13 @@ export function PublicFooter({
       <div className={`mx-auto ${maxWidth} px-4 py-8`}>
         <div className="flex items-center gap-2">
           <div className="flex h-6 w-6 items-center justify-center rounded-md bg-accent text-[10px] font-bold text-white">
-            E
+            P
           </div>
-          <span className="text-sm font-bold">EdgeConnect</span>
+          <span className="text-sm font-bold">PeCo</span>
         </div>
         <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 text-xs text-muted">
           <Link href="/about" className="hover:text-foreground">
-            EdgeConnectとは
+            PeCoとは
           </Link>
           <Link href="/explore" className="hover:text-foreground">
             事業主を探す

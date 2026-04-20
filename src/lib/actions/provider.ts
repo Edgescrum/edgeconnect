@@ -89,6 +89,7 @@ export async function registerProvider(formData: FormData) {
   const lineId = (formData.get("line_id") as string)?.trim();
   const lineContactUrl = lineId ? `https://line.me/ti/p/~${lineId}` : null;
   const contactEmail = (formData.get("contact_email") as string) || null;
+  const contactPhone = (formData.get("contact_phone") as string)?.trim() || null;
 
   const supabase = await createClient();
   const adminSupabase = createAdminClient();
@@ -115,15 +116,18 @@ export async function registerProvider(formData: FormData) {
 
   if (error) throw new Error(error.message);
 
-  // categoryはRPC外で更新
-  if (category && data) {
-    const providerId = typeof data === "object" && data !== null ? (data as { id: number }).id : null;
-    if (providerId) {
-      await supabase.from("providers").update({ category }).eq("id", providerId);
+  // category, contact_phoneはRPC外で更新
+  const providerId = typeof data === "object" && data !== null ? (data as { id: number }).id : null;
+  if (providerId) {
+    const extra: Record<string, unknown> = {};
+    if (category) extra.category = category;
+    if (contactPhone) extra.contact_phone = contactPhone;
+    if (Object.keys(extra).length > 0) {
+      await supabase.from("providers").update(extra).eq("id", providerId);
     }
   }
 
-  revalidatePath("/provider");
+  // revalidateは完了画面表示後にrouter.pushで遷移する際に行う
   return data;
 }
 
@@ -150,6 +154,8 @@ export async function updateProfile(formData: FormData) {
   const lineId = (formData.get("line_id") as string)?.trim();
   const emailEnabled = formData.get("email_enabled") === "1";
   const contactEmail = formData.get("contact_email") as string;
+  const phoneEnabled = formData.get("phone_enabled") === "1";
+  const contactPhoneVal = (formData.get("contact_phone") as string)?.trim();
   const brandColor = formData.get("brand_color") as string;
 
   if (name) updates.name = name;
@@ -162,6 +168,10 @@ export async function updateProfile(formData: FormData) {
   // メール: OFFならクリア
   updates.contact_email = emailEnabled && contactEmail
     ? contactEmail
+    : null;
+  // 電話: OFFならクリア
+  updates.contact_phone = phoneEnabled && contactPhoneVal
+    ? contactPhoneVal
     : null;
   if (brandColor) updates.brand_color = brandColor;
 

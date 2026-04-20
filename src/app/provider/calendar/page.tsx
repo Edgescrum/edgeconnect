@@ -19,7 +19,7 @@ export default async function CalendarPage() {
 
   const baseUrl = process.env.NEXT_PUBLIC_VERCEL_URL
     ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`
-    : "https://edgeconnect.vercel.app";
+    : "https://peco-app.vercel.app";
 
   const icalUrl = `${baseUrl}/api/calendar/${provider.slug}/${provider.calendar_token}.ics`;
   const webcalUrl = icalUrl.replace("https://", "webcal://");

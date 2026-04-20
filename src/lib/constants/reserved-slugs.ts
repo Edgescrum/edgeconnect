@@ -36,6 +36,7 @@ const RESERVED_SLUGS = new Set([
   "edgeconnect",
   "edge-connect",
   "edgescrum",
+  "peco",
   // システム
   "null",
   "undefined",
