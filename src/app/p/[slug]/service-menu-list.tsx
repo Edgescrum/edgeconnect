@@ -86,19 +86,11 @@ export function ServiceMenuList({
           {services.map((service) => {
             const card = (
               <>
-                <div className="flex items-start justify-between">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-lg font-bold">{service.name}</p>
-                    {service.caption && (
-                      <p className="mt-2 text-sm leading-relaxed text-muted line-clamp-2">{service.caption}</p>
-                    )}
-                  </div>
-                  <div className="ml-4 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent/8">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-accent">
-                      <rect x="3" y="4" width="18" height="18" rx="2" />
-                      <path d="M16 2v4M8 2v4M3 10h18" />
-                    </svg>
-                  </div>
+                <div>
+                  <p className="text-lg font-bold">{service.name}</p>
+                  {service.caption && (
+                    <p className="mt-2 text-sm leading-relaxed text-muted line-clamp-2">{service.caption}</p>
+                  )}
                 </div>
                 <div className="mt-auto pt-5">
                   <div className="flex items-end justify-between border-t border-border pt-4">
