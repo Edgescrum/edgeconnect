@@ -66,7 +66,11 @@ export async function createBooking(
   log("createBooking", "success", { bookingId });
 
   if (bookingId) {
-    notifyBookingConfirmed(bookingId).catch((e) => logError("createBooking", "notify failed", e));
+    try {
+      await notifyBookingConfirmed(bookingId);
+    } catch (e) {
+      logError("createBooking", "notify failed", e);
+    }
   }
 
   revalidatePath("/bookings");
@@ -96,8 +100,12 @@ export async function cancelBooking(bookingId: string) {
     throw new Error(error.message);
   }
 
-  // LINE通知（バックグラウンド）
-  notifyBookingCancelled(bookingId, cancelledBy).catch(console.error);
+  // LINE通知
+  try {
+    await notifyBookingCancelled(bookingId, cancelledBy);
+  } catch (e) {
+    logError("cancelBooking", "notify failed", e);
+  }
 
   revalidatePath("/bookings");
   revalidatePath(`/bookings/${bookingId}`);
