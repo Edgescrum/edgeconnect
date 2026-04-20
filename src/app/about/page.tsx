@@ -1,5 +1,6 @@
 import { Metadata } from "next";
 import { LandingPage } from "@/components/LandingPage";
+import { resolveUser } from "@/lib/auth/session";
 
 export const metadata: Metadata = {
   title: "PeCoとは",
@@ -13,6 +14,7 @@ export const metadata: Metadata = {
   },
 };
 
-export default function AboutPage() {
-  return <LandingPage />;
+export default async function AboutPage() {
+  const user = await resolveUser();
+  return <LandingPage isLoggedIn={!!user} />;
 }
