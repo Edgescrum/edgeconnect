@@ -90,8 +90,7 @@ export default async function ProviderProfilePage({
         <div className="sticky top-0 z-40 bg-gradient-to-b from-accent/10 to-accent/10">
           <div className="mx-auto flex max-w-lg items-center px-4 py-3">
             <a href="/" className="flex items-center gap-1.5 rounded-lg px-2 py-1 active:bg-white/60">
-              <div className="flex h-6 w-6 items-center justify-center rounded-md bg-accent text-[10px] font-bold text-white">P</div>
-              <span className="text-xs font-semibold text-muted">PeCo</span>
+              <img src="/logo.svg" alt="PeCo" className="h-5" />
             </a>
           </div>
         </div>
@@ -125,8 +124,7 @@ export default async function ProviderProfilePage({
         <div className="sticky top-0 z-40 border-b border-border bg-card/80 backdrop-blur-lg">
           <div className="mx-auto flex max-w-5xl items-center justify-between px-8 py-3">
             <a href="/" className="flex items-center gap-2">
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent text-xs font-bold text-white">P</div>
-              <span className="text-sm font-bold">PeCo</span>
+              <img src="/logo.svg" alt="PeCo" className="h-6" />
             </a>
             <a href="/explore" className="text-sm text-muted hover:text-foreground">事業主を探す</a>
           </div>

@@ -34,10 +34,7 @@ export function PublicFooter({
       )}
       <div className={`mx-auto ${maxWidth} px-4 py-8`}>
         <div className="flex items-center gap-2">
-          <div className="flex h-6 w-6 items-center justify-center rounded-md bg-accent text-[10px] font-bold text-white">
-            P
-          </div>
-          <span className="text-sm font-bold">PeCo</span>
+          <img src="/logo.svg" alt="PeCo" className="h-7" />
         </div>
         <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 text-xs text-muted">
           <Link href="/about" className="hover:text-foreground">

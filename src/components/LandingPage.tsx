@@ -45,7 +45,7 @@ const FEATURES = [
   },
   {
     icon: (
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-accent">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-accent-dark">
         <rect x="3" y="4" width="18" height="18" rx="2" />
         <path d="M16 2v4M8 2v4M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01" />
       </svg>
@@ -55,7 +55,7 @@ const FEATURES = [
   },
   {
     icon: (
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-accent">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-accent-dark">
         <rect x="3" y="3" width="18" height="18" rx="2" />
         <path d="M7 7h10M7 12h10M7 17h4" />
       </svg>
@@ -65,7 +65,7 @@ const FEATURES = [
   },
   {
     icon: (
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-accent">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-accent-dark">
         <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
       </svg>
     ),
@@ -99,10 +99,7 @@ export function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boolean }) {
       <header className="sticky top-0 z-40 border-b border-border bg-card/80 backdrop-blur-lg">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3 sm:px-8">
           <div className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent text-xs font-bold text-white">
-              P
-            </div>
-            <span className="text-sm font-bold">PeCo</span>
+            <img src="/logo.svg" alt="PeCo" className="h-6 sm:h-7" />
           </div>
           <div className="flex items-center gap-4">
             <Link href="/explore" className="hidden text-sm text-muted hover:text-foreground sm:block">
@@ -124,13 +121,11 @@ export function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boolean }) {
       {/* Hero */}
       <section className="bg-gradient-to-b from-accent/8 to-background px-4 pb-16 pt-16 sm:px-8 sm:pb-24 sm:pt-24">
         <div className="mx-auto max-w-5xl text-center">
-          <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-3xl bg-accent text-3xl font-bold text-white shadow-xl shadow-accent/20 sm:h-24 sm:w-24 sm:text-4xl">
-            E
-          </div>
+          <img src="/logo.svg" alt="PeCo" className="mx-auto h-12 sm:h-16" />
           <h1 className="mt-6 text-3xl font-extrabold leading-tight tracking-tight sm:text-5xl sm:leading-tight">
             予約管理を
             <br className="sm:hidden" />
-            <span className="text-accent"> もっとシンプルに</span>
+            <span className="text-accent-dark"> もっとシンプルに</span>
           </h1>
           <p className="mx-auto mt-4 max-w-lg text-sm leading-relaxed text-muted sm:mt-6 sm:text-base">
             LINEで予約受付・通知・スケジュール管理を自動化。
@@ -164,7 +159,7 @@ export function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boolean }) {
                 key={i}
                 className="flex items-start gap-4 rounded-2xl bg-card p-4 ring-1 ring-border sm:flex-col sm:items-center sm:p-6 sm:text-center"
               >
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-red-50 text-red-400 sm:h-14 sm:w-14">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-orange-50 text-orange-400 sm:h-14 sm:w-14">
                   {p.icon}
                 </div>
                 <div>
@@ -181,7 +176,7 @@ export function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boolean }) {
       <section className="bg-card/60 px-4 py-12 sm:px-8 sm:py-20">
         <div className="mx-auto max-w-5xl">
           <h2 className="text-center text-lg font-bold sm:text-2xl">
-            PeCoが<span className="text-accent">すべて解決</span>
+            PeCoが<span className="text-accent-dark">すべて解決</span>
           </h2>
           <p className="mt-2 text-center text-sm text-muted">
             必要な機能がすべて無料で使えます
@@ -193,7 +188,7 @@ export function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boolean }) {
                 className="rounded-2xl bg-card p-4 ring-1 ring-border sm:p-5"
               >
                 <div className="flex items-center gap-3 sm:flex-col sm:items-start">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent/8 sm:h-12 sm:w-12">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent/15 sm:h-12 sm:w-12">
                     {f.icon}
                   </div>
                   <p className="font-semibold text-sm sm:mt-3">{f.title}</p>

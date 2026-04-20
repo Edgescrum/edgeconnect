@@ -35,7 +35,7 @@ export default async function ExplorePage({
         </div>
       </header>
 
-      <div className="mx-auto max-w-5xl flex-1 px-4 py-6 sm:px-8">
+      <div className="mx-auto w-full max-w-5xl flex-1 px-4 py-4 sm:px-8 sm:py-6">
         <ExploreClient
           initialProviders={providers}
           categories={PROVIDER_CATEGORIES.map((c) => ({ value: c.value, label: c.label }))}

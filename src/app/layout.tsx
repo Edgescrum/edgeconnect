@@ -1,17 +1,19 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { DM_Sans, Noto_Sans_JP } from "next/font/google";
 import { LiffProvider } from "@/components/LiffProvider";
 import { NavigationLoader } from "@/components/NavigationLoader";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const dmSans = DM_Sans({
+  variable: "--font-dm-sans",
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const notoSansJP = Noto_Sans_JP({
+  variable: "--font-noto-sans-jp",
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
 });
 
 export const metadata: Metadata = {
@@ -42,9 +44,9 @@ export default function RootLayout({
   return (
     <html
       lang="ja"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${dmSans.variable} ${notoSansJP.variable} h-full antialiased`}
     >
-      <body className="bg-[#f8fafc]">
+      <body className="bg-background">
         <script dangerouslySetInnerHTML={{ __html: `
           try {
             var nav = performance.getEntriesByType('navigation')[0];

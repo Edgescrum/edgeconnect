@@ -205,9 +205,7 @@ export function DashboardClient({
               </div>
             </div>
             <div className="hidden lg:block">
-              <div className="flex h-24 w-24 items-center justify-center rounded-3xl bg-white/20 text-5xl font-bold backdrop-blur-sm">
-                P
-              </div>
+              <img src="/logo.svg" alt="PeCo" className="h-16" />
             </div>
           </div>
         </div>

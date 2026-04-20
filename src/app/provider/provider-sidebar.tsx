@@ -26,10 +26,7 @@ export function ProviderSidebar() {
       {/* ロゴ */}
       <div className="flex items-center gap-2 px-5 py-4">
         <Link href="/" className="flex items-center gap-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent text-xs font-bold text-white">
-            P
-          </div>
-          <span className="text-sm font-bold">PeCo</span>
+          <img src="/logo.svg" alt="PeCo" className="h-6" />
         </Link>
       </div>
 
