@@ -22,7 +22,6 @@ export function NavigationLoader() {
       // <a>タグの検知
       const anchor = target.closest("a[href]") as HTMLAnchorElement | null;
       if (anchor) {
-        if (e.defaultPrevented) return;
         const href = anchor.getAttribute("href");
         if (!href) return;
 

@@ -31,8 +31,7 @@ export default async function ProviderBookingsPage({
       users:customer_user_id ( display_name )
     `)
     .eq("provider_id", provider.id)
-    .order("start_at", { ascending: true })
-    .limit(100);
+    .order("start_at", { ascending: true });
 
   const allBookings = (bookings || []).map((b) => {
     const service = Array.isArray(b.services) ? b.services[0] : b.services;

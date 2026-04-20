@@ -18,18 +18,19 @@ export default async function SchedulePage() {
 
   if (!provider) redirect("/provider/register");
 
-  const { data: settings } = await supabase
-    .from("provider_settings")
-    .select("*")
-    .eq("provider_id", provider.id)
-    .single();
-
-  const { data: blockedSlots } = await supabase
-    .from("blocked_slots")
-    .select("*")
-    .eq("provider_id", provider.id)
-    .gte("end_at", new Date().toISOString())
-    .order("start_at", { ascending: true });
+  const [{ data: settings }, { data: blockedSlots }] = await Promise.all([
+    supabase
+      .from("provider_settings")
+      .select("*")
+      .eq("provider_id", provider.id)
+      .single(),
+    supabase
+      .from("blocked_slots")
+      .select("*")
+      .eq("provider_id", provider.id)
+      .gte("end_at", new Date().toISOString())
+      .order("start_at", { ascending: true }),
+  ]);
 
   return (
     <main className="min-h-screen bg-background px-4 py-6 sm:px-8 sm:py-8">
