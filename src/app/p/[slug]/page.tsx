@@ -142,14 +142,12 @@ export default async function ProviderProfilePage({
               <div className="flex items-start gap-8">
                 <ProviderIcon provider={provider} size={120} className="shrink-0 rounded-3xl shadow-xl" />
                 <div className="flex-1 pt-2">
-                  <div className="flex items-center gap-3">
-                    <h1 className="text-3xl font-bold">{provider.name}</h1>
-                    {categoryLabel && (
-                      <span className="rounded-full px-3 py-1 text-xs font-medium" style={{ backgroundColor: `${brandColor}1a`, color: brandColor }}>
-                        {categoryLabel}
-                      </span>
-                    )}
-                  </div>
+                  <h1 className="text-3xl font-bold">{provider.name}</h1>
+                  {categoryLabel && (
+                    <span className="mt-2 inline-block rounded-full px-3 py-1 text-xs font-medium" style={{ backgroundColor: `${brandColor}1a`, color: brandColor }}>
+                      {categoryLabel}
+                    </span>
+                  )}
                   {provider.bio && (
                     <p className="mt-3 max-w-xl whitespace-pre-wrap text-sm leading-relaxed text-muted">{provider.bio}</p>
                   )}

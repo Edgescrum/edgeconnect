@@ -133,10 +133,12 @@ export function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boolean }) {
             個人事業主のための無料予約プラットフォーム。
           </p>
           <div className="mt-8 flex flex-col items-center gap-3 sm:mt-10 sm:flex-row sm:justify-center sm:gap-4">
-            <a href="/?action=login" className="flex w-full max-w-xs items-center justify-center gap-2 rounded-xl bg-[#06C755] py-3.5 text-base font-semibold text-white shadow-lg shadow-[#06C755]/25 active:scale-[0.98] sm:w-auto sm:px-8">
-              {LINE_ICON}
-              無料ではじめる
-            </a>
+            {!isLoggedIn && (
+              <a href="/?action=login" className="flex w-full max-w-xs items-center justify-center gap-2 rounded-xl bg-[#06C755] py-3.5 text-base font-semibold text-white shadow-lg shadow-[#06C755]/25 active:scale-[0.98] sm:w-auto sm:px-8">
+                {LINE_ICON}
+                無料ではじめる
+              </a>
+            )}
             <Link
               href="/explore"
               className="flex w-full max-w-xs items-center justify-center rounded-xl border border-border py-3.5 text-sm font-semibold text-muted active:scale-[0.98] sm:w-auto sm:px-8"
@@ -290,22 +292,24 @@ export function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boolean }) {
       </section>
 
       {/* CTA */}
-      <section className="px-4 py-16 sm:px-8 sm:py-24">
-        <div className="mx-auto max-w-5xl text-center">
-          <h2 className="text-xl font-bold sm:text-3xl">
-            今すぐ、予約管理を
-            <br className="sm:hidden" />
-            シンプルにしませんか？
-          </h2>
-          <p className="mt-3 text-sm text-muted sm:mt-4 sm:text-base">
-            LINEアカウントがあれば30秒で始められます
-          </p>
-          <a href="/?action=login" className="mx-auto mt-8 flex w-full max-w-xs items-center justify-center gap-2 rounded-xl bg-[#06C755] py-3.5 text-base font-semibold text-white shadow-lg shadow-[#06C755]/25 active:scale-[0.98] sm:w-auto sm:px-10">
-            {LINE_ICON}
-            無料ではじめる
-          </a>
-        </div>
-      </section>
+      {!isLoggedIn && (
+        <section className="px-4 py-16 sm:px-8 sm:py-24">
+          <div className="mx-auto max-w-5xl text-center">
+            <h2 className="text-xl font-bold sm:text-3xl">
+              今すぐ、予約管理を
+              <br className="sm:hidden" />
+              シンプルにしませんか？
+            </h2>
+            <p className="mt-3 text-sm text-muted sm:mt-4 sm:text-base">
+              LINEアカウントがあれば30秒で始められます
+            </p>
+            <a href="/?action=login" className="mx-auto mt-8 flex w-full max-w-xs items-center justify-center gap-2 rounded-xl bg-[#06C755] py-3.5 text-base font-semibold text-white shadow-lg shadow-[#06C755]/25 active:scale-[0.98] sm:w-auto sm:px-10">
+              {LINE_ICON}
+              無料ではじめる
+            </a>
+          </div>
+        </section>
+      )}
 
       <PublicFooter maxWidth="max-w-5xl" />
     </div>

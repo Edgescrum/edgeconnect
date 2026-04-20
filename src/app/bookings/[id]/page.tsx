@@ -21,7 +21,7 @@ export default async function BookingDetailPage({
     .select(`
       id, start_at, end_at, status, cancelled_by, created_at, customer_user_id,
       services:service_id ( name, duration_min, price, cancel_deadline_hours, cancel_policy_note ),
-      providers:provider_id ( name, slug, line_contact_url, contact_email )
+      providers:provider_id ( name, slug, line_contact_url, contact_email, contact_phone )
     `)
     .eq("id", id)
     .single();
@@ -45,6 +45,7 @@ export default async function BookingDetailPage({
     slug: string;
     line_contact_url: string | null;
     contact_email: string | null;
+    contact_phone: string | null;
   } | null;
 
   const isCancelled = booking.status === "cancelled";
@@ -119,21 +120,68 @@ export default async function BookingDetailPage({
           </div>
         </div>
 
-        {/* Cancel policy */}
+        {/* キャンセル期限 */}
         {!isCancelled && service && (
-          <div className="mt-4 rounded-xl bg-accent-bg p-3">
-            <p className="text-xs text-accent">
-              キャンセル期限: 予約の{service.cancel_deadline_hours}時間前まで
-              {service.cancel_policy_note && (
+          <div className={`mt-4 rounded-xl p-3 ${canCancel ? "bg-accent-bg" : "bg-red-50"}`}>
+            <p className={`text-xs ${canCancel ? "text-accent" : "text-red-500"}`}>
+              {canCancel
+                ? `キャンセル期限: 予約の${service.cancel_deadline_hours}時間前まで`
+                : "キャンセル期限を過ぎています"
+              }
+              {canCancel && service.cancel_policy_note && (
                 <span className="block mt-1">{service.cancel_policy_note}</span>
               )}
             </p>
           </div>
         )}
 
-        {/* カレンダー追加 */}
-        {!isCancelled && (
+        {/* キャンセルボタン */}
+        {canCancel && (
           <div className="mt-4">
+            <CancelButton bookingId={booking.id} />
+          </div>
+        )}
+
+        {/* 事業主へ連絡 */}
+        {!isCancelled && (provider?.line_contact_url || provider?.contact_email || provider?.contact_phone) && (
+          <div className="mt-6">
+            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted">
+              事業主へ連絡
+            </h3>
+            <div className="space-y-2">
+              {provider.line_contact_url && (
+                <a
+                  href={provider.line_contact_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex min-h-[3rem] w-full items-center justify-center gap-2 rounded-xl bg-success py-3.5 font-semibold text-white active:scale-[0.98]"
+                >
+                  LINEで連絡
+                </a>
+              )}
+              {provider.contact_phone && (
+                <a
+                  href={`tel:${provider.contact_phone}`}
+                  className="flex min-h-[3rem] w-full items-center justify-center gap-2 rounded-xl border border-border py-3.5 font-semibold active:scale-[0.98]"
+                >
+                  電話で連絡
+                </a>
+              )}
+              {provider.contact_email && (
+                <a
+                  href={`mailto:${provider.contact_email}`}
+                  className="flex min-h-[3rem] w-full items-center justify-center gap-2 rounded-xl border border-border py-3.5 font-semibold active:scale-[0.98]"
+                >
+                  メールで連絡
+                </a>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* カレンダーに追加 */}
+        {!isCancelled && (
+          <div className="mt-6">
             <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted">
               カレンダーに追加
             </h3>
@@ -160,31 +208,6 @@ export default async function BookingDetailPage({
             </div>
           </div>
         )}
-
-        {/* Actions */}
-        <div className="mt-4 space-y-2.5">
-          {canCancel && <CancelButton bookingId={booking.id} />}
-
-          {provider?.line_contact_url && (
-            <a
-              href={provider.line_contact_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex min-h-[3rem] w-full items-center justify-center gap-2 rounded-xl bg-success py-3.5 font-semibold text-white active:scale-[0.98]"
-            >
-              事業主にLINEで連絡
-            </a>
-          )}
-
-          {provider?.contact_email && (
-            <a
-              href={`mailto:${provider.contact_email}`}
-              className="flex min-h-[3rem] w-full items-center justify-center gap-2 rounded-xl border border-border py-3.5 font-semibold active:scale-[0.98]"
-            >
-              事業主にメールで連絡
-            </a>
-          )}
-        </div>
       </div>
     </main>
   );
