@@ -13,7 +13,12 @@ export function LiffGate({
 
   useEffect(() => {
     // ハッシュにcontext_tokenがある = LINEアプリ内からのLIFFアクセス
-    setIsLiff(window.location.hash.includes("context_token="));
+    // ?action=login = ログイン処理中
+    const params = new URLSearchParams(window.location.search);
+    setIsLiff(
+      window.location.hash.includes("context_token=") ||
+      params.get("action") === "login"
+    );
   }, []);
 
   // 初回レンダリング（SSR）時はchildrenを返さず何も表示しない（フラッシュ防止）

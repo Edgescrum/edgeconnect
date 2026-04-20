@@ -26,7 +26,7 @@ export default async function ServicesPage() {
 
   return (
     <main className="min-h-screen bg-background px-4 py-6 sm:px-8 sm:py-8">
-      <div className="mx-auto max-w-lg sm:max-w-none">
+      <div>
         {/* ヘッダー */}
         <div className="flex items-center justify-between">
           <div>

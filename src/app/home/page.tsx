@@ -2,6 +2,7 @@ import { resolveUser } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { DashboardClient } from "../dashboard-client";
+import { PublicFooter } from "@/components/PublicFooter";
 
 export default async function HomePage() {
   const user = await resolveUser();
@@ -59,12 +60,15 @@ export default async function HomePage() {
   }
 
   return (
-    <main className="min-h-screen bg-background">
-      <DashboardClient
-        role={user.role}
-        provider={provider}
-        recentProviders={recentProviders}
-      />
+    <main className="flex min-h-screen flex-col bg-background">
+      <div className="flex-1">
+        <DashboardClient
+          role={user.role}
+          provider={provider}
+          recentProviders={recentProviders}
+        />
+      </div>
+      <PublicFooter maxWidth="max-w-5xl" />
     </main>
   );
 }

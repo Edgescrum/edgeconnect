@@ -1,4 +1,4 @@
-
+import { brand } from "@/lib/brand";
 
 interface BookingInfo {
   bookingId: string;
@@ -468,7 +468,7 @@ export function bookingCancelledProvider(info: BookingInfo): Record<string, unkn
         primaryButton(
           "予約管理を開く",
           `https://liff.line.me/${info.liffId}?path=/provider/bookings`,
-          "#6366f1"
+          brand.primary
         ),
         footerBrand(),
       ],

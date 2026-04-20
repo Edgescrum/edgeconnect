@@ -32,19 +32,14 @@ export function PublicFooter({
           </div>
         </div>
       )}
-      <div className={`mx-auto ${maxWidth} px-4 py-8`}>
-        <div className="flex items-center gap-2">
-          <img src="/logo.svg" alt="PeCo" className="h-7" />
+      <div className={`mx-auto ${maxWidth} px-4 py-4`}>
+        <div className="flex items-center gap-3 text-xs text-muted">
+          <img src="/logo.svg" alt="PeCo" className="h-4 sm:h-5" />
+          <span className="text-border">|</span>
+          <Link href="/about" className="hover:text-foreground">PeCoとは</Link>
+          <Link href="/explore" className="hover:text-foreground">事業主を探す</Link>
         </div>
-        <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 text-xs text-muted">
-          <Link href="/about" className="hover:text-foreground">
-            PeCoとは
-          </Link>
-          <Link href="/explore" className="hover:text-foreground">
-            事業主を探す
-          </Link>
-        </div>
-        <p className="mt-6 text-xs text-muted/60">&copy; Edgescrum</p>
+        <p className="mt-2 text-[10px] text-muted/50">&copy; Edgescrum</p>
       </div>
     </footer>
   );

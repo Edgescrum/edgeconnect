@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 
 interface RecentProvider {
   slug: string;
@@ -26,86 +26,57 @@ export function DashboardClient({
   provider: Provider | null;
   recentProviders: RecentProvider[];
 }) {
-  const [activeSlide, setActiveSlide] = useState(0);
   const isProvider = role === "provider";
   const hasRecent = recentProviders.length > 0;
-
-  const bannerCards: { key: string; node: React.ReactNode }[] = [];
-  bannerCards.push({
-    key: "welcome",
-    node: (
-      <>
-        <h2 className="text-lg font-bold text-white">PeCoへようこそ</h2>
-        <p className="mt-2 text-sm leading-relaxed text-white/90">
-          LINEで簡単に予約ができるサービスです。事業主のQRコードやURLから予約しましょう。
-        </p>
-      </>
-    ),
-  });
-  if (!isProvider) {
-    bannerCards.push({
-      key: "provider-cta",
-      node: (
-        <>
-          <h2 className="text-lg font-bold text-white">予約を受け付けませんか？</h2>
-          <p className="mt-2 text-sm leading-relaxed text-white/90">
-            無料であなた専用の予約ページを作成できます。
-          </p>
-          <Link
-            href="/provider/register"
-            className="mt-4 block w-full rounded-xl bg-white py-3 text-center text-sm font-bold text-orange-500 shadow active:scale-[0.98]"
-          >
-            事業主として始める
-          </Link>
-        </>
-      ),
-    });
-  }
-
-  function handleScroll(e: React.UIEvent<HTMLDivElement>) {
-    const el = e.currentTarget;
-    const idx = Math.round(el.scrollLeft / (el.scrollWidth / bannerCards.length));
-    setActiveSlide(idx);
-  }
 
   return (
     <>
       {/* --- モバイル版 --- */}
       <div className="sm:hidden">
         <div>
-          {bannerCards.length > 0 && (
-            <div className="pt-4 pb-2">
-              <div
-                className="flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 scrollbar-hide"
-                onScroll={handleScroll}
-              >
-                {bannerCards.map((card, i) => (
-                  <div
-                    key={card.key}
-                    className={`relative flex h-[180px] shrink-0 snap-center flex-col overflow-hidden rounded-2xl p-5 shadow-lg ${
-                      bannerCards.length === 1 ? "w-full" : "w-[80vw] max-w-[360px]"
-                    } ${
-                      i === 0 && card.key === "welcome"
-                        ? "bg-gradient-to-br from-accent to-accent-light"
-                        : "bg-gradient-to-br from-amber-400 to-orange-400"
-                    }`}
-                  >
-                    {card.node}
-                  </div>
-                ))}
+          {/* ヒーローバナー */}
+          <div className="relative overflow-hidden bg-gradient-to-br from-accent via-accent-light to-accent px-5 pb-6 pt-5 text-white">
+            {/* 背景装飾 */}
+            <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-white/10" />
+            <div className="absolute -bottom-12 -left-6 h-36 w-36 rounded-full bg-white/5" />
+            <div className="relative">
+              <h1 className="text-xl font-bold">PeCoへようこそ</h1>
+              <p className="mt-1.5 text-sm leading-relaxed text-white/80">
+                LINEで簡単に予約ができるサービスです
+              </p>
+              <div className="mt-4 flex gap-2">
+                <Link
+                  href="/explore"
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-white px-4 py-2.5 text-xs font-semibold text-accent shadow active:scale-[0.98]"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" />
+                  </svg>
+                  事業主を探す
+                </Link>
+                <Link
+                  href="/bookings"
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-white/20 px-4 py-2.5 text-xs font-semibold backdrop-blur-sm active:scale-[0.98]"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" />
+                  </svg>
+                  予約一覧
+                </Link>
               </div>
-              {bannerCards.length > 1 && (
-                <div className="mt-2 flex justify-center gap-1.5">
-                  {bannerCards.map((_, i) => (
-                    <div
-                      key={i}
-                      className={`h-1.5 rounded-full transition-all ${
-                        i === activeSlide ? "w-4 bg-accent" : "w-1.5 bg-border"
-                      }`}
-                    />
-                  ))}
-                </div>
-              )}
+            </div>
+          </div>
+
+          {!isProvider && (
+            <div className="mx-4 mt-4 rounded-2xl bg-gradient-to-r from-amber-400 to-orange-400 p-4 text-white shadow">
+              <p className="font-bold">予約を受け付けませんか？</p>
+              <p className="mt-1 text-xs text-white/90">無料であなた専用の予約ページを作成できます</p>
+              <Link
+                href="/provider/register"
+                className="mt-3 block w-full rounded-xl bg-white py-2.5 text-center text-sm font-bold text-orange-500 shadow active:scale-[0.98]"
+              >
+                事業主として始める
+              </Link>
             </div>
           )}
 
@@ -113,11 +84,11 @@ export function DashboardClient({
             <div className="mx-4 mt-4">
               <Link
                 href="/provider"
-                className="flex items-center gap-4 rounded-2xl border-l-4 border-accent bg-card p-4 shadow-sm ring-1 ring-border active:scale-[0.99]"
+                className="flex items-center gap-4 rounded-2xl bg-card p-4 shadow-sm ring-1 ring-border active:scale-[0.99]"
               >
-                <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-xl bg-accent text-sm font-bold text-white shadow-sm shadow-accent/30">
+                <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-xl bg-accent text-sm font-bold text-white">
                   {provider?.icon_url ? (
-                    <img src={provider.icon_url} alt={provider.name || ""} className="h-11 w-11 object-cover" />
+                    <Image src={provider.icon_url} alt={provider.name || ""} width={44} height={44} className="h-11 w-11 object-cover" />
                   ) : (
                     provider?.name?.[0] || "E"
                   )}
@@ -218,9 +189,9 @@ export function DashboardClient({
               href="/provider"
               className="col-span-12 flex items-center gap-5 rounded-2xl bg-card p-5 shadow-sm ring-1 ring-border hover:ring-accent/30 hover:shadow-md transition-all lg:col-span-6"
             >
-              <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-accent text-lg font-bold text-white shadow-md shadow-accent/20">
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-accent text-lg font-bold text-white">
                 {provider?.icon_url ? (
-                  <img src={provider.icon_url} alt={provider.name || ""} className="h-14 w-14 object-cover" />
+                  <Image src={provider.icon_url} alt={provider.name || ""} width={56} height={56} className="h-14 w-14 object-cover" />
                 ) : (
                   provider?.name?.[0] || "E"
                 )}
@@ -287,7 +258,7 @@ export function DashboardClient({
                     >
                       <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-slate-100 text-sm font-semibold text-slate-400">
                         {rp.icon_url ? (
-                          <img src={rp.icon_url} alt={rp.name} className="h-11 w-11 object-cover" />
+                          <Image src={rp.icon_url} alt={rp.name} width={44} height={44} className="h-11 w-11 object-cover" />
                         ) : (
                           rp.name[0]
                         )}
@@ -318,7 +289,7 @@ function RecentProviderCard({ rp }: { rp: RecentProvider }) {
     >
       <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-slate-100 text-sm font-semibold text-slate-500">
         {rp.icon_url ? (
-          <img src={rp.icon_url} alt={rp.name} className="h-9 w-9 object-cover" />
+          <Image src={rp.icon_url} alt={rp.name} width={36} height={36} className="h-9 w-9 object-cover" />
         ) : (
           rp.name[0]
         )}

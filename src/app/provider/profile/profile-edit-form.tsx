@@ -5,7 +5,9 @@ import { updateProfile } from "@/lib/actions/provider";
 import Image from "next/image";
 import { Toggle } from "@/components/Toggle";
 import { ImageCropper } from "@/components/ImageCropper";
-import { PROVIDER_CATEGORIES } from "@/lib/constants/categories";
+import type { Category } from "@/lib/constants/categories";
+import { CategorySelector } from "@/components/CategorySelector";
+import { brand } from "@/lib/brand";
 
 interface Provider {
   id: number;
@@ -26,7 +28,7 @@ function extractLineId(url: string | null): string {
   return match ? match[1] : "";
 }
 
-export function ProfileEditForm({ provider }: { provider: Provider }) {
+export function ProfileEditForm({ provider, categories: PROVIDER_CATEGORIES }: { provider: Provider; categories: Category[] }) {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -198,22 +200,12 @@ export function ProfileEditForm({ provider }: { provider: Provider }) {
       <div>
         <p className="mb-1.5 text-sm font-medium">カテゴリ</p>
         <input type="hidden" name="category" value={category} />
-        <div className="flex flex-wrap gap-2">
-          {PROVIDER_CATEGORIES.map((cat) => (
-            <button
-              key={cat.value}
-              type="button"
-              onClick={() => setCategory(category === cat.value ? "" : cat.value)}
-              className={`rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors ${
-                category === cat.value
-                  ? "bg-accent text-white"
-                  : "bg-card text-muted ring-1 ring-border"
-              }`}
-            >
-              {cat.label}
-            </button>
-          ))}
-        </div>
+        <CategorySelector
+          categories={PROVIDER_CATEGORIES}
+          selected={category ? [category] : []}
+          onChange={(sel) => setCategory(sel[0] || "")}
+          placeholder="カテゴリを選択"
+        />
       </div>
 
       <div>
@@ -363,7 +355,7 @@ export function ProfileEditForm({ provider }: { provider: Provider }) {
             id="brand_color"
             name="brand_color"
             type="color"
-            defaultValue={provider.brand_color || "#6366f1"}
+            defaultValue={provider.brand_color || brand.primary}
             className="h-10 w-10 cursor-pointer rounded-lg border border-border bg-card p-0.5"
           />
           <span className="text-sm text-muted">通知メッセージのボタンやバッジに使用されます</span>

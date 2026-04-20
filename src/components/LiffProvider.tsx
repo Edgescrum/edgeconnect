@@ -40,6 +40,13 @@ export function useLiff() {
 
 const SESSION_KEY = "peco_user";
 
+// Memoize the LIFF import so remounts don't re-import the ~150KB SDK
+let liffPromise: Promise<typeof import("@line/liff")["default"]> | null = null;
+function getLiff() {
+  if (!liffPromise) liffPromise = import("@line/liff").then((m) => m.default);
+  return liffPromise;
+}
+
 export function LiffProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<LiffState>({
     user: null,
@@ -61,7 +68,15 @@ export function LiffProvider({ children }: { children: ReactNode }) {
 
     async function init() {
       try {
-        const liff = (await import("@line/liff")).default;
+        // Skip LIFF initialization on public routes that don't need auth
+        const path = window.location.pathname;
+        const isPublicRoute = path.startsWith("/p/") && !path.includes("/book/");
+        if (isPublicRoute) {
+          setState((prev) => prev.isReady ? prev : { ...prev, isReady: true });
+          return;
+        }
+
+        const liff = await getLiff();
         await liff.init({ liffId: process.env.NEXT_PUBLIC_LIFF_ID! });
         setLiffInstance(liff);
 

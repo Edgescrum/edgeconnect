@@ -17,6 +17,9 @@ const notoSansJP = Noto_Sans_JP({
 });
 
 export const metadata: Metadata = {
+  icons: {
+    icon: "/favicon.svg",
+  },
   title: {
     default: "PeCo - LINE予約管理",
     template: "%s | PeCo",

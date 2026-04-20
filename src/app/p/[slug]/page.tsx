@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import Image from "next/image";
 import { notFound } from "next/navigation";
@@ -5,9 +6,17 @@ import { getCategoryLabel } from "@/lib/constants/categories";
 import { PublicFooter } from "@/components/PublicFooter";
 import { resolveUser } from "@/lib/auth/session";
 import { ServiceMenuList } from "./service-menu-list";
+import { brand } from "@/lib/brand";
 import type { Metadata } from "next";
 
 export const revalidate = 60;
+
+// Deduplicate the RPC call between generateMetadata and the page component
+const getProviderProfile = cache(async (slug: string) => {
+  const supabase = await createClient();
+  const { data } = await supabase.rpc("get_provider_profile", { p_slug: slug });
+  return data;
+});
 
 export async function generateMetadata({
   params,
@@ -15,8 +24,7 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const supabase = await createClient();
-  const { data } = await supabase.rpc("get_provider_profile", { p_slug: slug });
+  const data = await getProviderProfile(slug);
   const provider = data as { name: string | null; bio: string | null; icon_url: string | null } | null;
 
   if (!provider) return {};
@@ -62,22 +70,18 @@ export default async function ProviderProfilePage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const supabase = await createClient();
 
-  const { data } = await supabase.rpc("get_provider_profile", {
-    p_slug: slug,
-  });
-
+  const data = await getProviderProfile(slug);
   const provider = data as ProviderProfile | null;
   if (!provider) notFound();
 
-  const brandColor = provider.brand_color || "#6366f1";
+  const brandColor = provider.brand_color || brand.primary;
   const brandBg = `color-mix(in srgb, ${brandColor} 10%, transparent)`;
 
   const user = await resolveUser();
   const isLoggedIn = !!user;
 
-  const categoryLabel = getCategoryLabel(provider.category);
+  const categoryLabel = await getCategoryLabel(provider.category);
 
   return (
     <main
@@ -89,7 +93,7 @@ export default async function ProviderProfilePage({
         {/* Header */}
         <div className="sticky top-0 z-40 bg-gradient-to-b from-accent/10 to-accent/10">
           <div className="mx-auto flex max-w-lg items-center px-4 py-3">
-            <a href="/" className="flex items-center gap-1.5 rounded-lg px-2 py-1 active:bg-white/60">
+            <a href="/" className="flex items-center gap-1.5 rounded-lg py-1 active:bg-white/60">
               <img src="/logo.svg" alt="PeCo" className="h-5" />
             </a>
           </div>

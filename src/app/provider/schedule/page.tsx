@@ -33,7 +33,7 @@ export default async function SchedulePage() {
 
   return (
     <main className="min-h-screen bg-background px-4 py-6 sm:px-8 sm:py-8">
-      <div className="mx-auto max-w-lg sm:max-w-none">
+      <div>
         <div className="hidden sm:mb-6 sm:block">
           <h1 className="text-xl font-bold">スケジュール設定</h1>
           <p className="mt-1 text-sm text-muted">営業時間やお休みを設定します</p>

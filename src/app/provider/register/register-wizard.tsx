@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react";
 import { registerProvider, checkSlugAvailability } from "@/lib/actions/provider";
 import { Toggle } from "@/components/Toggle";
-import { PROVIDER_CATEGORIES } from "@/lib/constants/categories";
+import type { Category } from "@/lib/constants/categories";
+import { CategorySelector } from "@/components/CategorySelector";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
@@ -15,7 +16,7 @@ const STEPS = [
   { title: "完了", icon: "🎉" },
 ];
 
-export function RegisterWizard() {
+export function RegisterWizard({ categories: PROVIDER_CATEGORIES }: { categories: Category[] }) {
   const router = useRouter();
   const [step, setStep] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -140,22 +141,12 @@ export function RegisterWizard() {
                 </div>
                 <div>
                   <label className="mb-2 block text-sm font-medium">カテゴリ <span className="text-red-500">*</span></label>
-                  <div className="flex flex-wrap gap-2">
-                    {PROVIDER_CATEGORIES.map((cat) => (
-                      <button
-                        key={cat.value}
-                        type="button"
-                        onClick={() => setCategory(category === cat.value ? "" : cat.value)}
-                        className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
-                          category === cat.value
-                            ? "bg-accent text-white"
-                            : "bg-background text-muted ring-1 ring-border hover:ring-accent/40"
-                        }`}
-                      >
-                        {cat.label}
-                      </button>
-                    ))}
-                  </div>
+                  <CategorySelector
+                    categories={PROVIDER_CATEGORIES}
+                    selected={category ? [category] : []}
+                    onChange={(sel) => setCategory(sel[0] || "")}
+                    placeholder="カテゴリを選択"
+                  />
                 </div>
               </div>
             </section>
@@ -440,22 +431,12 @@ export function RegisterWizard() {
 
             <div className="mt-6">
               <p className="mb-2 text-sm font-medium">カテゴリ</p>
-              <div className="flex flex-wrap gap-2">
-                {PROVIDER_CATEGORIES.map((cat) => (
-                  <button
-                    key={cat.value}
-                    type="button"
-                    onClick={() => setCategory(category === cat.value ? "" : cat.value)}
-                    className={`rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors ${
-                      category === cat.value
-                        ? "bg-accent text-white"
-                        : "bg-card text-muted ring-1 ring-border"
-                    }`}
-                  >
-                    {cat.label}
-                  </button>
-                ))}
-              </div>
+              <CategorySelector
+                categories={PROVIDER_CATEGORIES}
+                selected={category ? [category] : []}
+                onChange={(sel) => setCategory(sel[0] || "")}
+                placeholder="カテゴリを選択"
+              />
             </div>
 
             <div className={`fixed bottom-0 left-0 right-0 bg-background px-4 pb-8 pt-3 transition-opacity ${keyboardOpen ? "pointer-events-none opacity-0" : ""}`}>

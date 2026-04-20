@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { searchProviders } from "@/lib/actions/explore";
-import { PROVIDER_CATEGORIES } from "@/lib/constants/categories";
+import { getCategories } from "@/lib/constants/categories";
 import { ExploreClient } from "./explore-client";
 import { PublicFooter } from "@/components/PublicFooter";
 
@@ -17,10 +17,11 @@ export const metadata: Metadata = {
 export default async function ExplorePage({
   searchParams,
 }: {
-  searchParams: Promise<{ category?: string; q?: string }>;
+  searchParams: Promise<{ category?: string | string[]; q?: string }>;
 }) {
   const { category, q } = await searchParams;
-  const providers = await searchProviders(category || null, q || null, 0, 20);
+  const categoryArr = category ? (Array.isArray(category) ? category : [category]) : [];
+  const providers = await searchProviders(categoryArr.length > 0 ? categoryArr : null, q || null, 0, 20);
 
   return (
     <main className="flex min-h-screen flex-col bg-background">
@@ -38,8 +39,8 @@ export default async function ExplorePage({
       <div className="mx-auto w-full max-w-5xl flex-1 px-4 py-4 sm:px-8 sm:py-6">
         <ExploreClient
           initialProviders={providers}
-          categories={PROVIDER_CATEGORIES.map((c) => ({ value: c.value, label: c.label }))}
-          initialCategory={category || null}
+          categories={await getCategories()}
+          initialCategories={categoryArr}
           initialQuery={q || null}
         />
       </div>

@@ -12,7 +12,7 @@ export default function ProviderLayout({
       <ProviderSidebar />
       {/* モバイル: ヘッダーナビ */}
       <ProviderNav />
-      <div className="flex-1 sm:min-w-0">
+      <div className="mx-auto max-w-5xl flex-1 sm:min-w-0">
         {children}
       </div>
     </div>

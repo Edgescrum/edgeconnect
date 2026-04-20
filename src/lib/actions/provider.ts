@@ -8,6 +8,7 @@ import { log, logError } from "@/lib/log";
 import { isReservedSlug } from "@/lib/constants/reserved-slugs";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import sharp from "sharp";
+import { brand } from "@/lib/brand";
 
 async function cleanOldIcons(adminSupabase: SupabaseClient, lineUserId: string) {
   const { data: files } = await adminSupabase.storage
@@ -53,7 +54,7 @@ async function generateDefaultIcon(
 ): Promise<string | null> {
   const initial = (name || "?")[0];
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256">
-    <rect width="256" height="256" rx="48" fill="#6366f1"/>
+    <rect width="256" height="256" rx="48" fill="${brand.primary}"/>
     <text x="128" y="140" text-anchor="middle" dominant-baseline="middle"
       font-family="sans-serif" font-size="120" font-weight="bold" fill="#fff">${initial}</text>
   </svg>`;

@@ -26,7 +26,7 @@ export default async function CalendarPage() {
 
   return (
     <main className="min-h-screen bg-background px-4 py-6 sm:px-8 sm:py-8">
-      <div className="mx-auto max-w-lg sm:max-w-none">
+      <div>
         <div className="hidden sm:mb-6 sm:block">
           <h1 className="text-xl font-bold">カレンダー連携</h1>
           <p className="mt-1 text-sm text-muted">カレンダーアプリと連携して予約を自動同期します</p>

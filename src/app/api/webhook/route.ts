@@ -3,6 +3,7 @@ import { createHmac } from "crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { pushFlexMessage } from "@/lib/line/messaging";
 import { log, logError } from "@/lib/log";
+import { brand } from "@/lib/brand";
 
 const LIFF_ID = process.env.NEXT_PUBLIC_LIFF_ID!;
 
@@ -50,7 +51,7 @@ async function handleFollow(userId: string) {
   log("webhook", "sending welcome", { isProvider });
 
   const footerButtons: Record<string, unknown>[] = [
-    { type: "button", action: { type: "uri", label: "アプリを開く", uri: `https://liff.line.me/${LIFF_ID}` }, style: "primary", color: "#6366f1" },
+    { type: "button", action: { type: "uri", label: "アプリを開く", uri: `https://liff.line.me/${LIFF_ID}` }, style: "primary", color: brand.primary },
   ];
   if (!isProvider) {
     footerButtons.push(
@@ -63,7 +64,7 @@ async function handleFollow(userId: string) {
     header: {
       type: "box",
       layout: "vertical",
-      backgroundColor: "#6366f1",
+      backgroundColor: brand.primary,
       paddingAll: "20px",
       contents: [
         { type: "text", text: "PeCo", color: "#ffffff", size: "xs" },

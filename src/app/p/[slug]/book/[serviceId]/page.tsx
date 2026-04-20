@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { notFound, redirect } from "next/navigation";
 import { resolveUser } from "@/lib/auth/session";
 import { BookingFlow } from "./booking-flow";
+import { brand } from "@/lib/brand";
 import type { Metadata } from "next";
 
 export async function generateMetadata({
@@ -73,7 +74,7 @@ export default async function BookingPage({
       providerName={profile.name}
       providerSlug={slug}
       service={service}
-      brandColor={profile.brand_color || "#6366f1"}
+      brandColor={profile.brand_color || brand.primary}
       isLineFriend={user.isLineFriend}
     />
   );

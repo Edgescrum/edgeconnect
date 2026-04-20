@@ -1,6 +1,7 @@
 import { resolveUser } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { getCategories } from "@/lib/constants/categories";
 import { RegisterWizard } from "./register-wizard";
 
 export default async function RegisterPage() {
@@ -17,5 +18,7 @@ export default async function RegisterPage() {
 
   if (provider) redirect("/provider");
 
-  return <RegisterWizard />;
+  const categories = await getCategories();
+
+  return <RegisterWizard categories={categories} />;
 }

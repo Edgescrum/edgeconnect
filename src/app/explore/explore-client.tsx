@@ -3,38 +3,41 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { searchProviders, type ProviderCard } from "@/lib/actions/explore";
-
-interface Category {
-  value: string;
-  label: string;
-}
+import { CategorySelector } from "@/components/CategorySelector";
+import type { Category } from "@/lib/constants/categories";
 
 export function ExploreClient({
   initialProviders,
   categories,
-  initialCategory,
+  initialCategories,
   initialQuery,
 }: {
   initialProviders: ProviderCard[];
   categories: Category[];
-  initialCategory: string | null;
+  initialCategories: string[];
   initialQuery: string | null;
 }) {
   const router = useRouter();
   const [providers, setProviders] = useState(initialProviders);
-  const [category, setCategory] = useState(initialCategory);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>(initialCategories);
   const [query, setQuery] = useState(initialQuery || "");
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(initialProviders.length >= 20);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const searchTimeout = useRef<ReturnType<typeof setTimeout>>(undefined);
 
-  async function handleFilter(newCategory: string | null, newQuery: string) {
-    setCategory(newCategory);
+  async function handleFilter(newCategories: string[], newQuery: string) {
+    setSelectedCategories(newCategories);
     setLoading(true);
     try {
-      const results = await searchProviders(newCategory, newQuery || null, 0, 20);
+      const results = await searchProviders(
+        newCategories.length > 0 ? newCategories : null,
+        newQuery || null,
+        0,
+        20
+      );
       setProviders(results);
       setHasMore(results.length >= 20);
     } catch {
@@ -44,21 +47,17 @@ export function ExploreClient({
     }
 
     const params = new URLSearchParams();
-    if (newCategory) params.set("category", newCategory);
+    newCategories.forEach((c) => params.append("category", c));
     if (newQuery) params.set("q", newQuery);
     const qs = params.toString();
     router.replace(`/explore${qs ? `?${qs}` : ""}`, { scroll: false });
-  }
-
-  function handleCategoryClick(value: string | null) {
-    handleFilter(value === category ? null : value, query);
   }
 
   function handleSearchInput(value: string) {
     setQuery(value);
     if (searchTimeout.current) clearTimeout(searchTimeout.current);
     searchTimeout.current = setTimeout(() => {
-      handleFilter(category, value);
+      handleFilter(selectedCategories, value);
     }, 400);
   }
 
@@ -66,7 +65,12 @@ export function ExploreClient({
     if (loading || !hasMore) return;
     setLoading(true);
     try {
-      const results = await searchProviders(category, query || null, providers.length, 20);
+      const results = await searchProviders(
+        selectedCategories.length > 0 ? selectedCategories : null,
+        query || null,
+        providers.length,
+        20
+      );
       setProviders((prev) => [...prev, ...results]);
       setHasMore(results.length >= 20);
     } catch {
@@ -74,7 +78,7 @@ export function ExploreClient({
     } finally {
       setLoading(false);
     }
-  }, [loading, hasMore, category, query, providers.length]);
+  }, [loading, hasMore, selectedCategories, query, providers.length]);
 
   useEffect(() => {
     if (!sentinelRef.current || !hasMore) return;
@@ -87,6 +91,8 @@ export function ExploreClient({
     observer.observe(sentinelRef.current);
     return () => observer.disconnect();
   }, [hasMore, loadMore]);
+
+  const hasFilters = selectedCategories.length > 0 || query;
 
   return (
     <div className="w-full min-w-0">
@@ -104,31 +110,15 @@ export function ExploreClient({
         />
       </div>
 
-      {/* カテゴリチップ */}
-      <div className="mt-3 flex flex-wrap gap-1.5 sm:mt-4 sm:gap-2">
-        <button
-          onClick={() => handleCategoryClick(null)}
-          className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors sm:px-3.5 ${
-            !category
-              ? "bg-accent text-white"
-              : "bg-card ring-1 ring-border text-muted"
-          }`}
-        >
-          すべて
-        </button>
-        {categories.map((c) => (
-          <button
-            key={c.value}
-            onClick={() => handleCategoryClick(c.value)}
-            className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors sm:px-3.5 ${
-              category === c.value
-                ? "bg-accent text-white"
-                : "bg-card ring-1 ring-border text-muted"
-            }`}
-          >
-            {c.label}
-          </button>
-        ))}
+      {/* カテゴリ選択 */}
+      <div className="mt-3 sm:mt-4">
+        <CategorySelector
+          categories={categories}
+          selected={selectedCategories}
+          onChange={(sel) => handleFilter(sel, query)}
+          multiple
+          placeholder="カテゴリで絞り込み"
+        />
       </div>
 
       {/* 一覧 */}
@@ -141,7 +131,7 @@ export function ExploreClient({
           >
             <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-accent-bg text-base font-semibold text-accent sm:h-12 sm:w-12">
               {p.icon_url ? (
-                <img src={p.icon_url} alt={p.name || ""} className="h-11 w-11 object-cover sm:h-12 sm:w-12" />
+                <Image src={p.icon_url} alt={p.name || ""} width={48} height={48} className="h-11 w-11 object-cover sm:h-12 sm:w-12" />
               ) : (
                 (p.name || "?")[0]
               )}
@@ -183,10 +173,10 @@ export function ExploreClient({
         <div className="py-16 text-center">
           <p className="text-3xl">🔍</p>
           <p className="mt-4 font-semibold">
-            {query || category ? "該当する事業主が見つかりません" : "まだ事業主が登録されていません"}
+            {hasFilters ? "該当する事業主が見つかりません" : "まだ事業主が登録されていません"}
           </p>
           <p className="mt-1 text-sm text-muted">
-            {query || category
+            {hasFilters
               ? "条件を変えて再度お試しください"
               : "事業主が登録されるまでお待ちください"}
           </p>

@@ -10,6 +10,7 @@ import {
 } from "./templates";
 import type { DailySummaryBooking } from "./templates";
 import { generateGoogleCalendarUrl } from "@/lib/calendar/ics";
+import { brand } from "@/lib/brand";
 
 const LIFF_ID = process.env.NEXT_PUBLIC_LIFF_ID!;
 
@@ -86,7 +87,7 @@ async function getBookingDetails(bookingId: string) {
       providerName: provider.name || "",
       providerSlug: provider.slug,
       providerIconUrl: provider.icon_url || undefined,
-      brandColor: provider.brand_color || "#6366f1",
+      brandColor: provider.brand_color || brand.primary,
       serviceName: service.name,
       durationMin: service.duration_min,
       dateStr,
