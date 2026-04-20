@@ -55,7 +55,7 @@ async function handleFollow(userId: string) {
   ];
   if (!isProvider) {
     footerButtons.push(
-      { type: "button", action: { type: "uri", label: "事業主として登録する", uri: `https://liff.line.me/${LIFF_ID}?path=/provider/register` }, style: "link" }
+      { type: "button", action: { type: "uri", label: "事業主として登録する", uri: `https://liff.line.me/${LIFF_ID}/provider/register` }, style: "link" }
     );
   }
 

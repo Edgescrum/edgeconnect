@@ -197,7 +197,7 @@ export function bookingConfirmedCustomer(info: BookingInfo): Record<string, unkn
           : []),
         primaryButton(
           "予約詳細を見る",
-          `https://liff.line.me/${info.liffId}?path=/bookings/${info.bookingId}`,
+          `https://liff.line.me/${info.liffId}/bookings/${info.bookingId}`,
           color
         ),
         footerBrand(),
@@ -353,7 +353,7 @@ export function dailySummaryProvider(info: DailySummaryInfo): Record<string, unk
         separator(),
         primaryButton(
           "予約管理を開く",
-          `https://liff.line.me/${info.liffId}?path=/provider/bookings`,
+          `https://liff.line.me/${info.liffId}/provider/bookings`,
           color
         ),
         footerBrand(),
@@ -420,7 +420,7 @@ export function bookingCancelledCustomer(
             ),
             primaryButton(
               "事業主に連絡",
-              `https://liff.line.me/${info.liffId}?path=/p/${info.providerSlug}`,
+              `https://liff.line.me/${info.liffId}/p/${info.providerSlug}`,
               "#999999"
             ),
           ],
@@ -467,7 +467,7 @@ export function bookingCancelledProvider(info: BookingInfo): Record<string, unkn
         separator(),
         primaryButton(
           "予約管理を開く",
-          `https://liff.line.me/${info.liffId}?path=/provider/bookings`,
+          `https://liff.line.me/${info.liffId}/provider/bookings`,
           brand.primary
         ),
         footerBrand(),
@@ -523,12 +523,12 @@ export function bookingReminder(info: BookingInfo): Record<string, unknown> {
           contents: [
             primaryButton(
               "予約詳細を見る",
-              `https://liff.line.me/${info.liffId}?path=/bookings/${info.bookingId}`,
+              `https://liff.line.me/${info.liffId}/bookings/${info.bookingId}`,
               color
             ),
             primaryButton(
               "事業主に連絡",
-              `https://liff.line.me/${info.liffId}?path=/p/${info.providerSlug}`,
+              `https://liff.line.me/${info.liffId}/p/${info.providerSlug}`,
               "#999999"
             ),
           ],
