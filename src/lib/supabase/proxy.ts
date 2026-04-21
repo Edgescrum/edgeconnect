@@ -43,7 +43,13 @@ export async function updateSession(request: NextRequest) {
     }
   }
 
-  // Supabase Authセッションリフレッシュ（全ルートで実行）
+  // 公開ページはセッションリフレッシュをスキップ（パフォーマンス最適化）
+  const publicPaths = ["/", "/explore", "/p/"];
+  if (publicPaths.some((p) => pathname === p || (p.endsWith("/") && pathname.startsWith(p) && !pathname.includes("/book/")))) {
+    return NextResponse.next({ request });
+  }
+
+  // Supabase Authセッションリフレッシュ（認証が必要なルートのみ）
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(
