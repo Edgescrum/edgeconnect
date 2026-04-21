@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 
 import type { ProviderBase } from "@/lib/types/provider";
+import { GearIcon, SearchIcon, CalendarIcon, ChevronRightIcon } from "@/components/icons";
 
 interface RecentProvider extends ProviderBase {
   lastService: string;
@@ -34,10 +35,7 @@ export function DashboardClient({
             <div className="absolute -bottom-12 -left-6 h-36 w-36 rounded-full bg-white/5" />
             {/* 設定アイコン */}
             <Link href="/settings" className="absolute right-4 top-4 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white/20 active:bg-white/30">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-white">
-                <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
-                <circle cx="12" cy="12" r="3" />
-              </svg>
+              <GearIcon className="text-white" />
             </Link>
             <div className="relative">
               <h1 className="text-xl font-bold">PeCoへようこそ</h1>
@@ -49,18 +47,14 @@ export function DashboardClient({
                   href="/explore"
                   className="inline-flex items-center gap-1.5 rounded-xl bg-white px-4 py-2.5 text-xs font-semibold text-accent shadow active:scale-[0.98]"
                 >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" />
-                  </svg>
+                  <SearchIcon size={14} />
                   事業主を探す
                 </Link>
                 <Link
                   href="/bookings"
                   className="inline-flex items-center gap-1.5 rounded-xl bg-white/20 px-4 py-2.5 text-xs font-semibold backdrop-blur-sm active:scale-[0.98]"
                 >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" />
-                  </svg>
+                  <CalendarIcon size={14} />
                   予約一覧
                 </Link>
               </div>
@@ -98,9 +92,7 @@ export function DashboardClient({
                   <p className="text-xs text-muted">予約・メニュー・スケジュールを管理</p>
                 </div>
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent-bg">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-accent">
-                    <path d="m9 18 6-6-6-6" />
-                  </svg>
+                  <ChevronRightIcon className="text-accent" />
                 </div>
               </Link>
             </div>
@@ -113,18 +105,13 @@ export function DashboardClient({
                 className="flex items-center gap-3.5 rounded-xl bg-background p-3.5 ring-1 ring-border active:scale-[0.99]"
               >
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-accent-bg">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-accent">
-                    <rect x="3" y="4" width="18" height="18" rx="2" />
-                    <path d="M16 2v4M8 2v4M3 10h18" />
-                  </svg>
+                  <CalendarIcon className="text-accent" />
                 </div>
                 <div className="flex-1">
                   <p className="text-sm font-semibold">予約一覧</p>
                   <p className="text-xs text-muted">予約の確認・キャンセル</p>
                 </div>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-muted">
-                  <path d="m9 18 6-6-6-6" />
-                </svg>
+                <ChevronRightIcon className="text-muted" />
               </Link>
 
 
@@ -150,10 +137,7 @@ export function DashboardClient({
           <div className="absolute -bottom-16 -left-8 h-48 w-48 rounded-full bg-white/5" />
           {/* 設定アイコン */}
           <Link href="/settings" className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full bg-white/20 hover:bg-white/30 transition-colors">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-white">
-              <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
-              <circle cx="12" cy="12" r="3" />
-            </svg>
+            <GearIcon size={18} className="text-white" />
           </Link>
           <div className="relative flex items-center justify-between">
             <div>
@@ -167,18 +151,14 @@ export function DashboardClient({
                   href="/explore"
                   className="inline-flex items-center gap-1.5 rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-accent shadow-lg hover:shadow-xl transition-shadow"
                 >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" />
-                  </svg>
+                  <SearchIcon />
                   事業主を探す
                 </Link>
                 <Link
                   href="/bookings"
                   className="inline-flex items-center gap-1.5 rounded-xl bg-white/20 px-5 py-2.5 text-sm font-semibold backdrop-blur-sm hover:bg-white/30 transition-colors"
                 >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" />
-                  </svg>
+                  <CalendarIcon size={16} />
                   予約一覧
                 </Link>
               </div>
@@ -213,9 +193,7 @@ export function DashboardClient({
                   ))}
                 </div>
               </div>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0 text-muted">
-                <path d="m9 18 6-6-6-6" />
-              </svg>
+              <ChevronRightIcon size={20} className="shrink-0 text-muted" />
             </Link>
           )}
 
@@ -236,18 +214,13 @@ export function DashboardClient({
             className="col-span-12 flex items-center gap-4 rounded-2xl bg-card p-5 shadow-sm ring-1 ring-border hover:ring-accent/30 hover:shadow-md transition-all lg:col-span-6"
           >
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-accent/10">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-accent">
-                <rect x="3" y="4" width="18" height="18" rx="2" />
-                <path d="M16 2v4M8 2v4M3 10h18" />
-              </svg>
+              <CalendarIcon size={24} className="text-accent" />
             </div>
             <div className="flex-1">
               <p className="font-semibold">予約一覧</p>
               <p className="text-sm text-muted">予約の確認・キャンセル</p>
             </div>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-muted">
-              <path d="m9 18 6-6-6-6" />
-            </svg>
+            <ChevronRightIcon size={16} className="text-muted" />
           </Link>
 
           {/* 最近の利用 */}
@@ -306,9 +279,7 @@ function RecentProviderCard({ rp }: { rp: RecentProvider }) {
         <p className="text-sm font-semibold truncate">{rp.name}</p>
         <p className="text-xs text-muted truncate">{dateLabel} {rp.lastService}</p>
       </div>
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0 text-muted">
-        <path d="m9 18 6-6-6-6" />
-      </svg>
+      <ChevronRightIcon className="shrink-0 text-muted" />
     </Link>
   );
 }

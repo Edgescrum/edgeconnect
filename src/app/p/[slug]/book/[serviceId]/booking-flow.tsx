@@ -8,6 +8,8 @@ import { formatPhoneAsYouType, isValidJapanesePhone } from "@/lib/phone";
 import { FriendPromptModal } from "./friend-prompt-modal";
 import { Spinner } from "@/components/Spinner";
 import { Alert } from "@/components/Alert";
+import { ChevronLeftIcon, ChevronRightIcon } from "@/components/icons";
+import { FormLabel, FormInput, FormTextarea } from "@/components/FormField";
 
 interface CustomField {
   label: string;
@@ -238,18 +240,14 @@ export function BookingFlow({
               href={`/p/${providerSlug}`}
               className="flex h-8 w-8 items-center justify-center rounded-lg active:bg-accent-bg"
             >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="m15 18-6-6 6-6" />
-              </svg>
+              <ChevronLeftIcon size={20} />
             </Link>
           ) : step === "confirm" ? (
             <button
               onClick={() => setStep("date")}
               className="flex h-8 w-8 items-center justify-center rounded-lg active:bg-accent-bg"
             >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="m15 18-6-6 6-6" />
-              </svg>
+              <ChevronLeftIcon size={20} />
             </button>
           ) : null}
           <h1 className="text-base font-semibold">
@@ -326,9 +324,7 @@ export function BookingFlow({
                   disabled={!canPrev}
                   className="flex h-8 w-8 items-center justify-center rounded-lg disabled:opacity-20 active:bg-accent-bg"
                 >
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="m15 18-6-6 6-6" />
-                  </svg>
+                  <ChevronLeftIcon size={18} />
                 </button>
                 <span className="text-sm font-semibold">
                   {viewYear}年{viewMonth + 1}月
@@ -338,9 +334,7 @@ export function BookingFlow({
                   disabled={!canNext}
                   className="flex h-8 w-8 items-center justify-center rounded-lg disabled:opacity-20 active:bg-accent-bg"
                 >
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="m9 18 6-6-6-6" />
-                  </svg>
+                  <ChevronRightIcon size={18} />
                 </button>
               </div>
 
@@ -470,53 +464,43 @@ export function BookingFlow({
             {/* お客さま情報 */}
             <div className="mb-4 space-y-4 rounded-2xl bg-card p-5 shadow-sm ring-1 ring-border">
               <div>
-                <label className="mb-1.5 block text-sm font-medium">
-                  お名前 <span className="text-red-500">*</span>
-                </label>
-                <input
+                <FormLabel required>お名前</FormLabel>
+                <FormInput
                   type="text"
                   value={customerName}
                   onChange={(e) => setCustomerName(e.target.value)}
                   placeholder="山田 太郎"
-                  className="w-full rounded-xl border border-border bg-background px-4 py-3"
                 />
               </div>
               <div>
-                <label className="mb-1.5 block text-sm font-medium">
-                  電話番号 <span className="text-red-500">*</span>
-                </label>
-                <input
+                <FormLabel required>電話番号</FormLabel>
+                <FormInput
                   type="tel"
                   value={customerPhone}
                   onChange={(e) => setCustomerPhone(formatPhoneAsYouType(e.target.value))}
                   placeholder="090-1234-5678"
                   inputMode="tel"
-                  className="w-full rounded-xl border border-border bg-background px-4 py-3"
                 />
               </div>
               {(service.custom_fields || []).map((field, index) => (
                 <div key={index}>
-                  <label className="mb-1.5 block text-sm font-medium">
-                    {field.label}
-                    {field.required && <span className="text-red-500"> *</span>}
-                  </label>
+                  <FormLabel required={field.required}>{field.label}</FormLabel>
                   {field.type === "textarea" ? (
-                    <textarea
+                    <FormTextarea
                       value={customAnswers[index] || ""}
                       onChange={(e) =>
                         setCustomAnswers((prev) => ({ ...prev, [index]: e.target.value }))
                       }
                       rows={3}
-                      className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm"
+                      className="text-sm"
                     />
                   ) : (
-                    <input
+                    <FormInput
                       type="text"
                       value={customAnswers[index] || ""}
                       onChange={(e) =>
                         setCustomAnswers((prev) => ({ ...prev, [index]: e.target.value }))
                       }
-                      className="w-full rounded-xl border border-border bg-background px-4 py-3"
                     />
                   )}
                 </div>

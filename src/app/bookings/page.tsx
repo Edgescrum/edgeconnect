@@ -5,6 +5,7 @@ import Link from "next/link";
 import { CustomerBookingList } from "./customer-booking-list";
 import { PublicFooter } from "@/components/PublicFooter";
 import { LineFriendBanner } from "@/components/LineFriendBanner";
+import { ChevronLeftIcon } from "@/components/icons";
 
 export default async function BookingsPage({
   searchParams,
@@ -46,9 +47,7 @@ export default async function BookingsPage({
       <header className="sticky top-0 z-40 border-b border-border bg-card/80 backdrop-blur-lg">
         <div className="mx-auto flex max-w-5xl items-center gap-3 px-4 py-3 sm:px-8">
           <Link href="/home" className="flex h-8 w-8 items-center justify-center rounded-lg active:bg-accent-bg">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="m15 18-6-6 6-6" />
-            </svg>
+            <ChevronLeftIcon size={20} />
           </Link>
           <h1 className="text-base font-semibold">予約一覧</h1>
         </div>

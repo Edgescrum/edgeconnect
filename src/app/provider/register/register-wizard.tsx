@@ -2,15 +2,14 @@
 
 import { useState, useEffect } from "react";
 import { registerProvider, checkSlugAvailability } from "@/lib/actions/provider";
-import { Toggle } from "@/components/Toggle";
 import type { Category } from "@/lib/constants/categories";
 import { CategorySelector } from "@/components/CategorySelector";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { formatPhoneAsYouType } from "@/lib/phone";
-import { LineIcon } from "@/components/icons";
 import { Spinner } from "@/components/Spinner";
 import { Alert } from "@/components/Alert";
+import { ContactMethodToggles, type ContactMethodState } from "@/components/ContactMethodToggles";
+import { FormLabel, FormInput, FormTextarea } from "@/components/FormField";
 
 const STEPS = [
   { title: "はじめに", icon: "👋" },
@@ -49,12 +48,14 @@ export function RegisterWizard({ categories: PROVIDER_CATEGORIES }: { categories
   const [bio, setBio] = useState("");
   const [iconFile, setIconFile] = useState<File | null>(null);
   const [category, setCategory] = useState("");
-  const [lineEnabled, setLineEnabled] = useState(true);
-  const [lineId, setLineId] = useState("");
-  const [emailEnabled, setEmailEnabled] = useState(false);
-  const [contactEmail, setContactEmail] = useState("");
-  const [phoneEnabled, setPhoneEnabled] = useState(false);
-  const [contactPhone, setContactPhone] = useState("");
+  const [contactMethod, setContactMethod] = useState<ContactMethodState>({
+    lineEnabled: true,
+    lineId: "",
+    emailEnabled: false,
+    contactEmail: "",
+    phoneEnabled: false,
+    contactPhone: "",
+  });
 
   async function handleSlugChange(value: string) {
     const normalized = value.toLowerCase().replace(/[^a-z0-9-]/g, "");
@@ -78,14 +79,14 @@ export function RegisterWizard({ categories: PROVIDER_CATEGORIES }: { categories
       formData.set("name", name);
       formData.set("bio", bio);
       if (category) formData.set("category", category);
-      if (lineEnabled && lineId) {
-        formData.set("line_id", lineId);
+      if (contactMethod.lineEnabled && contactMethod.lineId) {
+        formData.set("line_id", contactMethod.lineId);
       }
-      if (emailEnabled && contactEmail) {
-        formData.set("contact_email", contactEmail);
+      if (contactMethod.emailEnabled && contactMethod.contactEmail) {
+        formData.set("contact_email", contactMethod.contactEmail);
       }
-      if (phoneEnabled && contactPhone) {
-        formData.set("contact_phone", contactPhone);
+      if (contactMethod.phoneEnabled && contactMethod.contactPhone) {
+        formData.set("contact_phone", contactMethod.contactPhone);
       }
       if (iconFile) formData.set("icon", iconFile);
       await registerProvider(formData);
@@ -104,10 +105,10 @@ export function RegisterWizard({ categories: PROVIDER_CATEGORIES }: { categories
       case 1: return name.trim().length > 0 && category !== "";
       case 2: return slug.length >= 3 && slugStatus === "available";
       case 3: {
-        if (!lineEnabled && !emailEnabled && !phoneEnabled) return false;
-        if (lineEnabled && !lineId.trim()) return false;
-        if (emailEnabled && !contactEmail.includes("@")) return false;
-        if (phoneEnabled && !contactPhone.trim()) return false;
+        if (!contactMethod.lineEnabled && !contactMethod.emailEnabled && !contactMethod.phoneEnabled) return false;
+        if (contactMethod.lineEnabled && !contactMethod.lineId.trim()) return false;
+        if (contactMethod.emailEnabled && !contactMethod.contactEmail.includes("@")) return false;
+        if (contactMethod.phoneEnabled && !contactMethod.contactPhone.trim()) return false;
         return true;
       }
       default: return true;
@@ -134,17 +135,16 @@ export function RegisterWizard({ categories: PROVIDER_CATEGORIES }: { categories
               </div>
               <div className="space-y-4">
                 <div>
-                  <label className="mb-1.5 block text-sm font-medium">屋号・サービス名 <span className="text-red-500">*</span></label>
-                  <input
+                  <FormLabel required>屋号・サービス名</FormLabel>
+                  <FormInput
                     type="text"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="例：山田サロン"
-                    className="w-full rounded-xl border border-border bg-background px-4 py-3"
                   />
                 </div>
                 <div>
-                  <label className="mb-2 block text-sm font-medium">カテゴリ <span className="text-red-500">*</span></label>
+                  <FormLabel required>カテゴリ</FormLabel>
                   <CategorySelector
                     categories={PROVIDER_CATEGORIES}
                     selected={category ? [category] : []}
@@ -193,116 +193,31 @@ export function RegisterWizard({ categories: PROVIDER_CATEGORIES }: { categories
                 <h2 className="text-lg font-bold">連絡先・プロフィール</h2>
               </div>
               <div className="space-y-5">
-                {/* LINE */}
-                <div className={`rounded-2xl p-4 ring-1 transition-colors ${
-                  lineEnabled ? "bg-green-50/50 ring-success/30" : "bg-background ring-border"
-                }`}>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-success/10 text-success">
-                        <LineIcon size={18} />
-                      </div>
-                      <p className="text-sm font-semibold">LINEで連絡</p>
-                    </div>
-                    <Toggle checked={lineEnabled} onChange={setLineEnabled} ariaLabel="LINEで連絡を有効にする" />
-                  </div>
-                  {lineEnabled && (
-                    <div className="mt-3">
-                      <div className="flex items-center gap-2">
-                        <span className="shrink-0 text-sm text-muted">@</span>
-                        <input
-                          type="text"
-                          value={lineId}
-                          onChange={(e) => setLineId(e.target.value.replace(/^@/, ""))}
-                          placeholder="your-line-id"
-                          className="w-full rounded-xl border border-border bg-white px-4 py-3 text-sm"
-                        />
-                      </div>
-                      <p className="mt-1.5 text-xs text-muted">LINEアプリの設定 &gt; プロフィール &gt; LINE IDで確認できます</p>
-                    </div>
-                  )}
-                </div>
-
-                {/* メール */}
-                <div className={`rounded-2xl p-4 ring-1 transition-colors ${
-                  emailEnabled ? "bg-blue-50/50 ring-blue-300/30" : "bg-background ring-border"
-                }`}>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2">
-                          <rect x="2" y="4" width="20" height="16" rx="2" />
-                          <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
-                        </svg>
-                      </div>
-                      <p className="text-sm font-semibold">メールで連絡</p>
-                    </div>
-                    <Toggle checked={emailEnabled} onChange={setEmailEnabled} activeColor="bg-success" ariaLabel="メールで連絡を有効にする" />
-                  </div>
-                  {emailEnabled && (
-                    <div className="mt-3">
-                      <input
-                        type="email"
-                        value={contactEmail}
-                        onChange={(e) => setContactEmail(e.target.value)}
-                        placeholder="you@example.com"
-                        className="w-full rounded-xl border border-border bg-white px-4 py-3 text-sm"
-                      />
-                    </div>
-                  )}
-                </div>
-
-                {/* 電話 */}
-                <div className={`rounded-2xl p-4 ring-1 transition-colors ${
-                  phoneEnabled ? "bg-orange-50/50 ring-orange-300/30" : "bg-background ring-border"
-                }`}>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-orange-50">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f97316" strokeWidth="2">
-                          <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92Z" />
-                        </svg>
-                      </div>
-                      <p className="text-sm font-semibold">電話で連絡</p>
-                    </div>
-                    <Toggle checked={phoneEnabled} onChange={setPhoneEnabled} activeColor="bg-success" ariaLabel="電話で連絡を有効にする" />
-                  </div>
-                  {phoneEnabled && (
-                    <div className="mt-3">
-                      <input
-                        type="tel"
-                        value={contactPhone}
-                        onChange={(e) => setContactPhone(formatPhoneAsYouType(e.target.value))}
-                        placeholder="090-1234-5678"
-                        inputMode="tel"
-                        className="w-full rounded-xl border border-border bg-white px-4 py-3 text-sm"
-                      />
-                    </div>
-                  )}
-                </div>
-                {!lineEnabled && !emailEnabled && !phoneEnabled && (
-                  <p className="text-xs text-red-500">連絡方法を1つ以上設定してください</p>
-                )}
+                <ContactMethodToggles
+                  state={contactMethod}
+                  onChange={setContactMethod}
+                  showValidationError={!contactMethod.lineEnabled && !contactMethod.emailEnabled && !contactMethod.phoneEnabled}
+                />
 
                 {/* Bio */}
                 <div>
-                  <label className="mb-1.5 block text-sm font-medium">
+                  <FormLabel>
                     自己紹介 <span className="text-xs text-muted">（任意）</span>
-                  </label>
-                  <textarea
+                  </FormLabel>
+                  <FormTextarea
                     value={bio}
                     onChange={(e) => setBio(e.target.value)}
                     rows={3}
                     placeholder="例：表参道で10年の経験を持つヘアスタイリストです。"
-                    className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm"
+                    className="text-sm"
                   />
                 </div>
 
                 {/* Icon */}
                 <div>
-                  <label className="mb-1.5 block text-sm font-medium">
+                  <FormLabel>
                     アイコン画像 <span className="text-xs text-muted">（任意）</span>
-                  </label>
+                  </FormLabel>
                   <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-dashed border-border bg-background px-4 py-4 hover:bg-accent-bg transition-colors">
                     <div className="flex h-10 w-10 items-center justify-center rounded-full bg-accent-bg text-accent">
                       {iconFile ? "✓" : "+"}
@@ -328,7 +243,7 @@ export function RegisterWizard({ categories: PROVIDER_CATEGORIES }: { categories
 
             <button
               onClick={handleSubmit}
-              disabled={submitting || !name.trim() || !category || slug.length < 3 || slugStatus !== "available" || (!lineEnabled && !emailEnabled && !phoneEnabled) || (lineEnabled && !lineId.trim()) || (emailEnabled && !contactEmail.includes("@")) || (phoneEnabled && !contactPhone.trim())}
+              disabled={submitting || !name.trim() || !category || slug.length < 3 || slugStatus !== "available" || (!contactMethod.lineEnabled && !contactMethod.emailEnabled && !contactMethod.phoneEnabled) || (contactMethod.lineEnabled && !contactMethod.lineId.trim()) || (contactMethod.emailEnabled && !contactMethod.contactEmail.includes("@")) || (contactMethod.phoneEnabled && !contactMethod.contactPhone.trim())}
               className="w-full rounded-xl bg-accent py-4 text-lg font-semibold text-white shadow-lg shadow-accent/25 disabled:opacity-40 hover:opacity-90 transition-opacity"
             >
               {submitting ? "処理中..." : "登録を完了する"}
@@ -548,139 +463,35 @@ export function RegisterWizard({ categories: PROVIDER_CATEGORIES }: { categories
               </p>
 
               <div className="mt-6 space-y-5">
-                {/* 連絡方法トグル */}
-                <div className="space-y-3">
-                  {/* LINE */}
-                  <div className={`rounded-2xl p-4 ring-1 transition-colors ${
-                    lineEnabled ? "bg-green-50/50 ring-success/30" : "bg-card ring-border"
-                  }`}>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-success/10 text-success">
-                          <LineIcon size={18} />
-                        </div>
-                        <p className="text-sm font-semibold">LINEで連絡</p>
-                      </div>
-                      <Toggle
-                        checked={lineEnabled}
-                        onChange={setLineEnabled}
-                        ariaLabel="LINEで連絡を有効にする"
-                      />
-                    </div>
-                    {lineEnabled && (
-                      <div className="mt-3">
-                        <div className="flex items-center gap-2">
-                          <span className="shrink-0 text-sm text-muted">@</span>
-                          <input
-                            type="text"
-                            value={lineId}
-                            onChange={(e) => setLineId(e.target.value.replace(/^@/, ""))}
-                            placeholder="your-line-id"
-                            className="w-full rounded-xl border border-border bg-white px-4 py-3 text-sm"
-                          />
-                        </div>
-                        <p className="mt-1.5 text-xs text-muted">
-                          LINEアプリの設定 &gt; プロフィール &gt; LINE IDで確認できます
-                        </p>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* メール */}
-                  <div className={`rounded-2xl p-4 ring-1 transition-colors ${
-                    emailEnabled ? "bg-blue-50/50 ring-blue-300/30" : "bg-card ring-border"
-                  }`}>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50">
-                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2">
-                            <rect x="2" y="4" width="20" height="16" rx="2" />
-                            <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
-                          </svg>
-                        </div>
-                        <p className="text-sm font-semibold">メールで連絡</p>
-                      </div>
-                      <Toggle
-                        checked={emailEnabled}
-                        onChange={setEmailEnabled}
-                        activeColor="bg-success"
-                        ariaLabel="メールで連絡を有効にする"
-                      />
-                    </div>
-                    {emailEnabled && (
-                      <div className="mt-3">
-                        <input
-                          type="email"
-                          value={contactEmail}
-                          onChange={(e) => setContactEmail(e.target.value)}
-                          placeholder="you@example.com"
-                          className="w-full rounded-xl border border-border bg-white px-4 py-3 text-sm"
-                        />
-                      </div>
-                    )}
-                  </div>
-
-                  {/* 電話 */}
-                  <div className={`rounded-2xl p-4 ring-1 transition-colors ${
-                    phoneEnabled ? "bg-orange-50/50 ring-orange-300/30" : "bg-card ring-border"
-                  }`}>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-orange-50">
-                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f97316" strokeWidth="2">
-                            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92Z" />
-                          </svg>
-                        </div>
-                        <p className="text-sm font-semibold">電話で連絡</p>
-                      </div>
-                      <Toggle
-                        checked={phoneEnabled}
-                        onChange={setPhoneEnabled}
-                        activeColor="bg-success"
-                        ariaLabel="電話で連絡を有効にする"
-                      />
-                    </div>
-                    {phoneEnabled && (
-                      <div className="mt-3">
-                        <input
-                          type="tel"
-                          value={contactPhone}
-                          onChange={(e) => setContactPhone(formatPhoneAsYouType(e.target.value))}
-                          placeholder="090-1234-5678"
-                          inputMode="tel"
-                          className="w-full rounded-xl border border-border bg-white px-4 py-3 text-sm"
-                        />
-                      </div>
-                    )}
-                  </div>
-                </div>
-                {!lineEnabled && !emailEnabled && !phoneEnabled && (
-                  <p className="text-xs text-red-500">連絡方法を1つ以上設定してください</p>
-                )}
+                <ContactMethodToggles
+                  state={contactMethod}
+                  onChange={setContactMethod}
+                  showValidationError={!contactMethod.lineEnabled && !contactMethod.emailEnabled && !contactMethod.phoneEnabled}
+                />
 
                 {/* Bio */}
                 <div>
-                  <label className="mb-1.5 block text-sm font-medium">
+                  <FormLabel>
                     自己紹介
                     <span className="ml-1 text-xs text-muted">（任意）</span>
-                  </label>
-                  <textarea
+                  </FormLabel>
+                  <FormTextarea
                     id="bio-input"
                     value={bio}
                     onChange={(e) => setBio(e.target.value)}
                     rows={3}
                     enterKeyHint="done"
                     placeholder="例：表参道で10年の経験を持つヘアスタイリストです。"
-                    className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm"
+                    className="text-sm"
                   />
                 </div>
 
                 {/* Icon */}
                 <div>
-                  <label className="mb-1.5 block text-sm font-medium">
+                  <FormLabel>
                     アイコン画像
                     <span className="ml-1 text-xs text-muted">（任意）</span>
-                  </label>
+                  </FormLabel>
                   <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-dashed border-border bg-card px-4 py-4 active:bg-accent-bg">
                     <div className="flex h-10 w-10 items-center justify-center rounded-full bg-accent-bg text-accent">
                       {iconFile ? "✓" : "+"}

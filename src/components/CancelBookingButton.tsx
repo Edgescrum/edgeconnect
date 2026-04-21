@@ -5,6 +5,7 @@ import { cancelBooking } from "@/lib/actions/booking";
 import { useRouter } from "next/navigation";
 import { Spinner } from "@/components/Spinner";
 import { Alert } from "@/components/Alert";
+import { Modal } from "@/components/Modal";
 
 const VARIANT_CONFIG = {
   customer: {
@@ -56,40 +57,36 @@ export function CancelBookingButton({
         {config.buttonText}
       </button>
 
-      {showConfirm && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center">
-          <div className="w-full max-w-sm rounded-2xl bg-card p-6 shadow-xl">
-            <h3 className="text-lg font-bold">{config.confirmTitle}</h3>
-            <p className="mt-2 text-sm text-muted">
-              {config.confirmDescription}
-            </p>
-            {error && (
-              <div className="mt-3">
-                <Alert type="error">{error}</Alert>
-              </div>
-            )}
-            <div className="mt-6 flex gap-3">
-              <button
-                onClick={() => setShowConfirm(false)}
-                disabled={cancelling}
-                className="flex-1 rounded-xl border border-border py-3 font-semibold active:scale-[0.98]"
-              >
-                戻る
-              </button>
-              <button
-                onClick={handleCancel}
-                disabled={cancelling}
-                className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-red-500 py-3 font-semibold text-white active:scale-[0.98]"
-              >
-                {cancelling && (
-                  <Spinner size="sm" className="border-white border-t-transparent" />
-                )}
-                {cancelling ? "処理中..." : "キャンセルする"}
-              </button>
-            </div>
+      <Modal open={showConfirm} onClose={() => setShowConfirm(false)} position="bottom">
+        <h3 className="text-lg font-bold">{config.confirmTitle}</h3>
+        <p className="mt-2 text-sm text-muted">
+          {config.confirmDescription}
+        </p>
+        {error && (
+          <div className="mt-3">
+            <Alert type="error">{error}</Alert>
           </div>
+        )}
+        <div className="mt-6 flex gap-3">
+          <button
+            onClick={() => setShowConfirm(false)}
+            disabled={cancelling}
+            className="flex-1 rounded-xl border border-border py-3 font-semibold active:scale-[0.98]"
+          >
+            戻る
+          </button>
+          <button
+            onClick={handleCancel}
+            disabled={cancelling}
+            className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-red-500 py-3 font-semibold text-white active:scale-[0.98]"
+          >
+            {cancelling && (
+              <Spinner size="sm" className="border-white border-t-transparent" />
+            )}
+            {cancelling ? "処理中..." : "キャンセルする"}
+          </button>
         </div>
-      )}
+      </Modal>
     </>
   );
 }

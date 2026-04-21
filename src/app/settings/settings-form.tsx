@@ -5,6 +5,7 @@ import { updateUserSettings } from "@/lib/actions/user";
 import { formatPhoneAsYouType, isValidJapanesePhone } from "@/lib/phone";
 import { Spinner } from "@/components/Spinner";
 import { Alert } from "@/components/Alert";
+import { FormLabel, FormInput } from "@/components/FormField";
 
 export function SettingsForm({
   defaultName,
@@ -43,32 +44,26 @@ export function SettingsForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
       <div>
-        <label htmlFor="name" className="mb-1.5 block text-sm font-medium">
-          お名前
-        </label>
-        <input
+        <FormLabel htmlFor="name">お名前</FormLabel>
+        <FormInput
           id="name"
           type="text"
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="山田 太郎"
-          className="w-full rounded-xl border border-border bg-card px-4 py-3"
         />
         <p className="mt-1 text-xs text-muted">予約時に自動入力されます</p>
       </div>
 
       <div>
-        <label htmlFor="phone" className="mb-1.5 block text-sm font-medium">
-          電話番号
-        </label>
-        <input
+        <FormLabel htmlFor="phone">電話番号</FormLabel>
+        <FormInput
           id="phone"
           type="tel"
           value={phone}
           onChange={(e) => setPhone(formatPhoneAsYouType(e.target.value))}
           placeholder="090-1234-5678"
           inputMode="tel"
-          className="w-full rounded-xl border border-border bg-card px-4 py-3"
         />
         <p className="mt-1 text-xs text-muted">予約時に自動入力されます</p>
       </div>

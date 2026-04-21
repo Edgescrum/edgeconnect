@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { deleteService } from "@/lib/actions/service";
 import { Spinner } from "@/components/Spinner";
 import { Alert } from "@/components/Alert";
+import { Modal } from "@/components/Modal";
+import { FormLabel, FormInput, FormTextarea } from "@/components/FormField";
 
 interface CustomField {
   label: string;
@@ -98,36 +100,30 @@ export function ServiceForm({
     <>
       <form onSubmit={handleSubmit} className="space-y-5">
         <div>
-          <label htmlFor="name" className="mb-1.5 block text-sm font-medium">
-            サービス名
-          </label>
-          <input
+          <FormLabel htmlFor="name">サービス名</FormLabel>
+          <FormInput
             id="name"
             name="name"
             type="text"
             required
             defaultValue={defaultValues?.name || ""}
             placeholder="例：カット"
-            className="w-full rounded-xl border border-border bg-card px-4 py-3"
           />
         </div>
 
         <div>
-          <label
-            htmlFor="caption"
-            className="mb-1.5 block text-sm font-medium"
-          >
+          <FormLabel htmlFor="caption">
             キャプション
             <span className="ml-1 text-xs text-muted">（任意・最大50文字）</span>
-          </label>
-          <input
+          </FormLabel>
+          <FormInput
             id="caption"
             name="caption"
             type="text"
             maxLength={50}
             defaultValue={defaultValues?.caption || ""}
             placeholder="例：スタイリッシュなカットをご提供"
-            className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm"
+            className="text-sm"
           />
           <p className="mt-1 text-xs text-muted">
             メニュー一覧のカードに表示される短い説明です。
@@ -135,20 +131,17 @@ export function ServiceForm({
         </div>
 
         <div>
-          <label
-            htmlFor="description"
-            className="mb-1.5 block text-sm font-medium"
-          >
+          <FormLabel htmlFor="description">
             説明
             <span className="ml-1 text-xs text-muted">（任意）</span>
-          </label>
-          <textarea
+          </FormLabel>
+          <FormTextarea
             id="description"
             name="description"
             rows={4}
             defaultValue={defaultValues?.description || ""}
             placeholder="例：お客さまの骨格や髪質に合わせた似合わせカットを行います。カウンセリング込みで丁寧に仕上げます。"
-            className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm"
+            className="text-sm"
           />
           <p className="mt-1 text-xs text-muted">
             メニューをタップした後に表示される詳しい説明です。
@@ -157,59 +150,42 @@ export function ServiceForm({
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label
-              htmlFor="duration_min"
-              className="mb-1.5 block text-sm font-medium"
-            >
-              所要時間（分）
-            </label>
-            <input
+            <FormLabel htmlFor="duration_min">所要時間（分）</FormLabel>
+            <FormInput
               id="duration_min"
               name="duration_min"
               type="number"
               inputMode="numeric"
               required
-              min="1"
+              min={1}
               defaultValue={defaultValues?.duration_min || 60}
-              className="w-full rounded-xl border border-border bg-card px-4 py-3"
             />
           </div>
           <div>
-            <label
-              htmlFor="price"
-              className="mb-1.5 block text-sm font-medium"
-            >
-              料金（円）
-            </label>
-            <input
+            <FormLabel htmlFor="price">料金（円）</FormLabel>
+            <FormInput
               id="price"
               name="price"
               type="number"
               inputMode="numeric"
               required
-              min="0"
+              min={0}
               defaultValue={defaultValues?.price || 0}
-              className="w-full rounded-xl border border-border bg-card px-4 py-3"
             />
           </div>
         </div>
 
         <div>
-          <label
-            htmlFor="cancel_deadline_hours"
-            className="mb-1.5 block text-sm font-medium"
-          >
-            キャンセル期限
-          </label>
+          <FormLabel htmlFor="cancel_deadline_hours">キャンセル期限</FormLabel>
           <div className="flex items-center gap-2">
-            <input
+            <FormInput
               id="cancel_deadline_hours"
               name="cancel_deadline_hours"
               type="number"
               inputMode="numeric"
-              min="0"
+              min={0}
               defaultValue={defaultValues?.cancel_deadline_hours || 24}
-              className="w-24 rounded-xl border border-border bg-card px-4 py-3"
+              className="!w-24"
             />
             <span className="text-sm text-muted">時間前まで</span>
           </div>
@@ -219,20 +195,17 @@ export function ServiceForm({
         </div>
 
         <div>
-          <label
-            htmlFor="cancel_policy_note"
-            className="mb-1.5 block text-sm font-medium"
-          >
+          <FormLabel htmlFor="cancel_policy_note">
             キャンセルポリシー
             <span className="ml-1 text-xs text-muted">（任意）</span>
-          </label>
-          <textarea
+          </FormLabel>
+          <FormTextarea
             id="cancel_policy_note"
             name="cancel_policy_note"
             rows={2}
             defaultValue={defaultValues?.cancel_policy_note || ""}
             placeholder="例：キャンセル料は発生しません。お早めにご連絡ください。"
-            className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm"
+            className="text-sm"
           />
         </div>
 
@@ -387,40 +360,36 @@ export function ServiceForm({
       )}
 
       {/* 削除確認モーダル */}
-      {showDeleteConfirm && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center">
-          <div className="w-full max-w-sm rounded-2xl bg-card p-6 shadow-xl">
-            <h3 className="text-lg font-bold">メニューを削除しますか？</h3>
-            <p className="mt-2 text-sm text-muted">
-              「{defaultValues?.name}」を削除します。この操作は元に戻せません。
-            </p>
-            {error && (
-              <div className="mt-3">
-                <Alert type="error">{error}</Alert>
-              </div>
-            )}
-            <div className="mt-6 flex gap-3">
-              <button
-                onClick={() => setShowDeleteConfirm(false)}
-                disabled={deleting}
-                className="flex-1 rounded-xl border border-border py-3 font-semibold active:scale-[0.98]"
-              >
-                キャンセル
-              </button>
-              <button
-                onClick={handleDelete}
-                disabled={deleting}
-                className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-red-500 py-3 font-semibold text-white active:scale-[0.98]"
-              >
-                {deleting && (
-                  <Spinner size="sm" className="border-white border-t-transparent" />
-                )}
-                {deleting ? "削除中..." : "削除する"}
-              </button>
-            </div>
+      <Modal open={showDeleteConfirm} onClose={() => setShowDeleteConfirm(false)} position="bottom">
+        <h3 className="text-lg font-bold">メニューを削除しますか？</h3>
+        <p className="mt-2 text-sm text-muted">
+          「{defaultValues?.name}」を削除します。この操作は元に戻せません。
+        </p>
+        {error && (
+          <div className="mt-3">
+            <Alert type="error">{error}</Alert>
           </div>
+        )}
+        <div className="mt-6 flex gap-3">
+          <button
+            onClick={() => setShowDeleteConfirm(false)}
+            disabled={deleting}
+            className="flex-1 rounded-xl border border-border py-3 font-semibold active:scale-[0.98]"
+          >
+            キャンセル
+          </button>
+          <button
+            onClick={handleDelete}
+            disabled={deleting}
+            className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-red-500 py-3 font-semibold text-white active:scale-[0.98]"
+          >
+            {deleting && (
+              <Spinner size="sm" className="border-white border-t-transparent" />
+            )}
+            {deleting ? "削除中..." : "削除する"}
+          </button>
         </div>
-      )}
+      </Modal>
     </>
   );
 }
