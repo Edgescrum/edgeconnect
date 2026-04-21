@@ -65,7 +65,7 @@ export function PlanCarousel({
                 className={`relative h-full rounded-2xl bg-card p-5 ${
                   isCurrentPlan
                     ? "ring-2 ring-accent shadow-md"
-                    : plan.recommended
+                    : plan.recommended && role !== "provider"
                       ? "ring-2 ring-accent shadow-md"
                       : "ring-1 ring-border"
                 }`}
@@ -75,7 +75,7 @@ export function PlanCarousel({
                     ご利用中
                   </div>
                 )}
-                {!isCurrentPlan && plan.recommended && !plan.comingSoon && (
+                {!isCurrentPlan && plan.recommended && role !== "provider" && (
                   <div className="absolute -top-3 left-4 rounded-full bg-accent px-3 py-0.5 text-[10px] font-bold text-white">
                     おすすめ
                   </div>

@@ -230,7 +230,7 @@ export function LandingPage({ isLoggedIn = false, role }: { isLoggedIn?: boolean
                     className={`relative flex w-full flex-col rounded-2xl bg-card p-5 sm:p-8 ${
                       isCurrentPlan
                         ? "ring-2 ring-accent shadow-md"
-                        : plan.recommended
+                        : plan.recommended && role !== "provider"
                           ? "ring-2 ring-accent shadow-md"
                           : "ring-1 ring-border"
                     }`}
@@ -240,7 +240,7 @@ export function LandingPage({ isLoggedIn = false, role }: { isLoggedIn?: boolean
                         ご利用中
                       </div>
                     )}
-                    {!isCurrentPlan && plan.recommended && !plan.comingSoon && (
+                    {!isCurrentPlan && plan.recommended && role !== "provider" && (
                       <div className="absolute -top-3 left-4 rounded-full bg-accent px-3 py-0.5 text-[10px] font-bold text-white">
                         おすすめ
                       </div>
