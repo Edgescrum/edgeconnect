@@ -136,22 +136,13 @@ export async function notifyBookingCancelled(
 
   const { info, customer, providerUser, provider } = details;
 
-  if (cancelledBy === "customer") {
-    // お客さんがキャンセル → 事業主に通知
-    await pushFlexMessage(
-      providerUser.line_user_id,
-      `予約キャンセル：${info.customerName}さま`,
-      bookingCancelledProvider(info)
-    );
-  } else {
-    // 事業主がキャンセル → お客さんに通知（事業主アイコンで送信）
-    await pushFlexMessage(
-      customer.line_user_id,
-      `${info.providerName}：予約がキャンセルされました`,
-      bookingCancelledCustomer({ ...info, cancelledBy }),
-      { name: info.providerName, iconUrl: provider.icon_url }
-    );
-  }
+  // お客さまにキャンセル通知（事業主への通知はサマリーに集約）
+  await pushFlexMessage(
+    customer.line_user_id,
+    `${info.providerName}：予約がキャンセルされました`,
+    bookingCancelledCustomer({ ...info, cancelledBy }),
+    { name: info.providerName, iconUrl: provider.icon_url }
+  );
 }
 
 // リマインダー通知（前日）
