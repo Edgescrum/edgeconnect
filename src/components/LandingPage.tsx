@@ -35,8 +35,8 @@ export function LandingPage({ isLoggedIn = false, role }: { isLoggedIn?: boolean
       </header>
 
       {/* Hero — 全員共通 */}
-      <section className="bg-gradient-to-b from-accent/8 to-background px-4 pb-10 pt-12 sm:px-8 sm:pb-14 sm:pt-20">
-        <div className="mx-auto max-w-5xl text-center">
+      <section className="bg-gradient-to-b from-accent/8 to-background pb-10 pt-12 sm:pb-14 sm:pt-20">
+        <div className="mx-auto max-w-5xl px-4 text-center sm:px-8">
           <img src="/logo.svg" alt="PeCo" className="mx-auto h-12 sm:h-16" />
           <h1 className="mt-6 text-3xl font-extrabold leading-tight tracking-tight sm:text-5xl sm:leading-tight">
             LINEで、
@@ -63,8 +63,8 @@ export function LandingPage({ isLoggedIn = false, role }: { isLoggedIn?: boolean
       </section>
 
       {/* ===== 予約したい方（お客さま）===== */}
-      <section className="px-4 py-10 sm:px-8 sm:py-16">
-        <div className="mx-auto max-w-5xl">
+      <section className="py-10 sm:py-16">
+        <div className="mx-auto max-w-5xl px-4 sm:px-8">
           <div className="flex items-center gap-3">
             <div className="h-px flex-1 bg-border" />
             <h2 className="shrink-0 text-sm font-bold text-success sm:text-base">予約したい方</h2>
@@ -105,12 +105,14 @@ export function LandingPage({ isLoggedIn = false, role }: { isLoggedIn?: boolean
                 desc: "予約確認・前日リマインダーがLINEに届くので、忘れる心配なし。",
               },
             ].map((item, i) => (
-              <div key={i} className="rounded-2xl bg-card p-5 ring-1 ring-border sm:p-6">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-success/10 text-success sm:h-12 sm:w-12">
+              <div key={i} className="flex items-start gap-4 rounded-2xl bg-card p-4 ring-1 ring-border sm:flex-col sm:items-center sm:p-6 sm:text-center">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-success/10 text-success sm:h-12 sm:w-12">
                   {item.icon}
                 </div>
-                <p className="mt-3 font-semibold">{item.title}</p>
-                <p className="mt-1.5 text-sm leading-relaxed text-muted">{item.desc}</p>
+                <div>
+                  <p className="font-semibold sm:mt-2">{item.title}</p>
+                  <p className="mt-0.5 text-xs text-muted sm:mt-1 sm:text-sm">{item.desc}</p>
+                </div>
               </div>
             ))}
           </div>
@@ -119,8 +121,8 @@ export function LandingPage({ isLoggedIn = false, role }: { isLoggedIn?: boolean
       </section>
 
       {/* ===== 予約を受けたい方（事業主）===== */}
-      <section className="bg-gradient-to-b from-accent/6 to-background px-4 py-10 sm:px-8 sm:py-16">
-        <div className="mx-auto max-w-5xl">
+      <section className="bg-gradient-to-b from-accent/6 to-background py-10 sm:py-16">
+        <div className="mx-auto max-w-5xl px-4 sm:px-8">
           <div className="flex items-center gap-3">
             <div className="h-px flex-1 bg-accent/20" />
             <h2 className="shrink-0 text-sm font-bold text-accent-dark sm:text-base">予約を受けたい方</h2>
@@ -294,7 +296,7 @@ export function LandingPage({ isLoggedIn = false, role }: { isLoggedIn?: boolean
                   {/* モバイル: カルーセル */}
                   <PlanCarousel plans={plans} isLoggedIn={isLoggedIn} role={role} />
                   {/* PC: グリッド */}
-                  <div className="mt-8 hidden items-stretch gap-5 sm:grid sm:grid-cols-3">
+                  <div className="mt-8 hidden items-stretch gap-5 lg:grid lg:grid-cols-3">
                     {plans.map((plan) => (
                       <div key={plan.name} className="flex">{renderCard(plan)}</div>
                     ))}
@@ -308,8 +310,8 @@ export function LandingPage({ isLoggedIn = false, role }: { isLoggedIn?: boolean
 
       {/* CTA */}
       {!isLoggedIn && (
-        <section className="px-4 py-10 sm:px-8 sm:py-16">
-          <div className="mx-auto max-w-5xl text-center">
+        <section className="py-10 sm:py-16">
+          <div className="mx-auto max-w-5xl px-4 text-center sm:px-8">
             <h2 className="text-xl font-bold sm:text-3xl">
               さあ、はじめましょう
             </h2>

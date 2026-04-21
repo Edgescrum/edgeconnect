@@ -42,7 +42,7 @@ export function PlanCarousel({
   }
 
   return (
-    <div className="mt-6 sm:hidden">
+    <div className="mt-6 lg:hidden">
       <div
         ref={scrollRef}
         onScroll={handleScroll}

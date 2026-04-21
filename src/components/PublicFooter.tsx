@@ -10,8 +10,8 @@ export function PublicFooter({
   return (
     <footer className="mt-auto border-t border-border bg-card/60">
       {showProviderCta && (
-        <div className="border-b border-border px-4 py-6">
-          <div className={`mx-auto ${maxWidth} rounded-2xl bg-gradient-to-br from-accent/8 to-accent/4 p-5 text-center ring-1 ring-accent/10`}>
+        <div className="border-b border-border py-6">
+          <div className={`mx-auto ${maxWidth} rounded-2xl bg-gradient-to-br from-accent/8 to-accent/4 p-5 px-4 text-center ring-1 ring-accent/10 sm:px-8`}>
             <p className="text-sm font-semibold">
               あなたもPeCoで
               <br />
@@ -32,7 +32,7 @@ export function PublicFooter({
           </div>
         </div>
       )}
-      <div className={`mx-auto ${maxWidth} px-4 py-4`}>
+      <div className={`mx-auto ${maxWidth} px-4 py-4 sm:px-8 `}>
         <div className="flex items-center gap-3 text-xs text-muted">
           <img src="/logo.svg" alt="PeCo" className="h-4 sm:h-5" />
           <span className="text-border">|</span>
