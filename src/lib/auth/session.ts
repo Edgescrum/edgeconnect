@@ -2,6 +2,7 @@ import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { log, logError } from "@/lib/log";
+import { verifyCookieValue } from "@/lib/auth/cookie";
 
 export interface CurrentUser {
   id: number;
@@ -49,12 +50,15 @@ export const resolveUser = cache(async (): Promise<CurrentUser | null> => {
   const authUser = await getCurrentUser();
   if (authUser) return authUser;
 
-  // 2. フォールバック: httpOnly cookieからlineUserId取得
+  // 2. フォールバック: httpOnly cookieからlineUserId取得（署名検証付き）
   let lineUserId: string | null = null;
   try {
     const { cookies } = await import("next/headers");
     const cookieStore = await cookies();
-    lineUserId = cookieStore.get("line_user_id")?.value || null;
+    const rawCookie = cookieStore.get("line_user_id")?.value || null;
+    if (rawCookie) {
+      lineUserId = verifyCookieValue(rawCookie);
+    }
   } catch { /* ignore */ }
 
   if (lineUserId) {

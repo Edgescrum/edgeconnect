@@ -1,8 +1,10 @@
+// TODO: Add rate limiting (e.g., @vercel/ratelimit) before production
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createHmac } from "crypto";
 import { log, logError } from "@/lib/log";
+import { signCookieValue } from "@/lib/auth/cookie";
 
 function deriveCredentials(lineUserId: string) {
   const email = `${lineUserId.toLowerCase()}@line.peco.local`;
@@ -83,7 +85,7 @@ export async function POST(request: Request) {
     });
 
     // lineUserIdをcookieに保存（Server Componentで使用）
-    response.cookies.set("line_user_id", lineProfile.userId, {
+    response.cookies.set("line_user_id", signCookieValue(lineProfile.userId), {
       httpOnly: true,
       secure: true,
       sameSite: "lax",

@@ -91,6 +91,9 @@ ALTER TABLE notification_templates ENABLE ROW LEVEL SECURITY;
 | 4 | 人気メニューランキング | 横棒グラフ（予約数順） |
 | 5 | 曜日・時間帯別予約傾向 | ヒートマップ風 |
 | 6 | リピート率 | 数値表示（2回以上来店の顧客割合） |
+| 7 | 平均LTV | 数値（全顧客の平均累計売上） |
+| 8 | 顧客セグメント | LTV×来店頻度で分類（優良/通常/休眠/離脱リスク） |
+| 9 | 業界ベンチマーク比較 | 同カテゴリ事業主との比較（CSAT・リピート率・LTV等） |
 
 ### 実装チケット
 
@@ -99,6 +102,8 @@ ALTER TABLE notification_templates ENABLE ROW LEVEL SECURITY;
 - [ ] `get_popular_menus(provider_id)` — メニュー別予約数ランキング
 - [ ] `get_booking_heatmap(provider_id)` — 曜日×時間帯の予約数
 - [ ] `get_repeat_rate(provider_id)` — リピート率算出
+- [ ] `get_ltv_stats(provider_id)` — 平均LTV・顧客セグメント分布
+- [ ] `get_category_benchmark(category)` — 同カテゴリ平均（CSAT・リピート率・LTV等、最低5事業主で有効）
 
 #### AN-2: ダッシュボードサマリー
 - [ ] `/provider/dashboard-content.tsx` にサマリーカード追加
@@ -115,6 +120,8 @@ ALTER TABLE notification_templates ENABLE ROW LEVEL SECURITY;
 - [ ] 人気メニュー横棒グラフ
 - [ ] 曜日×時間帯ヒートマップ
 - [ ] リピート率表示
+- [ ] LTV分析（平均LTV・顧客セグメント分布）
+- [ ] 業界ベンチマーク比較（自分 vs 同カテゴリ平均、最低5事業主で表示）
 - [ ] ProviderNavにメニュー追加
 
 ---
@@ -135,10 +142,36 @@ ALTER TABLE notification_templates ENABLE ROW LEVEL SECURITY;
 
 ### 顧客詳細ページ（`/provider/customers/[id]`）
 
+#### プロファイル情報
+| 項目 | ソース | 内容 |
+|------|--------|------|
+| 顧客名 | 予約時入力 | — |
+| 電話番号 | 予約時入力 | — |
+| 性別 | `/settings`登録 | 男性/女性/その他/回答しない/未登録 |
+| 年齢 | `/settings`の生年月日から自動算出 | 利用日時点の年齢 |
+
+#### KPI指標
+| 項目 | 算出方法 |
+|------|---------|
+| 累計予約数 | bookingsのcount |
+| 累計売上（LTV） | bookingsの合計金額 |
+| 平均単価 | LTV ÷ 予約数 |
+| 初回来店日 | 最初の予約日 |
+| 最終来店日 | 最後の予約日 |
+| 利用期間 | 初回〜最終来店日 |
+| 平均来店間隔 | 利用期間 ÷ 予約数 |
+| 離脱リスク | 最終来店からの経過日数 ÷ 平均来店間隔（1.5以上で警告） |
+
+#### アンケート指標
 | 項目 | 内容 |
 |------|------|
-| 顧客名・電話番号 | 予約時の入力情報 |
-| 累計予約数・累計売上 | 数値 |
+| CSAT平均 | この顧客の総合満足度平均 |
+| 直近のCSAT推移 | 上昇/下降トレンド |
+| 直近のコメント | 最新の自由記述 |
+
+#### その他
+| 項目 | 内容 |
+|------|------|
 | 月別来店頻度グラフ | 棒グラフ（過去6ヶ月） |
 | 予約履歴一覧 | 日時・メニュー・金額・ステータス |
 | メモ | 自由入力テキストエリア |
@@ -197,7 +230,9 @@ ALTER TABLE customer_notes ENABLE ROW LEVEL SECURITY;
 
 #### CU-5: 顧客詳細ページ
 - [ ] `/provider/customers/[id]/page.tsx` 新規作成
-- [ ] 顧客情報（名前・電話番号・累計予約数・累計売上）
+- [ ] プロファイル情報（名前・電話番号・性別・年齢）
+- [ ] KPI指標（LTV・累計予約数・平均単価・来店間隔・離脱リスク）
+- [ ] アンケート指標（CSAT平均・トレンド・直近コメント）
 - [ ] 月別来店頻度棒グラフ（過去6ヶ月）
 - [ ] 予約履歴一覧
 - [ ] メモテキストエリア（自動保存 or 保存ボタン）

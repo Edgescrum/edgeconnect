@@ -10,7 +10,8 @@ export default function AuthCallbackPage() {
       const params = new URLSearchParams(window.location.search);
       const code = params.get("auth_code");
       const redirectUri = params.get("redirect_uri") || window.location.origin;
-      const dest = params.get("redirect") || "/home";
+      const rawDest = params.get("redirect") || "/home";
+      const dest = (rawDest.startsWith("/") && !rawDest.startsWith("//")) ? rawDest : "/home";
 
       if (!code) {
         setStatus("認証コードがありません");

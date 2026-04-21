@@ -1,6 +1,12 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { generateVCalendar } from "@/lib/calendar/ics";
 
+// Security note: This endpoint is intentionally unauthenticated.
+// It is accessed from Flex Message links and calendar apps where auth headers
+// are not practical. The booking UUID (v4) is cryptographically random and
+// serves as an unguessable capability token. Even if a URL is leaked, only
+// a single booking's non-sensitive summary is exposed.
+
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ bookingId: string }> }
