@@ -6,6 +6,24 @@ import { revalidatePath } from "next/cache";
 import { notifyBookingConfirmed, notifyBookingCancelled } from "@/lib/line/notify";
 import { log, logError } from "@/lib/log";
 
+export async function getAvailableDates(
+  providerId: number,
+  serviceId: number,
+  startDate: string,
+  endDate: string
+): Promise<string[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("get_available_dates", {
+    p_provider_id: providerId,
+    p_service_id: serviceId,
+    p_start_date: startDate,
+    p_end_date: endDate,
+  });
+
+  if (error) throw new Error(error.message);
+  return ((data || []) as { available_date: string }[]).map((d) => d.available_date);
+}
+
 export async function getAvailableSlots(
   providerId: number,
   serviceId: number,

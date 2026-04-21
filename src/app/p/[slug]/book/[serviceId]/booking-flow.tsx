@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { getAvailableSlots, createBooking } from "@/lib/actions/booking";
+import { getAvailableSlots, getAvailableDates, createBooking } from "@/lib/actions/booking";
 import { brand } from "@/lib/brand";
 import { formatPhoneAsYouType, isValidJapanesePhone } from "@/lib/phone";
 import { FriendPromptModal } from "./friend-prompt-modal";
@@ -67,6 +67,8 @@ export function BookingFlow({
   const [slots, setSlots] = useState<{ slot_start: string; slot_end: string }[]>([]);
   const [selectedSlot, setSelectedSlot] = useState<{ slot_start: string; slot_end: string } | null>(null);
   const [loadingSlots, setLoadingSlots] = useState(false);
+  const [availableDates, setAvailableDates] = useState<Set<string>>(new Set());
+  const [loadingDates, setLoadingDates] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [bookingId, setBookingId] = useState<string | null>(null);
@@ -86,6 +88,26 @@ export function BookingFlow({
     }
     return days;
   }, [viewYear, viewMonth]);
+
+  // 月の空き日を取得
+  const fetchAvailableDates = useCallback(async (year: number, month: number) => {
+    setLoadingDates(true);
+    try {
+      const startDate = `${year}-${String(month + 1).padStart(2, "0")}-01`;
+      const lastDay = new Date(year, month + 1, 0);
+      const endDate = `${year}-${String(month + 1).padStart(2, "0")}-${String(lastDay.getDate()).padStart(2, "0")}`;
+      const dates = await getAvailableDates(providerId, service.id, startDate, endDate);
+      setAvailableDates(new Set(dates));
+    } catch {
+      setAvailableDates(new Set());
+    } finally {
+      setLoadingDates(false);
+    }
+  }, [providerId, service.id]);
+
+  useEffect(() => {
+    fetchAvailableDates(viewYear, viewMonth);
+  }, [viewYear, viewMonth, fetchAvailableDates]);
 
   // 月の移動制限: 当月 〜 3ヶ月先
   const maxMonth = today.getMonth() + 3;
@@ -114,7 +136,9 @@ export function BookingFlow({
   }
 
   function isDateSelectable(date: Date) {
-    return date > today;
+    if (date <= today) return false;
+    if (loadingDates) return true; // 読み込み中は仮で有効
+    return availableDates.has(toDateString(date));
   }
 
   function toDateString(date: Date) {
