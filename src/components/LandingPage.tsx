@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { PublicFooter } from "@/components/PublicFooter";
+import { PlanCarousel } from "@/components/PlanCarousel";
 
 const LINE_ICON = (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
@@ -39,7 +40,7 @@ export function LandingPage({ isLoggedIn = false, role }: { isLoggedIn?: boolean
       </header>
 
       {/* Hero — 全員共通 */}
-      <section className="bg-gradient-to-b from-accent/8 to-background px-4 pb-12 pt-16 sm:px-8 sm:pb-16 sm:pt-24">
+      <section className="bg-gradient-to-b from-accent/8 to-background px-4 pb-10 pt-12 sm:px-8 sm:pb-14 sm:pt-20">
         <div className="mx-auto max-w-5xl text-center">
           <img src="/logo.svg" alt="PeCo" className="mx-auto h-12 sm:h-16" />
           <h1 className="mt-6 text-3xl font-extrabold leading-tight tracking-tight sm:text-5xl sm:leading-tight">
@@ -56,7 +57,7 @@ export function LandingPage({ isLoggedIn = false, role }: { isLoggedIn?: boolean
       </section>
 
       {/* ===== 予約したい方（お客さま）===== */}
-      <section className="px-4 py-12 sm:px-8 sm:py-20">
+      <section className="px-4 py-10 sm:px-8 sm:py-16">
         <div className="mx-auto max-w-5xl">
           <div className="flex items-center gap-3">
             <div className="h-px flex-1 bg-border" />
@@ -123,7 +124,7 @@ export function LandingPage({ isLoggedIn = false, role }: { isLoggedIn?: boolean
       </section>
 
       {/* ===== 予約を受けたい方（事業主）===== */}
-      <section className="bg-gradient-to-b from-accent/6 to-background px-4 py-12 sm:px-8 sm:py-20">
+      <section className="bg-gradient-to-b from-accent/6 to-background px-4 py-10 sm:px-8 sm:py-16">
         <div className="mx-auto max-w-5xl">
           <div className="flex items-center gap-3">
             <div className="h-px flex-1 bg-accent/20" />
@@ -176,94 +177,143 @@ export function LandingPage({ isLoggedIn = false, role }: { isLoggedIn?: boolean
           {/* 料金 — 事業主セクション内に自然に配置 */}
           <div className="mt-10">
             <p className="text-center text-xs font-medium text-muted">料金</p>
-            <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6">
-              {/* スタンダード */}
-              {(() => {
-                const isCurrentPlan = role === "provider"; // TODO: 実際のプラン判定に置き換え
+            {(() => {
+              const plans = [
+                {
+                  name: "ベーシック",
+                  price: 500,
+                  desc: "まずは予約管理を始めたい方に",
+                  features: [
+                    "予約受付・管理",
+                    "サービスメニュー登録",
+                    "営業時間・インターバル設定",
+                    "プロフィールページ",
+                    "QRコード・URL発行",
+                  ],
+                  comingSoon: false,
+                },
+                {
+                  name: "スタンダード",
+                  price: 980,
+                  desc: "LINE通知で予約体験を向上",
+                  recommended: true,
+                  trial: true,
+                  features: [
+                    "ベーシックの全機能",
+                    "LINE通知（予約確定・リマインダー）",
+                    "カレンダー同期",
+                    "リマインダーカスタマイズ",
+                    "優先サポート",
+                  ],
+                  comingSoon: true,
+                },
+                {
+                  name: "プロ",
+                  price: 1980,
+                  desc: "AIで予約管理をさらにスマートに",
+                  features: [
+                    "スタンダードの全機能",
+                    "AI予約アシスタント",
+                    "AI売上分析・レポート",
+                    "AIリコメンド（顧客提案）",
+                    "決済連携",
+                  ],
+                  comingSoon: true,
+                },
+              ];
+
+              const renderCard = (plan: typeof plans[number]) => {
+                const isCurrentPlan = role === "provider" && plan.name === "ベーシック"; // TODO: 実際のプラン判定
                 return (
-                  <div className={`relative rounded-2xl bg-card p-6 shadow-md ${isCurrentPlan ? "ring-2 ring-accent" : "ring-2 ring-accent"}`}>
-                    <div className="absolute -top-3 left-4 rounded-full bg-accent px-3 py-0.5 text-[10px] font-bold text-white">
-                      {isCurrentPlan ? "ご利用中" : "おすすめ"}
+                  <div
+                    key={plan.name}
+                    className={`relative flex w-full flex-col rounded-2xl bg-card p-5 sm:p-8 ${
+                      isCurrentPlan
+                        ? "ring-2 ring-accent shadow-md"
+                        : plan.recommended
+                          ? "ring-2 ring-accent shadow-md"
+                          : "ring-1 ring-border"
+                    }`}
+                  >
+                    {isCurrentPlan && (
+                      <div className="absolute -top-3 left-4 rounded-full bg-accent px-3 py-0.5 text-[10px] font-bold text-white">
+                        ご利用中
+                      </div>
+                    )}
+                    {!isCurrentPlan && plan.recommended && (
+                      <div className="absolute -top-3 left-4 rounded-full bg-accent px-3 py-0.5 text-[10px] font-bold text-white">
+                        おすすめ
+                      </div>
+                    )}
+                    <div className="flex items-center gap-2">
+                      <p className={`text-sm font-semibold ${isCurrentPlan || plan.recommended ? "text-accent" : "text-muted"}`}>
+                        {plan.name}
+                      </p>
+                      {plan.trial && (
+                        <span className="rounded-full bg-accent/15 px-2 py-0.5 text-[10px] font-bold text-accent">
+                          1ヶ月無料
+                        </span>
+                      )}
                     </div>
-                    <p className="text-sm font-semibold text-accent">スタンダード</p>
                     <div className="mt-2 flex items-baseline gap-1">
-                      <span className="text-3xl font-extrabold">¥500</span>
+                      <span className="text-3xl font-extrabold">¥{plan.price.toLocaleString()}</span>
                       <span className="text-sm text-muted">/月</span>
                     </div>
-                    {!isCurrentPlan && (
-                      <p className="mt-1 rounded-md bg-accent/10 px-2 py-1 text-center text-xs font-semibold text-accent">
-                        初回1ヶ月無料トライアル
-                      </p>
-                    )}
+                    <p className="mt-1 text-xs text-muted">{plan.desc}</p>
                     <ul className="mt-4 space-y-2 text-sm">
-                      {[
-                        "すべての基本機能",
-                        "LINE通知（予約確定・リマインダー）",
-                        "カレンダー同期",
-                        "QRコード・URL発行",
-                      ].map((item) => (
+                      {plan.features.map((item, i) => (
                         <li key={item} className="flex items-start gap-2">
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="mt-0.5 shrink-0 text-accent">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className={`mt-0.5 shrink-0 ${plan.comingSoon && i > 0 ? "text-muted/40" : "text-accent"}`}>
                             <path d="M20 6 9 17l-5-5" />
                           </svg>
-                          {item}
+                          <span className={plan.comingSoon && i > 0 ? "text-muted" : ""}>{item}</span>
                         </li>
                       ))}
                     </ul>
-                    {!isLoggedIn && (
-                      <a href="/?action=login" className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-accent py-3 font-semibold text-white shadow-lg shadow-accent/25 active:scale-[0.98]">
-                        {LINE_ICON}
-                        無料トライアルを始める
-                      </a>
-                    )}
-                    {isLoggedIn && !isCurrentPlan && (
-                      <Link href="/provider/register" className="mt-5 flex w-full items-center justify-center rounded-xl bg-accent py-3 font-semibold text-white shadow-lg shadow-accent/25 active:scale-[0.98]">
-                        事業主として始める
-                      </Link>
-                    )}
-                    {isCurrentPlan && (
-                      <Link href="/provider" className="mt-5 flex w-full items-center justify-center rounded-xl border border-accent py-3 font-semibold text-accent active:scale-[0.98]">
-                        管理画面へ
-                      </Link>
-                    )}
+                    <div className="mt-auto pt-5">
+                      {plan.comingSoon ? (
+                        <button disabled className="flex w-full items-center justify-center rounded-xl border border-border py-3 text-sm font-semibold text-muted opacity-50">
+                          近日公開予定
+                        </button>
+                      ) : isCurrentPlan ? (
+                        <Link href="/provider" className="flex w-full items-center justify-center rounded-xl border border-accent py-3 text-sm font-semibold text-accent active:scale-[0.98]">
+                          管理画面へ
+                        </Link>
+                      ) : !isLoggedIn ? (
+                        <a href="/?action=login" className="flex w-full items-center justify-center gap-2 rounded-xl bg-accent py-3 text-sm font-semibold text-white shadow-lg shadow-accent/25 active:scale-[0.98]">
+                          {LINE_ICON}
+                          無料トライアルを始める
+                        </a>
+                      ) : isLoggedIn && role !== "provider" ? (
+                        <Link href="/provider/register" className="flex w-full items-center justify-center rounded-xl bg-accent py-3 text-sm font-semibold text-white shadow-lg shadow-accent/25 active:scale-[0.98]">
+                          事業主として始める
+                        </Link>
+                      ) : null}
+                    </div>
                   </div>
                 );
-              })()}
+              };
 
-              {/* プロ */}
-              <div className="rounded-2xl bg-card p-6 ring-1 ring-border">
-                <p className="text-sm font-semibold text-muted">プロ</p>
-                <div className="mt-2 flex items-baseline gap-1">
-                  <span className="text-3xl font-extrabold">¥980</span>
-                  <span className="text-sm text-muted">/月</span>
-                </div>
-                <p className="mt-1 text-xs text-muted">より本格的な予約管理に</p>
-                <ul className="mt-4 space-y-2 text-sm">
-                  {[
-                    "スタンダードの全機能",
-                    "決済連携",
-                    "予約分析・レポート",
-                    "リマインダーカスタマイズ",
-                    "優先サポート",
-                  ].map((item, i) => (
-                    <li key={item} className="flex items-start gap-2">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className={`mt-0.5 shrink-0 ${i === 0 ? "text-accent" : "text-muted/50"}`}>
-                        <path d="M20 6 9 17l-5-5" />
-                      </svg>
-                      <span className={i > 0 ? "text-muted" : ""}>{item}</span>
-                    </li>
-                  ))}
-                </ul>
-                <p className="mt-5 text-center text-xs text-muted">近日公開予定</p>
-              </div>
-            </div>
+              return (
+                <>
+                  {/* モバイル: カルーセル */}
+                  <PlanCarousel plans={plans} isLoggedIn={isLoggedIn} role={role} />
+                  {/* PC: グリッド */}
+                  <div className="mt-8 hidden items-stretch gap-5 sm:grid sm:grid-cols-3">
+                    {plans.map((plan) => (
+                      <div key={plan.name} className="flex">{renderCard(plan)}</div>
+                    ))}
+                  </div>
+                </>
+              );
+            })()}
           </div>
         </div>
       </section>
 
       {/* CTA */}
       {!isLoggedIn && (
-        <section className="px-4 py-16 sm:px-8 sm:py-24">
+        <section className="px-4 py-10 sm:px-8 sm:py-16">
           <div className="mx-auto max-w-5xl text-center">
             <h2 className="text-xl font-bold sm:text-3xl">
               さあ、はじめましょう
