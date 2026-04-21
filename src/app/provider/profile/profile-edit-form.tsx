@@ -8,6 +8,7 @@ import { ImageCropper } from "@/components/ImageCropper";
 import type { Category } from "@/lib/constants/categories";
 import { CategorySelector } from "@/components/CategorySelector";
 import { brand } from "@/lib/brand";
+import { formatPhoneAsYouType } from "@/lib/phone";
 
 interface Provider {
   id: number;
@@ -72,6 +73,13 @@ export function ProfileEditForm({ provider, categories: PROVIDER_CATEGORIES }: {
     e.preventDefault();
     setError(null);
     setSuccess(false);
+
+    // 連絡先が1つも設定されていない場合
+    if (!lineEnabled && !emailEnabled && !phoneEnabled) {
+      setError("連絡方法を1つ以上設定してください");
+      return;
+    }
+
     setSubmitting(true);
     // 楽観的: 即座にsuccessを表示
     setSuccess(true);
@@ -332,7 +340,7 @@ export function ProfileEditForm({ provider, categories: PROVIDER_CATEGORIES }: {
                   name="contact_phone"
                   type="tel"
                   value={phoneValue}
-                  onChange={(e) => setPhoneValue(e.target.value)}
+                  onChange={(e) => setPhoneValue(formatPhoneAsYouType(e.target.value))}
                   placeholder="090-1234-5678"
                   inputMode="tel"
                   required

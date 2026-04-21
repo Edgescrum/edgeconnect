@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import Link from "next/link";
 import { getAvailableSlots, createBooking } from "@/lib/actions/booking";
 import { brand } from "@/lib/brand";
+import { formatPhoneAsYouType, isValidJapanesePhone } from "@/lib/phone";
 import { FriendPromptModal } from "./friend-prompt-modal";
 
 interface CustomField {
@@ -147,6 +148,10 @@ export function BookingFlow({
     }
     if (!customerPhone.trim()) {
       setError("電話番号を入力してください");
+      return false;
+    }
+    if (!isValidJapanesePhone(customerPhone)) {
+      setError("正しい電話番号を入力してください");
       return false;
     }
     const fields = service.custom_fields || [];
@@ -481,7 +486,7 @@ export function BookingFlow({
                 <input
                   type="tel"
                   value={customerPhone}
-                  onChange={(e) => setCustomerPhone(e.target.value)}
+                  onChange={(e) => setCustomerPhone(formatPhoneAsYouType(e.target.value))}
                   placeholder="090-1234-5678"
                   inputMode="tel"
                   className="w-full rounded-xl border border-border bg-background px-4 py-3"

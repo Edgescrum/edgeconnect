@@ -7,6 +7,7 @@ import type { Category } from "@/lib/constants/categories";
 import { CategorySelector } from "@/components/CategorySelector";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { formatPhoneAsYouType } from "@/lib/phone";
 
 const STEPS = [
   { title: "はじめに", icon: "👋" },
@@ -270,7 +271,7 @@ export function RegisterWizard({ categories: PROVIDER_CATEGORIES }: { categories
                       <input
                         type="tel"
                         value={contactPhone}
-                        onChange={(e) => setContactPhone(e.target.value)}
+                        onChange={(e) => setContactPhone(formatPhoneAsYouType(e.target.value))}
                         placeholder="090-1234-5678"
                         inputMode="tel"
                         className="w-full rounded-xl border border-border bg-white px-4 py-3 text-sm"
@@ -278,6 +279,9 @@ export function RegisterWizard({ categories: PROVIDER_CATEGORIES }: { categories
                     </div>
                   )}
                 </div>
+                {!lineEnabled && !emailEnabled && !phoneEnabled && (
+                  <p className="text-xs text-red-500">連絡方法を1つ以上設定してください</p>
+                )}
 
                 {/* Bio */}
                 <div>
@@ -642,7 +646,7 @@ export function RegisterWizard({ categories: PROVIDER_CATEGORIES }: { categories
                         <input
                           type="tel"
                           value={contactPhone}
-                          onChange={(e) => setContactPhone(e.target.value)}
+                          onChange={(e) => setContactPhone(formatPhoneAsYouType(e.target.value))}
                           placeholder="090-1234-5678"
                           inputMode="tel"
                           className="w-full rounded-xl border border-border bg-white px-4 py-3 text-sm"
@@ -651,6 +655,9 @@ export function RegisterWizard({ categories: PROVIDER_CATEGORIES }: { categories
                     )}
                   </div>
                 </div>
+                {!lineEnabled && !emailEnabled && !phoneEnabled && (
+                  <p className="text-xs text-red-500">連絡方法を1つ以上設定してください</p>
+                )}
 
                 {/* Bio */}
                 <div>

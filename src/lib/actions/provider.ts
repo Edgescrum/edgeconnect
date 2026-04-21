@@ -159,6 +159,10 @@ export async function updateProfile(formData: FormData) {
   const contactPhoneVal = (formData.get("contact_phone") as string)?.trim();
   const brandColor = formData.get("brand_color") as string;
 
+  // 連絡先が1つも設定されていない場合はエラー
+  const hasContact = (lineEnabled && lineId) || (emailEnabled && contactEmail) || (phoneEnabled && contactPhoneVal);
+  if (!hasContact) throw new Error("連絡方法を1つ以上設定してください");
+
   if (name) updates.name = name;
   if (bio !== null) updates.bio = bio;
   updates.category = category;

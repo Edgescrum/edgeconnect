@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { updateUserSettings } from "@/lib/actions/user";
+import { formatPhoneAsYouType, isValidJapanesePhone } from "@/lib/phone";
 
 export function SettingsForm({
   defaultName,
@@ -21,6 +22,11 @@ export function SettingsForm({
     setSubmitting(true);
     setError(null);
     setSuccess(false);
+    if (phone.trim() && !isValidJapanesePhone(phone)) {
+      setError("正しい電話番号を入力してください");
+      setSubmitting(false);
+      return;
+    }
     try {
       await updateUserSettings(name, phone);
       setSuccess(true);
@@ -57,7 +63,7 @@ export function SettingsForm({
           id="phone"
           type="tel"
           value={phone}
-          onChange={(e) => setPhone(e.target.value)}
+          onChange={(e) => setPhone(formatPhoneAsYouType(e.target.value))}
           placeholder="090-1234-5678"
           inputMode="tel"
           className="w-full rounded-xl border border-border bg-card px-4 py-3"
