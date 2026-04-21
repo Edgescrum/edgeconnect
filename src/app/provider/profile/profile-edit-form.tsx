@@ -233,7 +233,7 @@ export function ProfileEditForm({ provider, categories: PROVIDER_CATEGORIES }: {
       <div>
         <p className="mb-1 text-sm font-medium">お客さまからの連絡方法</p>
         <p className="mb-3 text-xs text-muted">
-          ONにするとお客さまの予約詳細画面に連絡ボタンが表示されます。キャンセル期限後のご相談などにご活用ください。
+          お客さまの予約詳細画面に連絡ボタンが表示されます
         </p>
         <div className="space-y-3">
           {/* LINE */}
