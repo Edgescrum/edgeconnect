@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { deleteService } from "@/lib/actions/service";
+import { Spinner } from "@/components/Spinner";
+import { Alert } from "@/components/Alert";
 
 interface CustomField {
   label: string;
@@ -352,9 +354,7 @@ export function ServiceForm({
         </div>
 
         {error && (
-          <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">
-            {error}
-          </div>
+          <Alert type="error">{error}</Alert>
         )}
 
         <button
@@ -363,7 +363,7 @@ export function ServiceForm({
           className="flex w-full items-center justify-center gap-2 rounded-xl bg-accent py-3.5 font-semibold text-white shadow-lg shadow-accent/25 disabled:opacity-60 active:scale-[0.98]"
         >
           {submitting && (
-            <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+            <Spinner size="sm" className="border-white border-t-transparent" />
           )}
           {submitting ? "処理中..." : submitLabel}
         </button>
@@ -395,8 +395,8 @@ export function ServiceForm({
               「{defaultValues?.name}」を削除します。この操作は元に戻せません。
             </p>
             {error && (
-              <div className="mt-3 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">
-                {error}
+              <div className="mt-3">
+                <Alert type="error">{error}</Alert>
               </div>
             )}
             <div className="mt-6 flex gap-3">
@@ -413,7 +413,7 @@ export function ServiceForm({
                 className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-red-500 py-3 font-semibold text-white active:scale-[0.98]"
               >
                 {deleting && (
-                  <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  <Spinner size="sm" className="border-white border-t-transparent" />
                 )}
                 {deleting ? "削除中..." : "削除する"}
               </button>

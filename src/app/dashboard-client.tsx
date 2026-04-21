@@ -3,18 +3,11 @@
 import Link from "next/link";
 import Image from "next/image";
 
-interface RecentProvider {
-  slug: string;
-  name: string;
-  icon_url: string | null;
+import type { ProviderBase } from "@/lib/types/provider";
+
+interface RecentProvider extends ProviderBase {
   lastService: string;
   lastDate: string;
-}
-
-interface Provider {
-  slug: string;
-  name: string;
-  icon_url: string | null;
 }
 
 export function DashboardClient({
@@ -23,7 +16,7 @@ export function DashboardClient({
   recentProviders,
 }: {
   role: string;
-  provider: Provider | null;
+  provider: ProviderBase | null;
   recentProviders: RecentProvider[];
 }) {
   const isProvider = role === "provider";

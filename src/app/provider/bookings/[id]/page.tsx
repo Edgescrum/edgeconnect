@@ -1,7 +1,7 @@
 import { resolveUser } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { redirect, notFound } from "next/navigation";
-import { ProviderCancelButton } from "./provider-cancel-button";
+import { CancelBookingButton } from "@/components/CancelBookingButton";
 
 export default async function ProviderBookingDetailPage({
   params,
@@ -103,7 +103,7 @@ export default async function ProviderBookingDetailPage({
         {/* Cancel */}
         {!isCancelled && (
           <div className="mt-6">
-            <ProviderCancelButton bookingId={booking.id} />
+            <CancelBookingButton bookingId={booking.id} variant="provider" />
           </div>
         )}
       </div>

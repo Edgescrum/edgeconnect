@@ -2,7 +2,7 @@ import { resolveUser } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
-import { CancelButton } from "./cancel-button";
+import { CancelBookingButton } from "@/components/CancelBookingButton";
 import { generateGoogleCalendarUrl } from "@/lib/calendar/ics";
 
 export default async function BookingDetailPage({
@@ -138,7 +138,7 @@ export default async function BookingDetailPage({
         {/* キャンセルボタン */}
         {canCancel && (
           <div className="mt-4">
-            <CancelButton bookingId={booking.id} />
+            <CancelBookingButton bookingId={booking.id} variant="customer" />
           </div>
         )}
 

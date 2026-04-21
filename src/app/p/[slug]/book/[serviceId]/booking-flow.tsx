@@ -6,6 +6,8 @@ import { getAvailableSlots, createBooking } from "@/lib/actions/booking";
 import { brand } from "@/lib/brand";
 import { formatPhoneAsYouType, isValidJapanesePhone } from "@/lib/phone";
 import { FriendPromptModal } from "./friend-prompt-modal";
+import { Spinner } from "@/components/Spinner";
+import { Alert } from "@/components/Alert";
 
 interface CustomField {
   label: string;
@@ -307,8 +309,8 @@ export function BookingFlow({
         )}
 
         {error && (
-          <div className={`mb-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600 ${step === "confirm" ? "sm:mx-auto sm:max-w-lg" : ""}`}>
-            {error}
+          <div className={`mb-4 ${step === "confirm" ? "sm:mx-auto sm:max-w-lg" : ""}`}>
+            <Alert type="error">{error}</Alert>
           </div>
         )}
 
@@ -411,7 +413,7 @@ export function BookingFlow({
                 </h2>
                 {loadingSlots ? (
                   <div className="flex items-center justify-center py-8">
-                    <div className="h-5 w-5 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+                    <Spinner />
                   </div>
                 ) : slots.length === 0 ? (
                   <div className="rounded-2xl bg-card p-6 text-center ring-1 ring-border">
@@ -553,7 +555,7 @@ export function BookingFlow({
               className="mt-6 flex min-h-[3rem] w-full items-center justify-center gap-2 rounded-xl bg-accent py-3.5 font-semibold text-white shadow-lg shadow-accent/25 disabled:opacity-60 active:scale-[0.98]"
             >
               {submitting && (
-                <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                <Spinner size="sm" className="border-white border-t-transparent" />
               )}
               {submitting ? "処理中..." : "予約を確定する"}
             </button>

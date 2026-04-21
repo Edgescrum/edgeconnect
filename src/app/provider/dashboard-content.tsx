@@ -1,11 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-
-interface Provider {
-  slug: string;
-  name: string;
-  icon_url: string | null;
-}
+import type { ProviderBase } from "@/lib/types/provider";
 
 interface Onboarding {
   hasService: boolean;
@@ -79,7 +74,7 @@ export function ProviderDashboard({
   weekCount = 0,
   onboarding,
 }: {
-  provider: Provider;
+  provider: ProviderBase;
   todayCount?: number;
   weekCount?: number;
   onboarding?: Onboarding;
