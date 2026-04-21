@@ -27,21 +27,24 @@
 
 ### RF-3: FormInput/FormLabelコンポーネント
 - [x] `src/components/FormField.tsx` 作成（FormLabel/FormInput/FormTextarea）
-- [ ] 既存ファイルの置換（V2の新機能実装時に段階的に適用）
+- [x] settings-form, profile-edit-form, register-wizard, service-form, booking-flowに適用
 
 ### RF-4: 連絡方法トグルUI統合
 - [x] `src/components/ContactMethodToggles.tsx` 作成
-- [ ] 既存ファイルの置換（V2の新機能実装時に段階的に適用）
+- [x] profile-edit-form, register-wizard（PC+モバイル）に適用
 
 ---
 
 ## Phase 3（完了）
 
 ### RF-5: Modalコンポーネント
-- [x] `src/components/Modal.tsx` 作成
-- [ ] 既存ファイルの置換（V2の新機能実装時に段階的に適用）
+- [x] `src/components/Modal.tsx` 作成（position="center"/"bottom"対応）
+- [x] CancelBookingButton, LoginRequired, profile-edit-form, service-formに適用
 
 ### RF-6: 残りのSpinner/Alert/Icon置き換え
-- [x] `src/app/provider/services/service-form.tsx` — Spinner, Alert置換
-- [x] `src/app/p/[slug]/book/[serviceId]/booking-flow.tsx` — Spinner, Alert置換
-- [ ] 各ファイルでインラインSVGをicons.tsxのコンポーネントに置き換え（修正時に都度）
+- [x] service-form — Spinner, Alert置換
+- [x] booking-flow — Spinner, Alert置換
+- [x] dashboard-client — GearIcon, SearchIcon, CalendarIcon, ChevronRightIcon置換
+- [x] bookings/page — ChevronLeftIcon置換
+- [x] explore-client — SearchIcon, ChevronRightIcon置換
+- [x] booking-flow — ChevronLeftIcon, ChevronRightIcon置換
