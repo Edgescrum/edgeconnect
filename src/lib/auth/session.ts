@@ -10,6 +10,8 @@ export interface CurrentUser {
   role: "provider" | "customer";
   authUid: string;
   isLineFriend: boolean;
+  customerName: string | null;
+  customerPhone: string | null;
 }
 
 export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
@@ -20,7 +22,7 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
 
   const { data, error } = await supabase
     .from("users")
-    .select("id, line_user_id, display_name, role, auth_uid, is_line_friend")
+    .select("id, line_user_id, display_name, role, auth_uid, is_line_friend, customer_name, customer_phone")
     .eq("auth_uid", authUser.id)
     .single();
 
@@ -36,6 +38,8 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
     role: data.role,
     authUid: data.auth_uid,
     isLineFriend: data.is_line_friend ?? false,
+    customerName: data.customer_name ?? null,
+    customerPhone: data.customer_phone ?? null,
   };
 });
 
@@ -57,7 +61,7 @@ export const resolveUser = cache(async (): Promise<CurrentUser | null> => {
     const supabase = createAdminClient();
     const { data } = await supabase
       .from("users")
-      .select("id, line_user_id, display_name, role, auth_uid, is_line_friend")
+      .select("id, line_user_id, display_name, role, auth_uid, is_line_friend, customer_name, customer_phone")
       .eq("line_user_id", lineUserId)
       .single();
 
@@ -69,6 +73,8 @@ export const resolveUser = cache(async (): Promise<CurrentUser | null> => {
         role: data.role,
         authUid: data.auth_uid || "",
         isLineFriend: data.is_line_friend ?? false,
+        customerName: data.customer_name ?? null,
+        customerPhone: data.customer_phone ?? null,
       };
     }
 
@@ -91,6 +97,8 @@ export const resolveUser = cache(async (): Promise<CurrentUser | null> => {
         role: "customer",
         authUid: "",
         isLineFriend: false,
+        customerName: null,
+        customerPhone: null,
       };
     }
   }

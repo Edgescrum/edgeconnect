@@ -76,6 +76,8 @@ export default async function BookingPage({
       service={service}
       brandColor={profile.brand_color || brand.primary}
       isLineFriend={user.isLineFriend}
+      defaultName={user.customerName || ""}
+      defaultPhone={user.customerPhone || ""}
     />
   );
 }

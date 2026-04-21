@@ -65,6 +65,14 @@ export async function createBooking(
   const bookingId = typeof data === "object" && data !== null ? (data as { id: string }).id : null;
   log("createBooking", "success", { bookingId });
 
+  // ユーザー情報を更新（名前・電話番号を保存して次回自動入力）
+  if (customerName !== user.customerName || customerPhone !== user.customerPhone) {
+    await supabase
+      .from("users")
+      .update({ customer_name: customerName, customer_phone: customerPhone })
+      .eq("id", user.id);
+  }
+
   if (bookingId) {
     try {
       await notifyBookingConfirmed(bookingId);

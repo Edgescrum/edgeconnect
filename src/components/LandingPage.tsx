@@ -53,6 +53,17 @@ export function LandingPage({ isLoggedIn = false, role }: { isLoggedIn?: boolean
             <br />
             PeCoがつなぐ、シンプルな予約体験。
           </p>
+          <div className="mt-8 sm:mt-10">
+            <Link
+              href="/explore"
+              className="inline-flex items-center gap-2 rounded-xl border border-border px-6 py-3 text-sm font-semibold text-muted active:scale-[0.98] sm:px-8"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" />
+              </svg>
+              事業主を探す
+            </Link>
+          </div>
         </div>
       </section>
 
@@ -109,17 +120,6 @@ export function LandingPage({ isLoggedIn = false, role }: { isLoggedIn?: boolean
             ))}
           </div>
 
-          <div className="mt-6 text-center">
-            <Link
-              href="/explore"
-              className="inline-flex items-center gap-2 rounded-xl border border-border px-6 py-3 text-sm font-semibold text-muted active:scale-[0.98] sm:px-8"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" />
-              </svg>
-              事業主を探す
-            </Link>
-          </div>
         </div>
       </section>
 

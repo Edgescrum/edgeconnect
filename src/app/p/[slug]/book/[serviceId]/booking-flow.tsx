@@ -30,6 +30,8 @@ export function BookingFlow({
   service,
   brandColor = brand.primary,
   isLineFriend = false,
+  defaultName = "",
+  defaultPhone = "",
 }: {
   providerId: number;
   providerName: string;
@@ -37,10 +39,12 @@ export function BookingFlow({
   service: Service;
   brandColor?: string;
   isLineFriend?: boolean;
+  defaultName?: string;
+  defaultPhone?: string;
 }) {
   const [step, setStep] = useState<"date" | "confirm" | "done">("date");
-  const [customerName, setCustomerName] = useState("");
-  const [customerPhone, setCustomerPhone] = useState("");
+  const [customerName, setCustomerName] = useState(defaultName);
+  const [customerPhone, setCustomerPhone] = useState(defaultPhone);
   const [customAnswers, setCustomAnswers] = useState<Record<number, string>>({});
   const [descOpen, setDescOpen] = useState(false);
   const [showFriendPrompt, setShowFriendPrompt] = useState(false);
