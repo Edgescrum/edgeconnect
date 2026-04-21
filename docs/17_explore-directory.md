@@ -11,10 +11,30 @@
 | 機能 | 詳細 |
 |------|------|
 | 事業主一覧 | アイコン・屋号・カテゴリ・bio先頭をカード表示 |
-| カテゴリフィルタ | 既存の `providers.category` でフィルタ（タブ or チップUI） |
+| カテゴリフィルタ | CategorySelector コンポーネントでマルチセレクト（複数カテゴリ同時フィルタ） |
 | 検索 | 屋号・bioのテキスト検索 |
 | ページネーション | 無限スクロール（20件ずつ） |
 | カード遷移先 | `/p/[slug]` |
+
+## カテゴリフィルタ
+
+### CategorySelector コンポーネント
+- カテゴリは `categories` テーブルから動的取得（`getCategories()`）
+- ドロップダウン + チップUI
+- 複数カテゴリ選択可能（AND/OR はRPCで制御）
+- 同じコンポーネントを事業主登録・プロフィール編集でも共有
+
+### DB Function
+`search_providers` RPC が `text[]` 型の `p_categories` パラメータを受け付ける:
+
+```sql
+search_providers(
+  p_categories text[],  -- 複数カテゴリフィルタ
+  p_query text,         -- テキスト検索
+  p_offset int,
+  p_limit int
+)
+```
 
 ## 表示条件
 - `providers.is_active = true` のみ
@@ -22,34 +42,37 @@
 - ソート: 新着順（デフォルト）
 
 ## データ取得
-- 新規DB Function `search_providers(p_category, p_query, p_offset, p_limit)` を作成
-- または Supabase クエリで直接取得（RLSで公開データのみ返る）
+- `search_providers` DB Function（SECURITY DEFINER）
+- Server Action: `src/lib/actions/explore.ts`
+- クライアントから無限スクロールで追加読み込み
 
 ## カードUI
 
 ```
 ┌──────────────────────────────┐
 │ [icon]  屋号                  │
-│         カテゴリタグ           │
+│         カテゴリチップ(複数)    │
 │         bio先頭50文字...       │
 │                        → 詳細 │
 └──────────────────────────────┘
 ```
 
-## Todo
+## 実装状況
 
 ### DB
-- [ ] `search_providers` DB Function 作成（カテゴリ・テキスト検索・ページネーション）
-- [ ] サービス0件の事業主を除外するクエリ条件
+- [x] `search_providers` DB Function 作成（カテゴリ・テキスト検索・ページネーション）
+- [x] `categories` テーブル作成（マスタデータ）
+- [x] サービス0件の事業主を除外するクエリ条件
 
 ### ページ実装
-- [ ] `/explore/page.tsx` を作成（Server Component）
-- [ ] 事業主カード一覧コンポーネント
-- [ ] カテゴリフィルタUI（チップ形式、横スクロール）
-- [ ] テキスト検索バー
-- [ ] 無限スクロール（IntersectionObserver、20件ずつ）
+- [x] `/explore/page.tsx` を作成
+- [x] 事業主カード一覧コンポーネント
+- [x] CategorySelector UI（マルチセレクト対応）
+- [x] テキスト検索バー
+- [x] 無限スクロール（IntersectionObserver、20件ずつ）
 
 ### デザイン
-- [ ] 0件時の Empty State（「まだ事業主が登録されていません」）
-- [ ] 検索結果0件時のUI（「該当する事業主が見つかりません」）
-- [ ] モバイル最適化（カード1列表示）
+- [x] 0件時の Empty State（「まだ事業主が登録されていません」）
+- [x] 検索結果0件時のUI（「該当する事業主が見つかりません」）
+- [x] モバイル最適化（カード1列表示）
+- [x] max-w-5xl で中央寄せ

@@ -21,7 +21,7 @@ export function PublicFooter({
               無料でサービスメニュー・予約ページを作成できます
             </p>
             <Link
-              href="/about"
+              href="/"
               className="mt-4 inline-flex items-center gap-1 rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-accent/25 active:scale-[0.98]"
             >
               詳しく見る
@@ -36,7 +36,7 @@ export function PublicFooter({
         <div className="flex items-center gap-3 text-xs text-muted">
           <img src="/logo.svg" alt="PeCo" className="h-4 sm:h-5" />
           <span className="text-border">|</span>
-          <Link href="/about" className="hover:text-foreground">PeCoとは</Link>
+          <Link href="/" className="hover:text-foreground">PeCoとは</Link>
           <Link href="/explore" className="hover:text-foreground">事業主を探す</Link>
         </div>
         <p className="mt-2 text-[10px] text-muted/50">&copy; Edgescrum</p>

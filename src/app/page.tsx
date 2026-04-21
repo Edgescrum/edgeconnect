@@ -19,7 +19,7 @@ export default async function Home({
 
   return (
     <LiffGate fallback={<FullScreenLoading />}>
-      <LandingPage isLoggedIn={!!user} />
+      <LandingPage isLoggedIn={!!user} role={user?.role} />
     </LiffGate>
   );
 }
