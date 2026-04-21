@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { getSafeRedirect } from "@/lib/auth/redirect";
 
 export async function updateSession(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
@@ -12,15 +13,14 @@ export async function updateSession(request: NextRequest) {
     const loginRedirect = request.cookies.get("login_redirect")?.value;
     // liff.line.meから直接アクセス（liff.stateもlogin_redirectもない）→ /homeへ
     // liff.stateが/の場合もLPを見せずに/homeへ
-    const rawDest = liffState || loginRedirect || "/home";
-    const dest = rawDest === "/" ? "/home" : rawDest;
+    const safeDest = getSafeRedirect(liffState || loginRedirect);
 
     const url = request.nextUrl.clone();
     url.pathname = "/auth/callback";
     url.search = new URLSearchParams({
       auth_code: code,
       redirect_uri: liffRedirectUri,
-      redirect: dest,
+      redirect: safeDest,
     }).toString();
     return NextResponse.redirect(url);
   }

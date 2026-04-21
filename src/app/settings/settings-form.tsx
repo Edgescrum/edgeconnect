@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { updateUserSettings } from "@/lib/actions/user";
 import { formatPhoneAsYouType, isValidJapanesePhone } from "@/lib/phone";
+import { Spinner } from "@/components/Spinner";
+import { Alert } from "@/components/Alert";
 
 export function SettingsForm({
   defaultName,
@@ -72,10 +74,10 @@ export function SettingsForm({
       </div>
 
       {error && (
-        <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">{error}</div>
+        <Alert type="error">{error}</Alert>
       )}
       {success && (
-        <div className="rounded-xl bg-green-50 px-4 py-3 text-sm text-green-600">保存しました</div>
+        <Alert type="success">保存しました</Alert>
       )}
 
       <button
@@ -84,7 +86,7 @@ export function SettingsForm({
         className="flex min-h-[3rem] w-full items-center justify-center gap-2 rounded-xl bg-accent py-3.5 font-semibold text-white shadow-lg shadow-accent/25 disabled:opacity-60 active:scale-[0.98]"
       >
         {submitting && (
-          <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+          <Spinner size="sm" className="border-white border-t-transparent" />
         )}
         {submitting ? "保存中..." : "保存する"}
       </button>

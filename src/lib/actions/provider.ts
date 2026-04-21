@@ -9,6 +9,7 @@ import { isReservedSlug } from "@/lib/constants/reserved-slugs";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import sharp from "sharp";
 import { brand } from "@/lib/brand";
+import { validateImageFile } from "@/lib/constants/upload";
 
 async function cleanOldIcons(adminSupabase: SupabaseClient, lineUserId: string) {
   const { data: files } = await adminSupabase.storage
@@ -96,18 +97,10 @@ export async function registerProvider(formData: FormData) {
   const adminSupabase = createAdminClient();
 
   // アイコン画像アップロード（512x512 PNGにリサイズ）
-  const MAX_ICON_SIZE = 5 * 1024 * 1024; // 5MB
-  const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
-
   let iconUrl: string | null = null;
   const iconFile = formData.get("icon") as File | null;
   if (iconFile && iconFile.size > 0) {
-    if (iconFile.size > MAX_ICON_SIZE) {
-      throw new Error("画像サイズは5MB以内にしてください");
-    }
-    if (!ALLOWED_IMAGE_TYPES.includes(iconFile.type)) {
-      throw new Error("JPEG、PNG、WebP、GIF形式の画像のみアップロードできます");
-    }
+    validateImageFile(iconFile);
     iconUrl = await uploadIcon(adminSupabase, user.lineUserId, iconFile);
   } else {
     // 未設定時: 頭文字のデフォルトアイコンを生成
@@ -189,17 +182,9 @@ export async function updateProfile(formData: FormData) {
     : null;
   if (brandColor) updates.brand_color = brandColor;
 
-  const MAX_ICON_SIZE = 5 * 1024 * 1024; // 5MB
-  const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
-
   const iconFile = formData.get("icon") as File | null;
   if (iconFile && iconFile.size > 0) {
-    if (iconFile.size > MAX_ICON_SIZE) {
-      throw new Error("画像サイズは5MB以内にしてください");
-    }
-    if (!ALLOWED_IMAGE_TYPES.includes(iconFile.type)) {
-      throw new Error("JPEG、PNG、WebP、GIF形式の画像のみアップロードできます");
-    }
+    validateImageFile(iconFile);
     updates.icon_url = await uploadIcon(adminSupabase, user.lineUserId, iconFile);
   }
 

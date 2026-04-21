@@ -31,8 +31,9 @@ export const brand = {
   border: "#ece4e0",
   borderLight: "#f5efec",
 
-  // 成功（LINE緑）
+  // 成功・LINE緑
   success: "#06C755",
+  line: "#06C755",
 
   // フォント
   fontFamily: "'DM Sans', 'Noto Sans JP', system-ui, sans-serif",

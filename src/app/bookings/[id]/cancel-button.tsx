@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { cancelBooking } from "@/lib/actions/booking";
 import { useRouter } from "next/navigation";
+import { Spinner } from "@/components/Spinner";
+import { Alert } from "@/components/Alert";
 
 export function CancelButton({ bookingId }: { bookingId: string }) {
   const router = useRouter();
@@ -41,8 +43,8 @@ export function CancelButton({ bookingId }: { bookingId: string }) {
               この操作は元に戻せません。
             </p>
             {error && (
-              <div className="mt-3 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">
-                {error}
+              <div className="mt-3">
+                <Alert type="error">{error}</Alert>
               </div>
             )}
             <div className="mt-6 flex gap-3">
@@ -59,7 +61,7 @@ export function CancelButton({ bookingId }: { bookingId: string }) {
                 className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-red-500 py-3 font-semibold text-white active:scale-[0.98]"
               >
                 {cancelling && (
-                  <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  <Spinner size="sm" className="border-white border-t-transparent" />
                 )}
                 {cancelling ? "処理中..." : "キャンセルする"}
               </button>
