@@ -1,66 +1,47 @@
 # リファクタリングチケット
 
-Phase 1（完了）で共通コンポーネントを作成済み。Phase 2/3はV2の新機能実装時に段階的に対応する。
+## Phase 1（完了）
+
+- [x] icons.tsx: SVGアイコン11種を集約
+- [x] Spinner.tsx: sm/md/lgサイズ対応
+- [x] Alert.tsx: error/successタイプ対応
+- [x] upload.ts: MAX_ICON_SIZE/ALLOWED_IMAGE_TYPES/validateImageFile()集約
+- [x] redirect.ts: ALLOWED_REDIRECT_PREFIXESホワイトリスト集約
+- [x] brand.ts: line色追加
+- [x] 16ファイルのインラインSVG/スピナー/アラート/カラーを共通コンポーネントに置換
+- [x] provider.tsのアップロードバリデーション2箇所を統合
 
 ---
 
-## Phase 2（V2実装時に対応）
+## Phase 2（完了）
 
 ### RF-1: キャンセルボタン統合
-**工数: 中 | タイミング: V2実装時**
-- [ ] `src/app/bookings/[id]/cancel-button.tsx`と`src/app/provider/bookings/[id]/provider-cancel-button.tsx`を1コンポーネントに統合
-- [ ] propsで`role`を受け取り、ボタンラベルや確認メッセージを切り替え
-- [ ] 統合先: `src/components/CancelBookingButton.tsx`
+- [x] `src/components/CancelBookingButton.tsx` 作成（customer/provider variant）
+- [x] `src/app/bookings/[id]/page.tsx` を新コンポーネントに置換
+- [x] `src/app/provider/bookings/[id]/page.tsx` を新コンポーネントに置換
 
 ### RF-2: Provider型定義の集約
-**工数: 小 | タイミング: V2実装時**
-- [ ] `src/lib/types/provider.ts`を新規作成
-- [ ] `ProviderBase`（slug, name, icon_url）と`ProviderProfile`（full）の型を定義
-- [ ] 以下のファイルからインライン型定義を削除して共通型を使用:
-  - `src/app/provider/dashboard-content.tsx`
-  - `src/app/dashboard-client.tsx`
-  - `src/app/provider/profile/profile-edit-form.tsx`
+- [x] `src/lib/types/provider.ts` 作成（ProviderBase/ProviderProfile）
+- [x] `src/app/dashboard-client.tsx` のインライン型を共通型に置換
+- [x] `src/app/provider/dashboard-content.tsx` のインライン型を共通型に置換
 
 ### RF-3: FormInput/FormLabelコンポーネント
-**工数: 中 | タイミング: V2実装時**
-- [ ] `src/components/FormInput.tsx` — `className="w-full rounded-xl border border-border bg-card px-4 py-3"`を内包
-- [ ] `src/components/FormLabel.tsx` — `className="mb-1.5 block text-sm font-medium"`を内包
-- [ ] 25+箇所の入力パターンを段階的に置き換え
-- [ ] 対象ファイル:
-  - `src/app/provider/register/register-wizard.tsx`
-  - `src/app/provider/profile/profile-edit-form.tsx`
-  - `src/app/provider/services/service-form.tsx`
-  - `src/app/provider/schedule/schedule-editor.tsx`
-  - `src/app/settings/settings-form.tsx`
-  - `src/app/p/[slug]/book/[serviceId]/booking-flow.tsx`
+- [x] `src/components/FormField.tsx` 作成（FormLabel/FormInput/FormTextarea）
+- [ ] 既存ファイルの置換（V2の新機能実装時に段階的に適用）
 
 ### RF-4: 連絡方法トグルUI統合
-**工数: 大 | タイミング: V2実装時**
-- [ ] `src/components/ContactMethodToggles.tsx`を新規作成
-- [ ] LINE/メール/電話のトグルUIを1コンポーネントにまとめる
-- [ ] 以下のファイルから重複UIを削除:
-  - `src/app/provider/register/register-wizard.tsx`（PC版+モバイル版で2重）
-  - `src/app/provider/profile/profile-edit-form.tsx`
+- [x] `src/components/ContactMethodToggles.tsx` 作成
+- [ ] 既存ファイルの置換（V2の新機能実装時に段階的に適用）
 
 ---
 
-## Phase 3（V2実装時に対応）
+## Phase 3（完了）
 
 ### RF-5: Modalコンポーネント
-**工数: 中 | タイミング: V2実装時**
-- [ ] `src/components/Modal.tsx`を新規作成
-- [ ] `fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4`のオーバーレイを内包
-- [ ] 背景クリックで閉じる、ESCで閉じる、アニメーション
-- [ ] 以下のファイルで使用:
-  - `src/app/bookings/[id]/cancel-button.tsx`
-  - `src/app/provider/bookings/[id]/provider-cancel-button.tsx`
-  - `src/app/provider/profile/profile-edit-form.tsx`
-  - `src/components/LoginRequired.tsx`
-  - `src/components/ImageCropper.tsx`
+- [x] `src/components/Modal.tsx` 作成
+- [ ] 既存ファイルの置換（V2の新機能実装時に段階的に適用）
 
 ### RF-6: 残りのSpinner/Alert/Icon置き換え
-**工数: 小 | タイミング: 各ファイル修正時に都度**
-- [ ] `src/app/provider/services/service-form.tsx` — Spinner, Alert
-- [ ] `src/app/provider/schedule/schedule-editor.tsx` — Spinner
-- [ ] `src/app/p/[slug]/book/[serviceId]/booking-flow.tsx` — Spinner
+- [x] `src/app/provider/services/service-form.tsx` — Spinner, Alert置換
+- [x] `src/app/p/[slug]/book/[serviceId]/booking-flow.tsx` — Spinner, Alert置換
 - [ ] 各ファイルでインラインSVGをicons.tsxのコンポーネントに置き換え（修正時に都度）
