@@ -75,7 +75,7 @@ export function PlanCarousel({
                     ご利用中
                   </div>
                 )}
-                {!isCurrentPlan && plan.recommended && (
+                {!isCurrentPlan && plan.recommended && !plan.comingSoon && (
                   <div className="absolute -top-3 left-4 rounded-full bg-accent px-3 py-0.5 text-[10px] font-bold text-white">
                     おすすめ
                   </div>
