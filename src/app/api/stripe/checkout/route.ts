@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { stripe, STRIPE_PLANS } from "@/lib/stripe";
+import { getStripe, STRIPE_PLANS } from "@/lib/stripe";
 import { resolveUser } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { logError } from "@/lib/log";
@@ -32,6 +32,8 @@ export async function POST(request: NextRequest) {
         { status: 404 }
       );
     }
+
+    const stripe = getStripe();
 
     // Stripe Customerを作成（既存の場合は再利用）
     let customerId = provider.stripe_customer_id;

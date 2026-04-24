@@ -182,6 +182,8 @@ export async function POST(request: NextRequest) {
         const customerId = subscription.customer as string;
 
         if (customerId) {
+          // stripe_customer_id は残す（再サブスクライブ時に Customer を再利用するため）
+          // stripe_subscription_id のみクリアする
           await supabase
             .from("providers")
             .update({
