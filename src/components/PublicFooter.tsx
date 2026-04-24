@@ -39,6 +39,11 @@ export function PublicFooter({
           <Link href="/" className="hover:text-foreground">PeCoとは</Link>
           <Link href="/explore" className="hover:text-foreground">事業主を探す</Link>
         </div>
+        <div className="mt-2 flex flex-wrap items-center gap-3 text-[10px] text-muted/70">
+          <Link href="/legal/terms" className="hover:text-foreground">利用規約</Link>
+          <Link href="/legal/privacy" className="hover:text-foreground">プライバシーポリシー</Link>
+          <Link href="/legal/commercial" className="hover:text-foreground">特定商取引法</Link>
+        </div>
         <p className="mt-2 text-[10px] text-muted/50">&copy; Edgescrum</p>
       </div>
     </footer>
