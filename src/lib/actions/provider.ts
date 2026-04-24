@@ -119,6 +119,15 @@ export async function registerProvider(formData: FormData) {
 
   if (error) throw new Error(error.message);
 
+  // 利用規約同意日時を記録
+  const termsAgreed = formData.get("terms_agreed") === "1";
+  if (termsAgreed) {
+    await supabase
+      .from("users")
+      .update({ terms_agreed_at: new Date().toISOString() })
+      .eq("id", user.id);
+  }
+
   // category, contact_phoneはRPC外で更新
   const providerId = typeof data === "object" && data !== null ? (data as { id: number }).id : null;
   if (providerId) {

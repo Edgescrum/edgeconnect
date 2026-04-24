@@ -56,6 +56,7 @@ export function RegisterWizard({ categories: PROVIDER_CATEGORIES }: { categories
     phoneEnabled: false,
     contactPhone: "",
   });
+  const [termsAgreed, setTermsAgreed] = useState(false);
 
   async function handleSlugChange(value: string) {
     const normalized = value.toLowerCase().replace(/[^a-z0-9-]/g, "");
@@ -89,6 +90,7 @@ export function RegisterWizard({ categories: PROVIDER_CATEGORIES }: { categories
         formData.set("contact_phone", contactMethod.contactPhone);
       }
       if (iconFile) formData.set("icon", iconFile);
+      if (termsAgreed) formData.set("terms_agreed", "1");
       await registerProvider(formData);
       // sessionStorageのキャッシュをクリア（roleがproviderに変わったため再取得させる）
       sessionStorage.removeItem("peco_user");
@@ -105,6 +107,7 @@ export function RegisterWizard({ categories: PROVIDER_CATEGORIES }: { categories
       case 1: return name.trim().length > 0 && category !== "";
       case 2: return slug.length >= 3 && slugStatus === "available";
       case 3: {
+        if (!termsAgreed) return false;
         if (!contactMethod.lineEnabled && !contactMethod.emailEnabled && !contactMethod.phoneEnabled) return false;
         if (contactMethod.lineEnabled && !contactMethod.lineId.trim()) return false;
         if (contactMethod.emailEnabled && !contactMethod.contactEmail.includes("@")) return false;
@@ -237,13 +240,38 @@ export function RegisterWizard({ categories: PROVIDER_CATEGORIES }: { categories
               </div>
             </section>
 
+            {/* 利用規約同意 */}
+            <section className="rounded-2xl bg-card p-6 shadow-sm ring-1 ring-border">
+              <div className="flex items-center gap-3 mb-5">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-accent text-sm font-bold text-white">4</div>
+                <h2 className="text-lg font-bold">利用規約への同意</h2>
+              </div>
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={termsAgreed}
+                  onChange={(e) => setTermsAgreed(e.target.checked)}
+                  className="mt-1 h-4 w-4 shrink-0 rounded border-border accent-accent"
+                />
+                <span className="text-sm leading-relaxed">
+                  <Link href="/legal/terms" target="_blank" className="text-accent underline">利用規約</Link>
+                  {" "}および{" "}
+                  <Link href="/legal/privacy" target="_blank" className="text-accent underline">プライバシーポリシー</Link>
+                  {" "}に同意します
+                </span>
+              </label>
+              <p className="mt-3 text-xs text-muted">
+                <Link href="/legal/commercial" target="_blank" className="text-accent underline">特定商取引法に基づく表記</Link>もご確認ください。
+              </p>
+            </section>
+
             {error && (
               <Alert type="error">{error}</Alert>
             )}
 
             <button
               onClick={handleSubmit}
-              disabled={submitting || !name.trim() || !category || slug.length < 3 || slugStatus !== "available" || (!contactMethod.lineEnabled && !contactMethod.emailEnabled && !contactMethod.phoneEnabled) || (contactMethod.lineEnabled && !contactMethod.lineId.trim()) || (contactMethod.emailEnabled && !contactMethod.contactEmail.includes("@")) || (contactMethod.phoneEnabled && !contactMethod.contactPhone.trim())}
+              disabled={submitting || !termsAgreed || !name.trim() || !category || slug.length < 3 || slugStatus !== "available" || (!contactMethod.lineEnabled && !contactMethod.emailEnabled && !contactMethod.phoneEnabled) || (contactMethod.lineEnabled && !contactMethod.lineId.trim()) || (contactMethod.emailEnabled && !contactMethod.contactEmail.includes("@")) || (contactMethod.phoneEnabled && !contactMethod.contactPhone.trim())}
               className="w-full rounded-xl bg-accent py-4 text-lg font-semibold text-white shadow-lg shadow-accent/25 disabled:opacity-40 hover:opacity-90 transition-opacity"
             >
               {submitting ? "処理中..." : "登録を完了する"}
@@ -511,6 +539,27 @@ export function RegisterWizard({ categories: PROVIDER_CATEGORIES }: { categories
                       onChange={(e) => setIconFile(e.target.files?.[0] || null)}
                     />
                   </label>
+                </div>
+
+                {/* 利用規約同意 */}
+                <div className="rounded-xl border border-border bg-card p-4">
+                  <label className="flex items-start gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={termsAgreed}
+                      onChange={(e) => setTermsAgreed(e.target.checked)}
+                      className="mt-0.5 h-4 w-4 shrink-0 rounded border-border accent-accent"
+                    />
+                    <span className="text-xs leading-relaxed">
+                      <Link href="/legal/terms" target="_blank" className="text-accent underline">利用規約</Link>
+                      {" "}および{" "}
+                      <Link href="/legal/privacy" target="_blank" className="text-accent underline">プライバシーポリシー</Link>
+                      {" "}に同意します
+                    </span>
+                  </label>
+                  <p className="mt-2 pl-7 text-[10px] text-muted">
+                    <Link href="/legal/commercial" target="_blank" className="text-accent underline">特定商取引法に基づく表記</Link>もご確認ください。
+                  </p>
                 </div>
               </div>
             </div>
