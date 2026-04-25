@@ -11,6 +11,7 @@ const NAV_ITEMS = [
   { href: "/provider/profile", icon: "✏️", label: "プロフィール" },
   { href: "/provider/calendar", icon: "📆", label: "カレンダー連携" },
   { href: "/provider/qrcode", icon: "📱", label: "QRコード" },
+  { href: "/provider/billing", icon: "💳", label: "プラン管理" },
 ];
 
 export function ProviderSidebar() {
