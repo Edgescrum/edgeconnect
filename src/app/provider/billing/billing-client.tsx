@@ -189,6 +189,61 @@ export function BillingClient({
             </div>
           )}
 
+          {/* トライアル中のプラン選択セクション */}
+          {isTrialing && (
+            <div className="mt-6">
+              <h3 className="text-sm font-semibold text-foreground">トライアル終了後のプラン</h3>
+              <p className="mt-1 text-xs text-muted">
+                何もしなければ、トライアル終了後にスタンダード（980円/月）の課金が自動的に開始されます。
+              </p>
+              <div className="mt-4 space-y-3">
+                {/* スタンダード継続 */}
+                <div className="rounded-xl border-2 border-accent bg-accent/5 p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-5 w-5 items-center justify-center rounded-full border-2 border-accent bg-accent">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3">
+                          <path d="M20 6 9 17l-5-5" />
+                        </svg>
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold">スタンダードを継続する</p>
+                        <p className="text-xs text-muted">980円/月</p>
+                      </div>
+                    </div>
+                    <span className="rounded-full bg-accent px-2.5 py-0.5 text-[10px] font-medium text-white">
+                      現在の選択
+                    </span>
+                  </div>
+                </div>
+
+                {/* ベーシックにダウングレード */}
+                <button
+                  onClick={() => setShowDowngradeModal(true)}
+                  disabled={!!loading}
+                  className="w-full rounded-xl border border-border bg-card p-4 text-left active:scale-[0.99] disabled:opacity-50"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-5 w-5 items-center justify-center rounded-full border-2 border-border" />
+                    <div>
+                      <p className="text-sm font-semibold">ベーシックにダウングレード</p>
+                      <p className="text-xs text-muted">500円/月</p>
+                    </div>
+                  </div>
+                </button>
+
+                {/* 解約 */}
+                <button
+                  onClick={() => setShowCancelModal(true)}
+                  disabled={!!loading}
+                  className="w-full rounded-xl p-3 text-center text-sm text-red-500 hover:bg-red-50 active:scale-[0.99] disabled:opacity-50"
+                >
+                  解約する
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* 次回請求日 */}
           {periodEndLabel && hasSubscription && (
             <div className="mt-4 flex items-center gap-2 text-sm text-muted">
@@ -288,8 +343,8 @@ export function BillingClient({
             </button>
           )}
 
-          {/* ダウングレード（スタンダードの場合のみ） */}
-          {isStandard && hasSubscription && (
+          {/* ダウングレード（スタンダードの場合のみ、トライアル中は専用セクションで表示） */}
+          {isStandard && hasSubscription && !isTrialing && (
             <button
               onClick={() => setShowDowngradeModal(true)}
               disabled={!!loading}
@@ -317,8 +372,8 @@ export function BillingClient({
             </button>
           )}
 
-          {/* 解約 */}
-          {hasSubscription && (
+          {/* 解約（トライアル中は専用セクションで表示） */}
+          {hasSubscription && !isTrialing && (
             <button
               onClick={() => setShowCancelModal(true)}
               disabled={!!loading}
@@ -405,20 +460,30 @@ export function BillingClient({
         <Modal onClose={() => setShowDowngradeModal(false)}>
           <h3 className="text-lg font-bold">ダウングレードの確認</h3>
           <p className="mt-3 text-sm text-muted">
-            スタンダードプランからベーシックプランに変更します。
+            ベーシックプラン（500円/月）に変更します。
           </p>
           <div className="mt-4 rounded-xl bg-amber-50 p-3 text-sm text-amber-700">
-            <p className="font-medium">以下にご注意ください:</p>
+            <p className="font-medium">注意:</p>
             <ul className="mt-1.5 list-inside list-disc space-y-1 text-xs">
-              <li>
-                変更は現在の請求期間末({periodEndLabel || "次の請求日"})に反映されます
-              </li>
-              <li>
-                それまでスタンダード機能は引き続きご利用いただけます
-              </li>
-              <li>
-                ダウングレード後3ヶ月以内に再アップグレードすればデータは復活します
-              </li>
+              {isTrialing ? (
+                <>
+                  <li>トライアル終了後、ベーシックプランの課金（500円/月）が開始されます</li>
+                  <li>顧客管理・分析・アンケート機能は利用できなくなります</li>
+                  <li>3ヶ月以内にスタンダードに戻せばデータは復活します</li>
+                </>
+              ) : (
+                <>
+                  <li>
+                    変更は現在の請求期間末({periodEndLabel || "次の請求日"})に反映されます
+                  </li>
+                  <li>
+                    それまでスタンダード機能は引き続きご利用いただけます
+                  </li>
+                  <li>
+                    ダウングレード後3ヶ月以内に再アップグレードすればデータは復活します
+                  </li>
+                </>
+              )}
             </ul>
           </div>
           <div className="mt-6 flex gap-3">
@@ -448,18 +513,28 @@ export function BillingClient({
         <Modal onClose={() => setShowCancelModal(false)}>
           <h3 className="text-lg font-bold">プラン解約の確認</h3>
           <p className="mt-3 text-sm text-muted">
-            プランを解約すると、現在の請求期間末でベーシックプラン（無料）に変更されます。
+            プランを解約します。
           </p>
           <div className="mt-4 rounded-xl bg-red-50 p-3 text-sm text-red-700">
-            <p className="font-medium">以下にご注意ください:</p>
+            <p className="font-medium">注意:</p>
             <ul className="mt-1.5 list-inside list-disc space-y-1 text-xs">
-              <li>
-                {periodEndLabel
-                  ? `${periodEndLabel}まで現プランの機能をご利用いただけます`
-                  : "現在の請求期間末まで現プランの機能をご利用いただけます"}
-              </li>
-              <li>解約後もベーシック機能は引き続きご利用いただけます</li>
-              <li>3ヶ月以内に再申し込みでデータは復活します</li>
+              {isTrialing ? (
+                <>
+                  <li>トライアル終了時点でサービスが停止されます</li>
+                  <li>予約受付・管理を含む全機能が利用できなくなります</li>
+                  <li>3ヶ月以内に再申し込みでデータは復活します</li>
+                </>
+              ) : (
+                <>
+                  <li>
+                    {periodEndLabel
+                      ? `${periodEndLabel}まで現プランの機能をご利用いただけます`
+                      : "現在の請求期間末まで現プランの機能をご利用いただけます"}
+                  </li>
+                  <li>解約後もベーシック機能は引き続きご利用いただけます</li>
+                  <li>3ヶ月以内に再申し込みでデータは復活します</li>
+                </>
+              )}
             </ul>
           </div>
           <div className="mt-6 flex gap-3">

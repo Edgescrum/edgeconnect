@@ -220,30 +220,22 @@ export function LandingPage({ isLoggedIn = false, role }: { isLoggedIn?: boolean
               ];
 
               const renderCard = (plan: typeof plans[number]) => {
-                const isCurrentPlan = role === "provider" && plan.name === "ベーシック"; // TODO: 実際のプラン判定
                 return (
                   <div
                     key={plan.name}
                     className={`relative flex w-full flex-col rounded-2xl bg-card p-5 sm:p-8 ${
-                      isCurrentPlan
+                      plan.recommended
                         ? "ring-2 ring-accent shadow-md"
-                        : plan.recommended && role !== "provider"
-                          ? "ring-2 ring-accent shadow-md"
-                          : "ring-1 ring-border"
+                        : "ring-1 ring-border"
                     }`}
                   >
-                    {isCurrentPlan && (
-                      <div className="absolute -top-3 left-4 rounded-full bg-accent px-3 py-0.5 text-[10px] font-bold text-white">
-                        ご利用中
-                      </div>
-                    )}
-                    {!isCurrentPlan && plan.recommended && role !== "provider" && (
+                    {plan.recommended && (
                       <div className="absolute -top-3 left-4 rounded-full bg-accent px-3 py-0.5 text-[10px] font-bold text-white">
                         おすすめ
                       </div>
                     )}
                     <div className="flex items-center gap-2">
-                      <p className={`text-sm font-semibold ${isCurrentPlan || plan.recommended ? "text-accent" : "text-muted"}`}>
+                      <p className={`text-sm font-semibold ${plan.recommended ? "text-accent" : "text-muted"}`}>
                         {plan.name}
                       </p>
                       {plan.trial && (
@@ -267,29 +259,24 @@ export function LandingPage({ isLoggedIn = false, role }: { isLoggedIn?: boolean
                         </li>
                       ))}
                     </ul>
-                    <div className="mt-auto pt-5">
-                      {plan.comingSoon ? (
-                        <button disabled className="flex w-full items-center justify-center rounded-xl border border-border py-3 text-sm font-semibold text-muted opacity-50">
-                          近日公開予定
-                        </button>
-                      ) : isCurrentPlan ? (
-                        <Link href="/provider" className="flex w-full items-center justify-center rounded-xl border border-accent py-3 text-sm font-semibold text-accent active:scale-[0.98]">
-                          管理画面へ
-                        </Link>
-                      ) : !isLoggedIn ? (
-                        <a href="/?action=login" className="flex w-full items-center justify-center gap-2 rounded-xl bg-accent py-3 text-sm font-semibold text-white shadow-lg shadow-accent/25 active:scale-[0.98]">
-                          <LineIcon />
-                          無料トライアルを始める
-                        </a>
-                      ) : isLoggedIn && role !== "provider" ? (
-                        <Link href="/provider/register" className="flex w-full items-center justify-center rounded-xl bg-accent py-3 text-sm font-semibold text-white shadow-lg shadow-accent/25 active:scale-[0.98]">
-                          事業主として始める
-                        </Link>
-                      ) : null}
-                    </div>
                   </div>
                 );
               };
+
+              const ctaButton = !isLoggedIn ? (
+                <a href="/?action=login" className="flex w-full max-w-sm items-center justify-center gap-2 rounded-xl bg-accent py-3.5 text-base font-semibold text-white shadow-lg shadow-accent/25 active:scale-[0.98]">
+                  <LineIcon />
+                  まずは無料で始める
+                </a>
+              ) : isLoggedIn && role !== "provider" ? (
+                <Link href="/provider/register" className="flex w-full max-w-sm items-center justify-center rounded-xl bg-accent py-3.5 text-base font-semibold text-white shadow-lg shadow-accent/25 active:scale-[0.98]">
+                  事業主登録を始める
+                </Link>
+              ) : role === "provider" ? (
+                <Link href="/provider" className="flex w-full max-w-sm items-center justify-center rounded-xl border border-accent py-3.5 text-base font-semibold text-accent active:scale-[0.98]">
+                  管理画面へ
+                </Link>
+              ) : null;
 
               return (
                 <>
@@ -300,6 +287,13 @@ export function LandingPage({ isLoggedIn = false, role }: { isLoggedIn?: boolean
                     {plans.map((plan) => (
                       <div key={plan.name} className="flex">{renderCard(plan)}</div>
                     ))}
+                  </div>
+                  {/* 統一CTAボタン */}
+                  <div className="mt-8 flex flex-col items-center">
+                    {ctaButton}
+                    <p className="mt-2 text-center text-xs text-muted">
+                      スタンダードプラン初月無料 / カード登録のみで課金は翌月から
+                    </p>
                   </div>
                 </>
               );

@@ -11,12 +11,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
     }
 
-    const body = await request.json();
-    const plan = body.plan as "basic" | "standard";
-
-    if (!plan || !STRIPE_PLANS[plan]) {
-      return NextResponse.json({ error: "無効なプランです" }, { status: 400 });
-    }
+    // plan パラメータは廃止 - スタンダードプラン固定
+    // 後方互換性のためbodyは読むが、planは無視する
+    await request.json().catch(() => ({}));
 
     // 事業主情報を取得
     const supabase = await createClient();
@@ -55,11 +52,11 @@ export async function POST(request: NextRequest) {
         .eq("id", provider.id);
     }
 
-    const planConfig = STRIPE_PLANS[plan];
+    const planConfig = STRIPE_PLANS.standard;
     const origin = request.headers.get("origin") || process.env.NEXT_PUBLIC_APP_URL || "";
 
-    // Checkout Session を作成
-    const sessionParams: Parameters<typeof stripe.checkout.sessions.create>[0] = {
+    // Checkout Session を作成（スタンダードプラン固定・トライアル30日）
+    const session = await stripe.checkout.sessions.create({
       customer: customerId,
       mode: "subscription",
       line_items: [
@@ -72,18 +69,12 @@ export async function POST(request: NextRequest) {
       cancel_url: `${origin}/provider/register`,
       metadata: {
         provider_id: String(provider.id),
-        plan,
+        plan: "standard",
       },
-    };
-
-    // スタンダードプランの場合はトライアルを設定
-    if (plan === "standard" && "trialDays" in planConfig) {
-      sessionParams.subscription_data = {
+      subscription_data: {
         trial_period_days: planConfig.trialDays,
-      };
-    }
-
-    const session = await stripe.checkout.sessions.create(sessionParams);
+      },
+    });
 
     return NextResponse.json({ url: session.url });
   } catch (error) {
