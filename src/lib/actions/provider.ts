@@ -119,12 +119,25 @@ export async function registerProvider(formData: FormData) {
 
   if (error) throw new Error(error.message);
 
-  // category, contact_phoneはRPC外で更新
+  // 利用規約同意日時を記録
+  const termsAgreed = formData.get("terms_agreed") === "1";
+  if (termsAgreed) {
+    await supabase
+      .from("users")
+      .update({ terms_agreed_at: new Date().toISOString() })
+      .eq("id", user.id);
+  }
+
+  // category, contact_phone, planはRPC外で更新
   const providerId = typeof data === "object" && data !== null ? (data as { id: number }).id : null;
   if (providerId) {
     const extra: Record<string, unknown> = {};
     if (category) extra.category = category;
     if (contactPhone) extra.contact_phone = contactPhone;
+    const plan = formData.get("plan") as string;
+    if (plan && ["basic", "standard", "team"].includes(plan)) {
+      extra.plan = plan;
+    }
     if (Object.keys(extra).length > 0) {
       await supabase.from("providers").update(extra).eq("id", providerId);
     }
