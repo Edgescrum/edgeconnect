@@ -2,7 +2,7 @@ import Link from "next/link";
 
 export function PublicFooter({
   showProviderCta = false,
-  maxWidth = "max-w-lg",
+  maxWidth = "max-w-5xl",
 }: {
   showProviderCta?: boolean;
   maxWidth?: string;
