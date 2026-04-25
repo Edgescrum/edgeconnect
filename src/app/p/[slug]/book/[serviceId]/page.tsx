@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { resolveUser } from "@/lib/auth/session";
 import { BookingFlow } from "./booking-flow";
 import { brand } from "@/lib/brand";
+import { isFavorited } from "@/lib/actions/favorite";
 import type { Metadata } from "next";
 
 export async function generateMetadata({
@@ -68,6 +69,8 @@ export default async function BookingPage({
   const user = await resolveUser();
   if (!user) redirect(`/p/${slug}`);
 
+  const favorited = await isFavorited(profile.id);
+
   return (
     <BookingFlow
       providerId={profile.id}
@@ -78,6 +81,8 @@ export default async function BookingPage({
       isLineFriend={user.isLineFriend}
       defaultName={user.customerName || ""}
       defaultPhone={user.customerPhone || ""}
+      isLoggedIn={true}
+      initialFavorited={favorited}
     />
   );
 }

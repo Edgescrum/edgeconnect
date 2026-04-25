@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 
 import type { ProviderBase } from "@/lib/types/provider";
-import { GearIcon, SearchIcon, CalendarIcon, ChevronRightIcon } from "@/components/icons";
+import { GearIcon, SearchIcon, CalendarIcon, ChevronRightIcon, HeartIcon } from "@/components/icons";
 
 interface RecentProvider extends ProviderBase {
   lastService: string;
@@ -51,11 +51,11 @@ export function DashboardClient({
                   事業主を探す
                 </Link>
                 <Link
-                  href="/bookings"
+                  href="/favorites"
                   className="inline-flex items-center gap-1.5 rounded-xl bg-white/20 px-4 py-2.5 text-xs font-semibold backdrop-blur-sm active:scale-[0.98]"
                 >
-                  <CalendarIcon size={14} />
-                  予約一覧
+                  <HeartIcon size={14} filled />
+                  お気に入り
                 </Link>
               </div>
             </div>
@@ -155,11 +155,11 @@ export function DashboardClient({
                   事業主を探す
                 </Link>
                 <Link
-                  href="/bookings"
+                  href="/favorites"
                   className="inline-flex items-center gap-1.5 rounded-xl bg-white/20 px-5 py-2.5 text-sm font-semibold backdrop-blur-sm hover:bg-white/30 transition-colors"
                 >
-                  <CalendarIcon size={16} />
-                  予約一覧
+                  <HeartIcon size={16} filled />
+                  お気に入り
                 </Link>
               </div>
             </div>

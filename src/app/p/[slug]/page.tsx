@@ -7,6 +7,8 @@ import { PublicFooter } from "@/components/PublicFooter";
 import { resolveUser } from "@/lib/auth/session";
 import { ServiceMenuList } from "./service-menu-list";
 import { brand } from "@/lib/brand";
+import { isFavorited } from "@/lib/actions/favorite";
+import { FavoriteButton } from "./favorite-button";
 import type { Metadata } from "next";
 
 export const revalidate = 60;
@@ -80,6 +82,7 @@ export default async function ProviderProfilePage({
 
   const user = await resolveUser();
   const isLoggedIn = !!user;
+  const favorited = isLoggedIn ? await isFavorited(provider.id) : false;
 
   const categoryLabel = await getCategoryLabel(provider.category);
 
@@ -102,7 +105,14 @@ export default async function ProviderProfilePage({
         {/* Hero */}
         <div className="bg-gradient-to-b from-accent/10 to-background px-4 pb-8 pt-4">
           <div className="mx-auto flex max-w-lg flex-col items-center text-center">
-            <ProviderIcon provider={provider} size={96} className="rounded-2xl shadow-lg" />
+            <div className="relative">
+              <ProviderIcon provider={provider} size={96} className="rounded-2xl shadow-lg" />
+              {isLoggedIn && (
+                <div className="absolute -right-3 -top-3">
+                  <FavoriteButton providerId={provider.id} initialFavorited={favorited} />
+                </div>
+              )}
+            </div>
             <h1 className="mt-5 text-2xl font-bold">{provider.name}</h1>
             {categoryLabel && (
               <span className="mt-2 inline-block rounded-full px-3 py-1 text-xs font-medium" style={{ backgroundColor: `${brandColor}1a`, color: brandColor }}>
@@ -140,7 +150,14 @@ export default async function ProviderProfilePage({
           <div className="bg-gradient-to-b from-accent/8 to-background">
             <div className="mx-auto max-w-5xl px-8 py-12">
               <div className="flex items-start gap-8">
-                <ProviderIcon provider={provider} size={120} className="shrink-0 rounded-3xl shadow-xl" />
+                <div className="relative shrink-0">
+                  <ProviderIcon provider={provider} size={120} className="rounded-3xl shadow-xl" />
+                  {isLoggedIn && (
+                    <div className="absolute -right-3 -top-3">
+                      <FavoriteButton providerId={provider.id} initialFavorited={favorited} />
+                    </div>
+                  )}
+                </div>
                 <div className="flex-1 pt-2">
                   <h1 className="text-3xl font-bold">{provider.name}</h1>
                   {categoryLabel && (
