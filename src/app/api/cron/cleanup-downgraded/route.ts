@@ -4,12 +4,12 @@ import { pushFlexMessage } from "@/lib/line/messaging";
 import { log, logError } from "@/lib/log";
 
 /**
- * ST-8: ダウ��グレード後3ヶ月経過したスタンダード機能データを削除するcronジョブ
+ * ST-8: ダウングレード後3ヶ月経過したスタンダード機能データを削除するcronジョブ
  *
  * 対象データ:
  * - 顧客メモ（Sprint 4で作成予定）
- * - 通知テンプレート（Sprint 3で作成予���）
- * - 分���設定（Sprint 4で作成予定）
+ * - 通知テンプレート（Sprint 3で作成予定）
+ * - 分析設定（Sprint 4で作成予定）
  *
  * 実行タイミング: 毎日 03:00 UTC (12:00 JST)
  */
@@ -59,7 +59,7 @@ export async function GET(request: Request) {
         // TODO: Sprint 3-6 で作成されるテーブルのデータを削除
         // 以下のテーブルが作成されたら、ここに削除処理を追加する:
         //
-        // - notification_templates (Sprint 3: ��知テンプレート)
+        // - notification_templates (Sprint 3: 通知テンプレート)
         //   await supabase.from("notification_templates").delete().eq("provider_id", provider.id);
         //
         // - customer_notes (Sprint 4: 顧客メモ)
@@ -68,7 +68,7 @@ export async function GET(request: Request) {
         // - analytics_settings (Sprint 4: 分析設定)
         //   await supabase.from("analytics_settings").delete().eq("provider_id", provider.id);
 
-        // downgraded_at をクリア（削除完了フラグ���
+        // downgraded_at をクリア（削除完了フラグ）
         await supabase
           .from("providers")
           .update({ downgraded_at: null })
@@ -110,7 +110,7 @@ export async function GET(request: Request) {
                   },
                   {
                     type: "text",
-                    text: "再度スタンダードプランにアップグレー��することで、新しくデータを作成できます。",
+                    text: "再度スタンダードプランにアップグレードすることで、新しくデータを作成できます。",
                     size: "xs",
                     wrap: true,
                     color: "#999999",
@@ -127,7 +127,7 @@ export async function GET(request: Request) {
                     type: "button",
                     action: {
                       type: "uri",
-                      label: "プラン管理��開く",
+                      label: "プラン管理を開く",
                       uri: `${appUrl}/provider/billing`,
                     },
                     style: "primary",
