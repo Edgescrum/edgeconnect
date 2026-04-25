@@ -56,17 +56,8 @@ export async function GET(request: Request) {
 
     for (const provider of providers) {
       try {
-        // TODO: Sprint 3-6 で作成されるテーブルのデータを削除
-        // 以下のテーブルが作成されたら、ここに削除処理を追加する:
-        //
-        // - notification_templates (Sprint 3: 通知テンプレート)
-        //   await supabase.from("notification_templates").delete().eq("provider_id", provider.id);
-        //
-        // - customer_notes (Sprint 4: 顧客メモ)
-        //   await supabase.from("customer_notes").delete().eq("provider_id", provider.id);
-        //
-        // - analytics_settings (Sprint 4: 分析設定)
-        //   await supabase.from("analytics_settings").delete().eq("provider_id", provider.id);
+        // See Issue #66: Sprint 3-6 のテーブル作成後にデータ実削除処理を追加する
+        // 対象: notification_templates, customer_notes, analytics_settings
 
         // downgraded_at をクリア（削除完了フラグ）
         await supabase
