@@ -13,7 +13,7 @@ export default function PrivacyPolicyPage() {
       </div>
 
       <p>
-        Edgescrum（以下「当社」）は、PeCo（以下「本サービス」）における個人情報の取り扱いについて、以下のとおりプライバシーポリシー（以下「本ポリシー」）を定めます。
+        EdgeScrum合同会社（以下「当社」）は、PeCo（以下「本サービス」）における個人情報の取り扱いについて、以下のとおりプライバシーポリシー（以下「本ポリシー」）を定めます。
       </p>
 
       <section className="space-y-3">
@@ -124,7 +124,7 @@ export default function PrivacyPolicyPage() {
       <section className="space-y-3">
         <h2 className="text-base font-semibold">第9条（お問い合わせ窓口）</h2>
         <div className="rounded-xl border border-border bg-card p-4 text-xs sm:text-sm">
-          <p className="font-medium">Edgescrum</p>
+          <p className="font-medium">EdgeScrum合同会社</p>
           <p className="mt-1">メール: contact@edgescrum.com</p>
         </div>
       </section>

@@ -21,14 +21,14 @@ export default function CommercialTransactionPage() {
               <th className="w-1/3 py-3 pr-4 text-left align-top font-medium">
                 販売業者
               </th>
-              <td className="py-3">Edgescrum</td>
+              <td className="py-3">EdgeScrum合同会社</td>
             </tr>
             <tr>
               <th className="py-3 pr-4 text-left align-top font-medium">
                 代表者
               </th>
               <td className="py-3">
-                請求があった場合に遅滞なく開示いたします
+                向江慎一
               </td>
             </tr>
             <tr>
@@ -36,7 +36,7 @@ export default function CommercialTransactionPage() {
                 所在地
               </th>
               <td className="py-3">
-                請求があった場合に遅滞なく開示いたします
+                東京都葛飾区
               </td>
             </tr>
             <tr>

@@ -13,7 +13,7 @@ export default function TermsPage() {
       </div>
 
       <p>
-        本利用規約（以下「本規約」）は、Edgescrum（以下「当社」）が提供するPeCo（以下「本サービス」）の利用条件を定めるものです。本サービスをご利用いただくすべてのユーザー（以下「ユーザー」）に適用されます。
+        本利用規約（以下「本規約」）は、EdgeScrum合同会社（以下「当社」）が提供するPeCo（以下「本サービス」）の利用条件を定めるものです。本サービスをご利用いただくすべてのユーザー（以下「ユーザー」）に適用されます。
       </p>
 
       <section className="space-y-3">
@@ -154,7 +154,7 @@ export default function TermsPage() {
       <section className="space-y-3">
         <h2 className="text-base font-semibold">第12条（お問い合わせ）</h2>
         <div className="rounded-xl border border-border bg-card p-4 text-xs sm:text-sm">
-          <p className="font-medium">Edgescrum</p>
+          <p className="font-medium">EdgeScrum合同会社</p>
           <p className="mt-1">メール: contact@edgescrum.com</p>
         </div>
       </section>
