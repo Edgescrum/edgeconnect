@@ -66,6 +66,12 @@ const menuItems = [
     title: "QRコード",
     desc: "お客さまに共有するQRコード",
   },
+  {
+    href: "/provider/billing",
+    icon: "💳",
+    title: "プラン管理",
+    desc: "プランの確認・変更・解約",
+  },
 ];
 
 export function ProviderDashboard({

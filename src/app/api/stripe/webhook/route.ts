@@ -149,6 +149,13 @@ export async function POST(request: NextRequest) {
         }
 
         if (customerId && newPlan) {
+          // 現在のプランを取得してダウングレード/アップグレードを判定
+          const { data: currentProvider } = await supabase
+            .from("providers")
+            .select("plan")
+            .eq("stripe_customer_id", customerId)
+            .single();
+
           const updates: Record<string, unknown> = { plan: newPlan };
 
           const currentPeriodEnd = subscription.items?.data?.[0]?.current_period_end;
@@ -162,6 +169,15 @@ export async function POST(request: NextRequest) {
             updates.trial_ends_at = new Date(
               subscription.trial_end * 1000
             ).toISOString();
+          }
+
+          // ダウングレード時: downgraded_at を記録
+          if (currentProvider?.plan === "standard" && newPlan === "basic") {
+            updates.downgraded_at = new Date().toISOString();
+          }
+          // アップグレード時: downgraded_at をクリア（3ヶ月以内のデータ復活）
+          if (currentProvider?.plan === "basic" && newPlan === "standard") {
+            updates.downgraded_at = null;
           }
 
           await supabase
@@ -191,6 +207,7 @@ export async function POST(request: NextRequest) {
               stripe_subscription_id: null,
               plan_period_end: null,
               trial_ends_at: null,
+              downgraded_at: new Date().toISOString(),
             })
             .eq("stripe_customer_id", customerId);
 
@@ -227,6 +244,7 @@ export async function POST(request: NextRequest) {
                   )
                 : 3;
 
+              const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://peco.edgescrum.com";
               await pushFlexMessage(
                 user.line_user_id,
                 "トライアル終了のお知らせ",
@@ -257,6 +275,23 @@ export async function POST(request: NextRequest) {
                         wrap: true,
                         color: "#999999",
                         margin: "md",
+                      },
+                    ],
+                  },
+                  footer: {
+                    type: "box",
+                    layout: "vertical",
+                    spacing: "sm",
+                    contents: [
+                      {
+                        type: "button",
+                        action: {
+                          type: "uri",
+                          label: "プラン管理を開く",
+                          uri: `${appUrl}/provider/billing`,
+                        },
+                        style: "primary",
+                        color: "#6366F1",
                       },
                     ],
                   },

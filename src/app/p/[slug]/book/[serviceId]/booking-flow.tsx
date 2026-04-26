@@ -10,6 +10,7 @@ import { Spinner } from "@/components/Spinner";
 import { Alert } from "@/components/Alert";
 import { ChevronLeftIcon, ChevronRightIcon } from "@/components/icons";
 import { FormLabel, FormInput, FormTextarea } from "@/components/FormField";
+import { toggleFavorite } from "@/lib/actions/favorite";
 
 interface CustomField {
   label: string;
@@ -37,6 +38,8 @@ export function BookingFlow({
   isLineFriend = false,
   defaultName = "",
   defaultPhone = "",
+  isLoggedIn = false,
+  initialFavorited = false,
 }: {
   providerId: number;
   providerName: string;
@@ -46,6 +49,8 @@ export function BookingFlow({
   isLineFriend?: boolean;
   defaultName?: string;
   defaultPhone?: string;
+  isLoggedIn?: boolean;
+  initialFavorited?: boolean;
 }) {
   const [step, setStep] = useState<"date" | "confirm" | "done">("date");
   const [customerName, setCustomerName] = useState(defaultName);
@@ -604,6 +609,11 @@ export function BookingFlow({
               </div>
             </div>
 
+            {/* お気に入り追加提案 */}
+            {isLoggedIn && !initialFavorited && (
+              <FavoritePrompt providerId={providerId} providerName={providerName} />
+            )}
+
             <div className="mt-6 w-full space-y-2.5">
               {bookingId && (
                 <a
@@ -639,5 +649,62 @@ export function BookingFlow({
         lineBasicId={process.env.NEXT_PUBLIC_LINE_BOT_BASIC_ID}
       />
     </main>
+  );
+}
+
+function FavoritePrompt({
+  providerId,
+  providerName,
+}: {
+  providerId: number;
+  providerName: string;
+}) {
+  const [added, setAdded] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  async function handleAdd() {
+    setLoading(true);
+    const result = await toggleFavorite(providerId);
+    if (result.success && result.isFavorited) {
+      setAdded(true);
+    }
+    setLoading(false);
+  }
+
+  if (added) {
+    return (
+      <div className="mt-6 w-full rounded-2xl bg-red-50 p-4 text-center ring-1 ring-red-100">
+        <p className="text-sm font-medium text-red-600">
+          {providerName}をお気に入りに追加しました
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-6 w-full rounded-2xl bg-card p-4 shadow-sm ring-1 ring-border">
+      <p className="text-sm font-medium text-center">
+        {providerName}をお気に入りに追加しますか?
+      </p>
+      <p className="mt-1 text-xs text-muted text-center">
+        次回の予約がもっと便利になります
+      </p>
+      <button
+        onClick={handleAdd}
+        disabled={loading}
+        className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-red-50 py-2.5 text-sm font-semibold text-red-500 ring-1 ring-red-100 active:scale-[0.98] disabled:opacity-50"
+      >
+        {loading ? (
+          <Spinner size="sm" />
+        ) : (
+          <>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="#ef4444" stroke="#ef4444" strokeWidth="2">
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+            </svg>
+            お気に入りに追加
+          </>
+        )}
+      </button>
+    </div>
   );
 }
