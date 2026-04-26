@@ -83,6 +83,7 @@ export function RegisterWizard({ categories: PROVIDER_CATEGORIES }: { categories
           }
           if (parsed.bio) setBio(parsed.bio);
           if (parsed.category) setCategory(parsed.category);
+          if (parsed.email) setEmail(parsed.email);
           if (parsed.terms_agreed === "1") setTermsAgreed(true);
           if (parsed.line_id) {
             setContactMethod(prev => ({ ...prev, lineEnabled: true, lineId: parsed.line_id }));
@@ -129,6 +130,7 @@ export function RegisterWizard({ categories: PROVIDER_CATEGORIES }: { categories
     phoneEnabled: false,
     contactPhone: "",
   });
+  const [email, setEmail] = useState("");
   const [termsAgreed, setTermsAgreed] = useState(false);
 
   async function handleSlugChange(value: string) {
@@ -155,6 +157,7 @@ export function RegisterWizard({ categories: PROVIDER_CATEGORIES }: { categories
         plan: "standard",
       };
       if (category) formDataObj.category = category;
+      if (email) formDataObj.email = email;
       if (contactMethod.lineEnabled && contactMethod.lineId) {
         formDataObj.line_id = contactMethod.lineId;
       }
@@ -177,6 +180,7 @@ export function RegisterWizard({ categories: PROVIDER_CATEGORIES }: { categories
           plan: "standard",
           context: "register",
           providerName: name,
+          email: email || undefined,
         }),
       });
 
@@ -214,6 +218,7 @@ export function RegisterWizard({ categories: PROVIDER_CATEGORIES }: { categories
       case 1: return slug.length >= 3 && slugStatus === "available";
       case 2: {
         if (!termsAgreed) return false;
+        if (!email.includes("@")) return false;
         if (!contactMethod.lineEnabled && !contactMethod.emailEnabled && !contactMethod.phoneEnabled) return false;
         if (contactMethod.lineEnabled && !contactMethod.lineId.trim()) return false;
         if (contactMethod.emailEnabled && !contactMethod.contactEmail.includes("@")) return false;
@@ -302,6 +307,20 @@ export function RegisterWizard({ categories: PROVIDER_CATEGORIES }: { categories
                 <h2 className="text-lg font-bold">連絡先・プロフィール</h2>
               </div>
               <div className="space-y-5">
+                {/* メールアドレス（Stripe必須） */}
+                <div>
+                  <FormLabel required>メールアドレス</FormLabel>
+                  <FormInput
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="example@email.com"
+                  />
+                  <p className="mt-1 text-xs text-muted">
+                    請求書の送付先として使用されます
+                  </p>
+                </div>
+
                 <ContactMethodToggles
                   state={contactMethod}
                   onChange={setContactMethod}
@@ -377,7 +396,7 @@ export function RegisterWizard({ categories: PROVIDER_CATEGORIES }: { categories
 
             <button
               onClick={handleSubmit}
-              disabled={submitting || !termsAgreed || !name.trim() || !category || slug.length < 3 || slugStatus !== "available" || (!contactMethod.lineEnabled && !contactMethod.emailEnabled && !contactMethod.phoneEnabled) || (contactMethod.lineEnabled && !contactMethod.lineId.trim()) || (contactMethod.emailEnabled && !contactMethod.contactEmail.includes("@")) || (contactMethod.phoneEnabled && !contactMethod.contactPhone.trim())}
+              disabled={submitting || !termsAgreed || !name.trim() || !category || slug.length < 3 || slugStatus !== "available" || !email.includes("@") || (!contactMethod.lineEnabled && !contactMethod.emailEnabled && !contactMethod.phoneEnabled) || (contactMethod.lineEnabled && !contactMethod.lineId.trim()) || (contactMethod.emailEnabled && !contactMethod.contactEmail.includes("@")) || (contactMethod.phoneEnabled && !contactMethod.contactPhone.trim())}
               className="w-full rounded-xl bg-accent py-4 text-lg font-semibold text-white shadow-lg shadow-accent/25 disabled:opacity-40 hover:opacity-90 transition-opacity"
             >
               {submitting ? "処理中..." : "カード登録に進む（初月無料）"}
@@ -557,6 +576,20 @@ export function RegisterWizard({ categories: PROVIDER_CATEGORIES }: { categories
               </p>
 
               <div className="mt-6 space-y-5">
+                {/* メールアドレス（Stripe必須） */}
+                <div>
+                  <FormLabel required>メールアドレス</FormLabel>
+                  <FormInput
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="example@email.com"
+                  />
+                  <p className="mt-1 text-xs text-muted">
+                    請求書の送付先として使用されます
+                  </p>
+                </div>
+
                 <ContactMethodToggles
                   state={contactMethod}
                   onChange={setContactMethod}

@@ -41,16 +41,35 @@ export async function POST(request: NextRequest) {
     // 事業主情報を取得（存在しない場合もある＝登録フロー）
     const { data: provider } = await supabase
       .from("providers")
-      .select("id, name, stripe_customer_id")
+      .select("id, name, stripe_customer_id, had_trial")
       .eq("user_id", user.id)
       .single();
+
+    // トライアル重複防止: 過去にトライアルを利用した場合はトライアルを適用しない
+    const hadTrial = provider?.had_trial === true;
+    // Stripe Customer でも過去のトライアル利用を確認
+    let hadTrialOnStripe = false;
 
     if (context === "register") {
       // 登録フロー: provider が未作成でも Checkout セッションを作成できる
       let customerId: string | undefined;
+      const customerEmail = body.email || undefined;
 
       if (provider?.stripe_customer_id) {
         customerId = provider.stripe_customer_id;
+        // Stripe 側でも過去トライアルを確認
+        try {
+          const subs = await stripe.subscriptions.list({
+            customer: customerId,
+            status: "all",
+            limit: 10,
+          });
+          hadTrialOnStripe = subs.data.some(
+            (sub) => sub.trial_start !== null
+          );
+        } catch {
+          // 確認失敗は無視（DB 側の had_trial で判定）
+        }
       } else {
         // Stripe Customer を先に作成（user_id ベース）
         const customer = await stripe.customers.create({
@@ -60,6 +79,7 @@ export async function POST(request: NextRequest) {
             ...(provider ? { provider_id: String(provider.id) } : {}),
           },
           name: body.providerName || user.displayName || undefined,
+          email: customerEmail,
         });
         customerId = customer.id;
 
@@ -71,6 +91,8 @@ export async function POST(request: NextRequest) {
             .eq("id", provider.id);
         }
       }
+
+      const shouldApplyTrial = !hadTrial && !hadTrialOnStripe;
 
       const session = await stripe.checkout.sessions.create({
         customer: customerId,
@@ -84,14 +106,19 @@ export async function POST(request: NextRequest) {
           plan: "standard",
           context: "register",
         },
-        subscription_data: {
-          trial_period_days: planConfig.trialDays,
-        },
+        ...(shouldApplyTrial
+          ? {
+              subscription_data: {
+                trial_period_days: planConfig.trialDays,
+              },
+            }
+          : {}),
       });
 
       log("stripe/checkout", "Registration checkout session created", {
         userId: user.id,
         sessionId: session.id,
+        trialApplied: shouldApplyTrial,
       });
 
       return NextResponse.json({ url: session.url });
@@ -124,7 +151,24 @@ export async function POST(request: NextRequest) {
         .eq("id", provider.id);
     }
 
-    // Checkout Session を作成（スタンダードプラン固定・トライアル30日）
+    // Stripe 側でも過去トライアルを確認
+    if (!hadTrialOnStripe && customerId) {
+      try {
+        const subs = await stripe.subscriptions.list({
+          customer: customerId,
+          status: "all",
+          limit: 10,
+        });
+        hadTrialOnStripe = subs.data.some(
+          (sub) => sub.trial_start !== null
+        );
+      } catch {
+        // 確認失敗は無視
+      }
+    }
+    const shouldApplyTrialBilling = !hadTrial && !hadTrialOnStripe;
+
+    // Checkout Session を作成（スタンダードプラン固定・トライアルは初回のみ）
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       mode: "subscription",
@@ -136,9 +180,13 @@ export async function POST(request: NextRequest) {
         plan: "standard",
         context: "billing",
       },
-      subscription_data: {
-        trial_period_days: planConfig.trialDays,
-      },
+      ...(shouldApplyTrialBilling
+        ? {
+            subscription_data: {
+              trial_period_days: planConfig.trialDays,
+            },
+          }
+        : {}),
     });
 
     return NextResponse.json({ url: session.url });

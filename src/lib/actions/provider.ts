@@ -128,7 +128,7 @@ export async function registerProvider(formData: FormData) {
       .eq("id", user.id);
   }
 
-  // category, contact_phone, planはRPC外で更新
+  // category, contact_phone, plan, emailはRPC外で更新
   const providerId = typeof data === "object" && data !== null ? (data as { id: number }).id : null;
   if (providerId) {
     const extra: Record<string, unknown> = {};
@@ -138,6 +138,9 @@ export async function registerProvider(formData: FormData) {
     if (plan && ["basic", "standard", "team"].includes(plan)) {
       extra.plan = plan;
     }
+    // Stripe 登録用メールアドレス
+    const email = (formData.get("email") as string)?.trim();
+    if (email) extra.email = email;
     if (Object.keys(extra).length > 0) {
       await supabase.from("providers").update(extra).eq("id", providerId);
     }

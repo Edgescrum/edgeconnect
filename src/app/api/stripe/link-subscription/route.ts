@@ -47,11 +47,25 @@ export async function POST(request: NextRequest) {
       const session = await stripe.checkout.sessions.retrieve(sessionId);
 
       if (session.customer && session.subscription) {
+        // トライアルが適用されたかチェック
+        let hadTrialInSession = false;
+        try {
+          const sub = await stripe.subscriptions.retrieve(
+            session.subscription as string
+          );
+          hadTrialInSession = sub.trial_start !== null;
+        } catch {
+          // 取得失敗は無視
+        }
+
         const updates: Record<string, unknown> = {
           stripe_customer_id: session.customer as string,
           stripe_subscription_id: session.subscription as string,
           plan: "standard",
         };
+        if (hadTrialInSession) {
+          updates.had_trial = true;
+        }
 
         await supabase
           .from("providers")

@@ -39,15 +39,33 @@ export async function POST(request: NextRequest) {
         const plan = session.metadata?.plan;
         const context = session.metadata?.context;
 
+        // トライアルが適用されたかチェック（had_trial フラグ更新用）
+        let hadTrialInSession = false;
+        if (session.subscription) {
+          try {
+            const stripe = getStripe();
+            const sub = await stripe.subscriptions.retrieve(
+              session.subscription as string
+            );
+            hadTrialInSession = sub.trial_start !== null;
+          } catch {
+            // 取得失敗は無視
+          }
+        }
+
         if (providerId && plan) {
           // provider_id が分かっている場合は直接更新
+          const updates: Record<string, unknown> = {
+            plan,
+            stripe_customer_id: session.customer as string,
+            stripe_subscription_id: session.subscription as string,
+          };
+          if (hadTrialInSession) {
+            updates.had_trial = true;
+          }
           await supabase
             .from("providers")
-            .update({
-              plan,
-              stripe_customer_id: session.customer as string,
-              stripe_subscription_id: session.subscription as string,
-            })
+            .update(updates)
             .eq("id", Number(providerId));
 
           log("stripe/webhook", "checkout.session.completed", {
@@ -65,13 +83,17 @@ export async function POST(request: NextRequest) {
             .single();
 
           if (provider) {
+            const registerUpdates: Record<string, unknown> = {
+              plan,
+              stripe_customer_id: session.customer as string,
+              stripe_subscription_id: session.subscription as string,
+            };
+            if (hadTrialInSession) {
+              registerUpdates.had_trial = true;
+            }
             await supabase
               .from("providers")
-              .update({
-                plan,
-                stripe_customer_id: session.customer as string,
-                stripe_subscription_id: session.subscription as string,
-              })
+              .update(registerUpdates)
               .eq("id", provider.id);
 
             log("stripe/webhook", "checkout.session.completed (register)", {
