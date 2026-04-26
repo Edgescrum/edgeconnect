@@ -19,6 +19,10 @@ async function exchangeCodeForToken(code: string, redirectUri: string, codeVerif
   const channelId = process.env.NEXT_PUBLIC_LIFF_ID!.split("-")[0];
   const channelSecret = process.env.LIFF_CHANNEL_SECRET || process.env.LINE_CHANNEL_SECRET!;
 
+  if (!process.env.LIFF_CHANNEL_SECRET) {
+    log("callback", "WARNING: LIFF_CHANNEL_SECRET not set, falling back to LINE_CHANNEL_SECRET");
+  }
+
   const params: Record<string, string> = {
     grant_type: "authorization_code",
     code,
@@ -30,6 +34,8 @@ async function exchangeCodeForToken(code: string, redirectUri: string, codeVerif
     params.code_verifier = codeVerifier;
   }
 
+  log("callback", "token exchange request", { channelId, redirectUri, hasCodeVerifier: !!codeVerifier });
+
   const res = await fetch("https://api.line.me/oauth2/v2.1/token", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -38,6 +44,7 @@ async function exchangeCodeForToken(code: string, redirectUri: string, codeVerif
 
   if (!res.ok) {
     const error = await res.text();
+    logError("callback", `Token exchange failed: ${res.status}`, error);
     throw new Error(`Token exchange failed: ${res.status} ${error}`);
   }
 

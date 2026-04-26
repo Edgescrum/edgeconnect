@@ -17,14 +17,25 @@ export async function searchProviders(
   offset: number = 0,
   limit: number = 20
 ): Promise<ProviderCard[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc("search_providers", {
-    p_categories: categories && categories.length > 0 ? categories : null,
-    p_query: query || null,
-    p_offset: offset,
-    p_limit: limit,
-  });
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("search_providers", {
+      p_categories: categories && categories.length > 0 ? categories : null,
+      p_query: query || null,
+      p_offset: offset,
+      p_limit: limit,
+    });
 
-  if (error) throw new Error(error.message);
-  return (data || []) as ProviderCard[];
+    if (error) {
+      console.error("[explore] searchProviders RPC error:", error.message);
+      return [];
+    }
+    // RPC returns json type - handle both array and null
+    if (Array.isArray(data)) return data as ProviderCard[];
+    if (data && typeof data === "object") return data as ProviderCard[];
+    return [];
+  } catch (e) {
+    console.error("[explore] searchProviders failed:", e);
+    return [];
+  }
 }

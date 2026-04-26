@@ -44,7 +44,7 @@ export function PublicFooter({
           <Link href="/legal/privacy" className="hover:text-foreground">プライバシーポリシー</Link>
           <Link href="/legal/commercial" className="hover:text-foreground">特定商取引法</Link>
         </div>
-        <p className="mt-2 text-[10px] text-muted/50">&copy; EdgeScrum合同会社</p>
+        <p className="mt-2 text-[10px] text-muted/50">&copy; EdgeScrum</p>
       </div>
     </footer>
   );

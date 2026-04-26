@@ -122,6 +122,9 @@ export function LiffProvider({ children }: { children: ReactNode }) {
                 window.history.replaceState({}, "", window.location.pathname);
               }
               return;
+            } else {
+              const errData = await res.json().catch(() => ({}));
+              console.error("[LIFF] server login failed:", res.status, errData);
             }
           }
         }

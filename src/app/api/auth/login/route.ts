@@ -60,7 +60,7 @@ export async function POST(request: Request) {
 
       if (signInError) {
         logError("login", "signIn after create failed", signInError);
-        return NextResponse.json({ error: "Auth failed" }, { status: 500 });
+        return NextResponse.json({ error: `Auth failed: ${signInError.message}` }, { status: 500 });
       }
     }
 
