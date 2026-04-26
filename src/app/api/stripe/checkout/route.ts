@@ -16,8 +16,26 @@ export async function POST(request: NextRequest) {
     const context = body.context || "billing";
 
     const supabase = await createClient();
-    const stripe = getStripe();
+
+    // Stripe 設定の検証
+    if (!process.env.STRIPE_SECRET_KEY) {
+      logError("stripe/checkout", "STRIPE_SECRET_KEY is not configured");
+      return NextResponse.json(
+        { error: "決済サービスが設定されていません。管理者にお問い合わせください。" },
+        { status: 503 }
+      );
+    }
+
     const planConfig = STRIPE_PLANS.standard;
+    if (!planConfig.priceId) {
+      logError("stripe/checkout", "STRIPE_STANDARD_PRICE_ID is not configured");
+      return NextResponse.json(
+        { error: "決済プランが設定されていません。管理者にお問い合わせください。" },
+        { status: 503 }
+      );
+    }
+
+    const stripe = getStripe();
     const origin = request.headers.get("origin") || process.env.NEXT_PUBLIC_APP_URL || "";
 
     // 事業主情報を取得（存在しない場合もある＝登録フロー）

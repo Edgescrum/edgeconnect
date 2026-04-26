@@ -267,113 +267,9 @@ export function BillingClient({
           )}
         </div>
 
-        {/* プラン変更セクション */}
-        <div className="mt-6 space-y-3">
-          {/* アップグレード（ベーシックの場合のみ） */}
-          {isBasic && hasSubscription && (
-            <button
-              onClick={handleUpgrade}
-              disabled={!!loading}
-              className="flex w-full items-center justify-between rounded-2xl bg-accent p-5 text-white shadow-sm active:scale-[0.99] disabled:opacity-50"
-            >
-              <div className="text-left">
-                <p className="font-semibold">
-                  スタンダードにアップグレード
-                </p>
-                <p className="mt-0.5 text-sm text-white/80">
-                  顧客管理・分析・アンケート機能が使えます
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                {loading === "upgrade" ? (
-                  <Spinner size="sm" />
-                ) : (
-                  <>
-                    <span className="text-lg font-bold">980円/月</span>
-                    <svg
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                    >
-                      <path d="m9 18 6-6-6-6" />
-                    </svg>
-                  </>
-                )}
-              </div>
-            </button>
-          )}
-
-          {/* アップグレード（サブスクなしの場合） */}
-          {isBasic && !hasSubscription && (
-            <button
-              onClick={handleUpgrade}
-              disabled={!!loading}
-              className="flex w-full items-center justify-between rounded-2xl bg-accent p-5 text-white shadow-sm active:scale-[0.99] disabled:opacity-50"
-            >
-              <div className="text-left">
-                <p className="font-semibold">
-                  有料プランに申し込む
-                </p>
-                <p className="mt-0.5 text-sm text-white/80">
-                  スタンダード: 顧客管理・分析・アンケート
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                {loading === "upgrade" ? (
-                  <Spinner size="sm" />
-                ) : (
-                  <>
-                    <span className="text-lg font-bold">980円/月</span>
-                    <svg
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                    >
-                      <path d="m9 18 6-6-6-6" />
-                    </svg>
-                  </>
-                )}
-              </div>
-            </button>
-          )}
-
-          {/* ダウングレード（スタンダードの場合のみ、トライアル中は専用セクションで表示） */}
-          {isStandard && hasSubscription && !isTrialing && (
-            <button
-              onClick={() => setShowDowngradeModal(true)}
-              disabled={!!loading}
-              className="flex w-full items-center justify-between rounded-2xl bg-card p-5 shadow-sm ring-1 ring-border active:scale-[0.99] disabled:opacity-50"
-            >
-              <div className="text-left">
-                <p className="font-semibold text-foreground">
-                  ベーシックにダウングレード
-                </p>
-                <p className="mt-0.5 text-sm text-muted">
-                  現在の請求期間末で変更されます
-                </p>
-              </div>
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                className="text-muted"
-              >
-                <path d="m9 18 6-6-6-6" />
-              </svg>
-            </button>
-          )}
-
-          {/* 解約 */}
-          {hasSubscription && (
+        {/* 解約ボタン（プラン比較カード外に独立配置） */}
+        {hasSubscription && !isTrialing && (
+          <div className="mt-6">
             <button
               onClick={() => setShowCancelModal(true)}
               disabled={!!loading}
@@ -381,8 +277,8 @@ export function BillingClient({
             >
               プランを解約する
             </button>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Stripeカスタマーポータル */}
         {hasCustomer && (

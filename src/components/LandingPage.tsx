@@ -293,7 +293,7 @@ export function LandingPage({ isLoggedIn = false, role }: { isLoggedIn?: boolean
                     {ctaButton}
                     {role !== "provider" && (
                       <p className="mt-2 text-center text-xs text-muted">
-                        スタンダードプラン初月無料 / カード登���のみで課金は翌月から
+                        スタンダードプラン初月無料 / カード登録のみで課金は翌月から
                       </p>
                     )}
                   </div>
