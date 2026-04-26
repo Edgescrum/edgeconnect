@@ -344,23 +344,6 @@ export async function POST(request: NextRequest) {
                       },
                     ],
                   },
-                  footer: {
-                    type: "box",
-                    layout: "vertical",
-                    spacing: "sm",
-                    contents: [
-                      {
-                        type: "button",
-                        action: {
-                          type: "uri",
-                          label: "プラン管理を開く",
-                          uri: `${appUrl}/provider/billing`,
-                        },
-                        style: "primary",
-                        color: "#6366F1",
-                      },
-                    ],
-                  },
                 }
               );
             }
