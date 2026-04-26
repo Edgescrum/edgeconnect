@@ -17,7 +17,7 @@ CREATE POLICY "favorites_select_own" ON favorites
   FOR SELECT
   USING (
     user_id IN (
-      SELECT id FROM users WHERE auth_uid = auth.uid()::text
+      SELECT id FROM users WHERE auth_uid = auth.uid()
     )
   );
 
@@ -26,7 +26,7 @@ CREATE POLICY "favorites_insert_own" ON favorites
   FOR INSERT
   WITH CHECK (
     user_id IN (
-      SELECT id FROM users WHERE auth_uid = auth.uid()::text
+      SELECT id FROM users WHERE auth_uid = auth.uid()
     )
   );
 
@@ -35,7 +35,7 @@ CREATE POLICY "favorites_delete_own" ON favorites
   FOR DELETE
   USING (
     user_id IN (
-      SELECT id FROM users WHERE auth_uid = auth.uid()::text
+      SELECT id FROM users WHERE auth_uid = auth.uid()
     )
   );
 
