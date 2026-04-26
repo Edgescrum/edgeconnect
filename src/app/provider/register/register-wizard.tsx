@@ -11,41 +11,7 @@ import { Alert } from "@/components/Alert";
 import { ContactMethodToggles, type ContactMethodState } from "@/components/ContactMethodToggles";
 import { FormLabel, FormInput, FormTextarea } from "@/components/FormField";
 
-type PlanId = "basic" | "standard";
-
-const PLANS: { id: PlanId; name: string; price: number; desc: string; trial?: boolean; features: string[] }[] = [
-  {
-    id: "basic",
-    name: "ベーシック",
-    price: 500,
-    desc: "基本的な予約管理機能",
-    features: [
-      "予約受付・管理",
-      "サービスメニュー管理",
-      "プロフィールページ",
-      "QRコード発行",
-      "LINE通知",
-      "カレンダー連携",
-    ],
-  },
-  {
-    id: "standard",
-    name: "スタンダード",
-    price: 980,
-    desc: "顧客管理・分析・アンケート",
-    trial: true,
-    features: [
-      "ベーシックの全機能",
-      "顧客管理",
-      "予約分析ダッシュボード",
-      "アンケート・口コミ",
-      "事業主おすすめ表示",
-    ],
-  },
-];
-
 const STEPS = [
-  { title: "プラン選択", icon: "💳" },
   { title: "お店の名前", icon: "🏠" },
   { title: "予約ページURL", icon: "🔗" },
   { title: "連絡先・プロフィール", icon: "✨" },
@@ -63,7 +29,7 @@ export function RegisterWizard({ categories: PROVIDER_CATEGORIES }: { categories
   // Stripe Checkout完了後のリダイレクト処理
   useEffect(() => {
     if (searchParams.get("checkout") === "success") {
-      setStep(4);
+      setStep(3);
     }
   }, [searchParams]);
 
@@ -83,7 +49,6 @@ export function RegisterWizard({ categories: PROVIDER_CATEGORIES }: { categories
   }, []);
 
   // Form state
-  const [selectedPlan, setSelectedPlan] = useState<PlanId>("basic");
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
   const [slugStatus, setSlugStatus] = useState<"idle" | "checking" | "available" | "taken" | "reserved">("idle");
@@ -120,7 +85,7 @@ export function RegisterWizard({ categories: PROVIDER_CATEGORIES }: { categories
       formData.set("slug", slug);
       formData.set("name", name);
       formData.set("bio", bio);
-      formData.set("plan", selectedPlan);
+      formData.set("plan", "standard");
       if (category) formData.set("category", category);
       if (contactMethod.lineEnabled && contactMethod.lineId) {
         formData.set("line_id", contactMethod.lineId);
@@ -141,7 +106,7 @@ export function RegisterWizard({ categories: PROVIDER_CATEGORIES }: { categories
       const checkoutRes = await fetch("/api/stripe/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan: selectedPlan }),
+        body: JSON.stringify({ plan: "standard" }),
       });
 
       if (!checkoutRes.ok) {
@@ -154,7 +119,7 @@ export function RegisterWizard({ categories: PROVIDER_CATEGORIES }: { categories
         window.location.href = url;
       } else {
         // Checkoutが不要な場合（将来の無料プラン等）
-        setStep(4);
+        setStep(3);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "登録に失敗しました");
@@ -165,10 +130,9 @@ export function RegisterWizard({ categories: PROVIDER_CATEGORIES }: { categories
 
   const canNext = () => {
     switch (step) {
-      case 0: return selectedPlan !== null;
-      case 1: return name.trim().length > 0 && category !== "";
-      case 2: return slug.length >= 3 && slugStatus === "available";
-      case 3: {
+      case 0: return name.trim().length > 0 && category !== "";
+      case 1: return slug.length >= 3 && slugStatus === "available";
+      case 2: {
         if (!termsAgreed) return false;
         if (!contactMethod.lineEnabled && !contactMethod.emailEnabled && !contactMethod.phoneEnabled) return false;
         if (contactMethod.lineEnabled && !contactMethod.lineId.trim()) return false;
@@ -180,61 +144,6 @@ export function RegisterWizard({ categories: PROVIDER_CATEGORIES }: { categories
     }
   };
 
-  // プラン選択カード（共通コンポーネント）
-  function PlanSelector({ layout }: { layout: "mobile" | "desktop" }) {
-    return (
-      <div className={layout === "desktop" ? "grid grid-cols-2 gap-4" : "space-y-3"}>
-        {PLANS.map((plan) => (
-          <button
-            key={plan.id}
-            type="button"
-            onClick={() => setSelectedPlan(plan.id)}
-            className={`relative w-full rounded-2xl p-5 text-left transition-all ${
-              selectedPlan === plan.id
-                ? "ring-2 ring-accent bg-card shadow-md"
-                : "ring-1 ring-border bg-card hover:ring-accent/50"
-            }`}
-          >
-            {plan.trial && (
-              <div className="absolute -top-2.5 left-4 rounded-full bg-accent px-3 py-0.5 text-[10px] font-bold text-white">
-                初月無料
-              </div>
-            )}
-            <div className="flex items-center justify-between">
-              <p className={`text-sm font-semibold ${selectedPlan === plan.id ? "text-accent" : ""}`}>
-                {plan.name}
-              </p>
-              <div className={`flex h-5 w-5 items-center justify-center rounded-full border-2 ${
-                selectedPlan === plan.id ? "border-accent bg-accent" : "border-border"
-              }`}>
-                {selectedPlan === plan.id && (
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3">
-                    <path d="M20 6 9 17l-5-5" />
-                  </svg>
-                )}
-              </div>
-            </div>
-            <div className="mt-2 flex items-baseline gap-1">
-              <span className="text-2xl font-extrabold">{plan.price.toLocaleString()}</span>
-              <span className="text-sm text-muted">円/月</span>
-            </div>
-            <p className="mt-1 text-xs text-muted">{plan.desc}</p>
-            <ul className="mt-3 space-y-1.5">
-              {plan.features.map((f) => (
-                <li key={f} className="flex items-start gap-2 text-xs">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="mt-0.5 shrink-0 text-accent">
-                    <path d="M20 6 9 17l-5-5" />
-                  </svg>
-                  <span>{f}</span>
-                </li>
-              ))}
-            </ul>
-          </button>
-        ))}
-      </div>
-    );
-  }
-
   return (
     <>
     {/* --- PC版: 1ページフォーム --- */}
@@ -245,21 +154,12 @@ export function RegisterWizard({ categories: PROVIDER_CATEGORIES }: { categories
           <p className="mt-2 text-muted">必要な情報を入力して、あなた専用の予約ページを作りましょう。</p>
         </div>
 
-        {step < 4 ? (
+        {step < 3 ? (
           <div className="mt-10 space-y-8">
-            {/* プラン選択 */}
-            <section className="rounded-2xl bg-card p-6 shadow-sm ring-1 ring-border">
-              <div className="flex items-center gap-3 mb-5">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-accent text-sm font-bold text-white">1</div>
-                <h2 className="text-lg font-bold">プランを選択</h2>
-              </div>
-              <PlanSelector layout="desktop" />
-            </section>
-
             {/* お店の名前 */}
             <section className="rounded-2xl bg-card p-6 shadow-sm ring-1 ring-border">
               <div className="flex items-center gap-3 mb-5">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-accent text-sm font-bold text-white">2</div>
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-accent text-sm font-bold text-white">1</div>
                 <h2 className="text-lg font-bold">お店の名前</h2>
               </div>
               <div className="space-y-4">
@@ -287,7 +187,7 @@ export function RegisterWizard({ categories: PROVIDER_CATEGORIES }: { categories
             {/* 予約ページURL */}
             <section className="rounded-2xl bg-card p-6 shadow-sm ring-1 ring-border">
               <div className="flex items-center gap-3 mb-5">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-accent text-sm font-bold text-white">3</div>
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-accent text-sm font-bold text-white">2</div>
                 <h2 className="text-lg font-bold">予約ページURL</h2>
               </div>
               <div className="rounded-xl border border-border bg-background p-4">
@@ -318,7 +218,7 @@ export function RegisterWizard({ categories: PROVIDER_CATEGORIES }: { categories
             {/* 連絡先・プロフィール */}
             <section className="rounded-2xl bg-card p-6 shadow-sm ring-1 ring-border">
               <div className="flex items-center gap-3 mb-5">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-accent text-sm font-bold text-white">4</div>
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-accent text-sm font-bold text-white">3</div>
                 <h2 className="text-lg font-bold">連絡先・プロフィール</h2>
               </div>
               <div className="space-y-5">
@@ -369,7 +269,7 @@ export function RegisterWizard({ categories: PROVIDER_CATEGORIES }: { categories
             {/* 利用規約同意 */}
             <section className="rounded-2xl bg-card p-6 shadow-sm ring-1 ring-border">
               <div className="flex items-center gap-3 mb-5">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-accent text-sm font-bold text-white">5</div>
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-accent text-sm font-bold text-white">4</div>
                 <h2 className="text-lg font-bold">利用規約への同意</h2>
               </div>
               <label className="flex items-start gap-3 cursor-pointer">
@@ -400,13 +300,11 @@ export function RegisterWizard({ categories: PROVIDER_CATEGORIES }: { categories
               disabled={submitting || !termsAgreed || !name.trim() || !category || slug.length < 3 || slugStatus !== "available" || (!contactMethod.lineEnabled && !contactMethod.emailEnabled && !contactMethod.phoneEnabled) || (contactMethod.lineEnabled && !contactMethod.lineId.trim()) || (contactMethod.emailEnabled && !contactMethod.contactEmail.includes("@")) || (contactMethod.phoneEnabled && !contactMethod.contactPhone.trim())}
               className="w-full rounded-xl bg-accent py-4 text-lg font-semibold text-white shadow-lg shadow-accent/25 disabled:opacity-40 hover:opacity-90 transition-opacity"
             >
-              {submitting ? "処理中..." : "決済に進む"}
+              {submitting ? "処理中..." : "カード登録に進む（初月無料）"}
             </button>
 
             <p className="text-center text-xs text-muted">
-              {selectedPlan === "standard"
-                ? "初月無料 - カード登録のみで課金は1ヶ月後に開始されます"
-                : "Stripeの安全な決済画面に移動します"}
+              初月無料 - カード登録のみで課金は1ヶ月後に開始されます
             </p>
           </div>
         ) : (
@@ -431,10 +329,10 @@ export function RegisterWizard({ categories: PROVIDER_CATEGORIES }: { categories
     {/* --- モバイル版: ステップウィザード --- */}
     <main className="flex flex-col bg-background sm:hidden">
       {/* Progress bar */}
-      {step < 4 && (
+      {step < 3 && (
         <div className="px-4 pt-4">
           <div className="flex items-center gap-1">
-            {STEPS.slice(0, 4).map((_, i) => (
+            {STEPS.slice(0, 3).map((_, i) => (
               <div
                 key={i}
                 className={`h-1 flex-1 rounded-full transition-colors ${
@@ -444,44 +342,16 @@ export function RegisterWizard({ categories: PROVIDER_CATEGORIES }: { categories
             ))}
           </div>
           <p className="mt-2 text-xs text-muted">
-            ステップ {step + 1} / 4
+            ステップ {step + 1} / 3
           </p>
         </div>
       )}
 
       <div className="px-4">
-        {/* Step 0: Plan Selection */}
+        {/* Step 0: Business Name */}
         {step === 0 && (
           <div className="pt-4 pb-24">
             <p className="text-4xl">{STEPS[0].icon}</p>
-            <h1 className="mt-4 text-2xl font-bold">プランを選択</h1>
-            <p className="mt-2 text-sm text-muted">
-              あなたに合ったプランを選んでください。
-              あとからいつでも変更できます。
-            </p>
-
-            <div className="mt-6">
-              <PlanSelector layout="mobile" />
-            </div>
-
-            <div className={`fixed bottom-0 left-0 right-0 bg-background px-4 pb-8 pt-3 transition-opacity ${keyboardOpen ? "pointer-events-none opacity-0" : ""}`}>
-              <div className="mx-auto max-w-lg">
-                <button
-                  onClick={() => setStep(1)}
-                  disabled={!canNext()}
-                  className="w-full rounded-xl bg-accent py-3.5 font-semibold text-white shadow-lg shadow-accent/25 disabled:opacity-40 active:scale-[0.98]"
-                >
-                  次へ
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Step 1: Business Name */}
-        {step === 1 && (
-          <div className="pt-4 pb-24">
-            <p className="text-4xl">{STEPS[1].icon}</p>
             <h1 className="mt-4 text-2xl font-bold">お店の名前</h1>
             <p className="mt-2 text-sm text-muted">
               お客さまに表示されるあなたのお店・サービスの名前です。
@@ -492,7 +362,7 @@ export function RegisterWizard({ categories: PROVIDER_CATEGORIES }: { categories
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter" && canNext()) { e.preventDefault(); (e.target as HTMLInputElement).blur(); setStep(2); } }}
+                onKeyDown={(e) => { if (e.key === "Enter" && canNext()) { e.preventDefault(); (e.target as HTMLInputElement).blur(); setStep(1); } }}
                 enterKeyHint="next"
                 placeholder="例：山田サロン"
                 className="w-full rounded-xl border border-border bg-card px-4 py-3 text-lg"
@@ -510,17 +380,11 @@ export function RegisterWizard({ categories: PROVIDER_CATEGORIES }: { categories
             </div>
 
             <div className={`fixed bottom-0 left-0 right-0 bg-background px-4 pb-8 pt-3 transition-opacity ${keyboardOpen ? "pointer-events-none opacity-0" : ""}`}>
-              <div className="mx-auto flex max-w-lg gap-3">
+              <div className="mx-auto max-w-lg">
                 <button
-                  onClick={() => setStep(0)}
-                  className="rounded-xl border border-border px-6 py-3.5 font-semibold active:scale-[0.98]"
-                >
-                  戻る
-                </button>
-                <button
-                  onClick={() => setStep(2)}
+                  onClick={() => setStep(1)}
                   disabled={!canNext()}
-                  className="flex-1 rounded-xl bg-accent py-3.5 font-semibold text-white shadow-lg shadow-accent/25 disabled:opacity-40 active:scale-[0.98]"
+                  className="w-full rounded-xl bg-accent py-3.5 font-semibold text-white shadow-lg shadow-accent/25 disabled:opacity-40 active:scale-[0.98]"
                 >
                   次へ
                 </button>
@@ -529,10 +393,10 @@ export function RegisterWizard({ categories: PROVIDER_CATEGORIES }: { categories
           </div>
         )}
 
-        {/* Step 2: Slug */}
-        {step === 2 && (
+        {/* Step 1: Slug */}
+        {step === 1 && (
           <div className="pt-4 pb-24">
-            <p className="text-4xl">{STEPS[2].icon}</p>
+            <p className="text-4xl">{STEPS[1].icon}</p>
             <h1 className="mt-4 text-2xl font-bold">予約ページURL</h1>
             <p className="mt-2 text-sm text-muted">
               あなた専用のURLを決めましょう。
@@ -548,7 +412,7 @@ export function RegisterWizard({ categories: PROVIDER_CATEGORIES }: { categories
                     type="text"
                     value={slug}
                     onChange={(e) => handleSlugChange(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === "Enter" && canNext()) { e.preventDefault(); (e.target as HTMLInputElement).blur(); setStep(3); } }}
+                    onKeyDown={(e) => { if (e.key === "Enter" && canNext()) { e.preventDefault(); (e.target as HTMLInputElement).blur(); setStep(2); } }}
                     enterKeyHint="next"
                     inputMode="url"
                     autoCapitalize="none"
@@ -585,13 +449,13 @@ export function RegisterWizard({ categories: PROVIDER_CATEGORIES }: { categories
             <div className={`fixed bottom-0 left-0 right-0 bg-background px-4 pb-8 pt-3 transition-opacity ${keyboardOpen ? "pointer-events-none opacity-0" : ""}`}>
               <div className="mx-auto flex max-w-lg gap-3">
                 <button
-                  onClick={() => setStep(1)}
+                  onClick={() => setStep(0)}
                   className="rounded-xl border border-border px-6 py-3.5 font-semibold active:scale-[0.98]"
                 >
                   戻る
                 </button>
                 <button
-                  onClick={() => setStep(3)}
+                  onClick={() => setStep(2)}
                   disabled={!canNext()}
                   className="flex-1 rounded-xl bg-accent py-3.5 font-semibold text-white shadow-lg shadow-accent/25 disabled:opacity-40 active:scale-[0.98]"
                 >
@@ -602,11 +466,11 @@ export function RegisterWizard({ categories: PROVIDER_CATEGORIES }: { categories
           </div>
         )}
 
-        {/* Step 3: Contact & Profile */}
-        {step === 3 && (
+        {/* Step 2: Contact & Profile */}
+        {step === 2 && (
           <div className="pt-4 pb-24">
             <div>
-              <p className="text-4xl">{STEPS[3].icon}</p>
+              <p className="text-4xl">{STEPS[2].icon}</p>
               <h1 className="mt-4 text-2xl font-bold">連絡先・プロフィール</h1>
               <p className="mt-2 text-sm text-muted">
                 お客さまからの連絡方法を選択してください。
@@ -695,7 +559,7 @@ export function RegisterWizard({ categories: PROVIDER_CATEGORIES }: { categories
             <div className={`fixed bottom-0 left-0 right-0 bg-background px-4 pb-8 pt-3 transition-opacity ${keyboardOpen ? "pointer-events-none opacity-0" : ""}`}>
               <div className="mx-auto flex max-w-lg gap-3">
                 <button
-                  onClick={() => setStep(2)}
+                  onClick={() => setStep(1)}
                   className="rounded-xl border border-border px-6 py-3.5 font-semibold active:scale-[0.98]"
                 >
                   戻る
@@ -708,20 +572,18 @@ export function RegisterWizard({ categories: PROVIDER_CATEGORIES }: { categories
                   {submitting && (
                     <Spinner size="sm" className="border-white border-t-transparent" />
                   )}
-                  {submitting ? "処理中..." : "決済に進む"}
+                  {submitting ? "処理中..." : "カード登録に進む（初月無料）"}
                 </button>
               </div>
               <p className="mx-auto mt-2 max-w-lg text-center text-[10px] text-muted">
-                {selectedPlan === "standard"
-                  ? "初月無料 - カード登録のみ"
-                  : "Stripeの安全な決済画面に移動します"}
+                初月無料 - カード登録のみで課金は1ヶ月後に開始されます
               </p>
             </div>
           </div>
         )}
 
-        {/* Step 4: Complete */}
-        {step === 4 && (
+        {/* Step 3: Complete */}
+        {step === 3 && (
           <div className="flex flex-col items-center pt-8 pb-24 text-center">
             <div className="text-6xl">🎉</div>
             <h1 className="mt-6 text-2xl font-bold">登録完了！</h1>

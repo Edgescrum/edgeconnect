@@ -1,8 +1,6 @@
 "use client";
 
 import { useState, useRef } from "react";
-import Link from "next/link";
-import { LineIcon } from "@/components/icons";
 
 interface Plan {
   name: string;
@@ -49,7 +47,6 @@ export function PlanCarousel({
         className="flex snap-x snap-mandatory gap-4 overflow-x-auto px-[10%] pb-2 pt-5 scrollbar-hide"
       >
         {plans.map((plan, i) => {
-          const isCurrentPlan = role === "provider" && plan.name === "ベーシック";
           return (
             <div
               key={plan.name}
@@ -58,25 +55,18 @@ export function PlanCarousel({
             >
               <div
                 className={`relative h-full rounded-2xl bg-card p-5 ${
-                  isCurrentPlan
+                  plan.recommended
                     ? "ring-2 ring-accent shadow-md"
-                    : plan.recommended && role !== "provider"
-                      ? "ring-2 ring-accent shadow-md"
-                      : "ring-1 ring-border"
+                    : "ring-1 ring-border"
                 }`}
               >
-                {isCurrentPlan && (
-                  <div className="absolute -top-3 left-4 rounded-full bg-accent px-3 py-0.5 text-[10px] font-bold text-white">
-                    ご利用中
-                  </div>
-                )}
-                {!isCurrentPlan && plan.recommended && role !== "provider" && (
+                {plan.recommended && (
                   <div className="absolute -top-3 left-4 rounded-full bg-accent px-3 py-0.5 text-[10px] font-bold text-white">
                     おすすめ
                   </div>
                 )}
                 <div className="flex items-center gap-2">
-                  <p className={`text-sm font-semibold ${isCurrentPlan || plan.recommended ? "text-accent" : "text-muted"}`}>
+                  <p className={`text-sm font-semibold ${plan.recommended ? "text-accent" : "text-muted"}`}>
                     {plan.name}
                   </p>
                   {plan.trial && (
@@ -100,24 +90,6 @@ export function PlanCarousel({
                     </li>
                   ))}
                 </ul>
-                {plan.comingSoon ? (
-                  <button disabled className="mt-5 flex w-full items-center justify-center rounded-xl border border-border py-3 text-sm font-semibold text-muted opacity-50">
-                    近日公開予定
-                  </button>
-                ) : isCurrentPlan ? (
-                  <Link href="/provider" className="mt-5 flex w-full items-center justify-center rounded-xl border border-accent py-3 text-sm font-semibold text-accent active:scale-[0.98]">
-                    管理画面へ
-                  </Link>
-                ) : !isLoggedIn ? (
-                  <a href="/?action=login" className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-accent py-3 text-sm font-semibold text-white shadow-lg shadow-accent/25 active:scale-[0.98]">
-                    <LineIcon size={18} />
-                    無料トライアルを始める
-                  </a>
-                ) : role !== "provider" ? (
-                  <Link href="/provider/register" className="mt-5 flex w-full items-center justify-center rounded-xl bg-accent py-3 text-sm font-semibold text-white shadow-lg shadow-accent/25 active:scale-[0.98]">
-                    事業主として始める
-                  </Link>
-                ) : null}
               </div>
             </div>
           );
