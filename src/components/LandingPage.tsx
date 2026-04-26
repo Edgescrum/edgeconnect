@@ -291,9 +291,11 @@ export function LandingPage({ isLoggedIn = false, role }: { isLoggedIn?: boolean
                   {/* 統一CTAボタン */}
                   <div className="mt-8 flex flex-col items-center">
                     {ctaButton}
-                    <p className="mt-2 text-center text-xs text-muted">
-                      スタンダードプラン初月無料 / カード登録のみで課金は翌月から
-                    </p>
+                    {role !== "provider" && (
+                      <p className="mt-2 text-center text-xs text-muted">
+                        スタンダードプラン初月無料 / カード登���のみで課金は翌月から
+                      </p>
+                    )}
                   </div>
                 </>
               );

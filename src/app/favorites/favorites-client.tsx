@@ -37,91 +37,50 @@ export function FavoritesClient({
   }
 
   return (
-    <main className="min-h-screen bg-background">
-      {/* モバイル版 */}
-      <div className="sm:hidden">
-        <header className="sticky top-0 z-40 border-b border-border bg-card/80 backdrop-blur-lg">
-          <div className="mx-auto flex max-w-lg items-center gap-3 px-4 py-3">
-            <Link
-              href="/home"
-              className="flex h-8 w-8 items-center justify-center rounded-lg active:bg-accent-bg"
-              aria-label="戻る"
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="m15 18-6-6 6-6" />
-              </svg>
-            </Link>
-            <h1 className="text-base font-semibold">お気に入り</h1>
-          </div>
-        </header>
+    <div>
+      <p className="text-sm text-muted sm:hidden">
+        {favorites.length}件のお気に入り
+      </p>
 
-        <div className="mx-auto max-w-lg px-4 py-4">
-          {/* カテゴリフィルタ */}
-          {categories.length > 0 && (
-            <div className="mb-4">
-              <CategorySelector
-                categories={categories}
-                selected={selectedCategory}
-                onChange={setSelectedCategory}
-                placeholder="カテゴリで絞り込む"
-              />
-            </div>
-          )}
-
-          {/* 一覧 */}
-          {filtered.length === 0 ? (
-            <EmptyState hasFilter={selectedCategory.length > 0} />
-          ) : (
-            <div className="space-y-2">
-              {filtered.map((fav) => (
-                <FavoriteCard
-                  key={fav.id}
-                  favorite={fav}
-                  onRemove={() => handleRemove(fav.provider.id, fav.id)}
-                  isRemoving={removingId === fav.id}
-                />
-              ))}
-            </div>
-          )}
-        </div>
+      {/* PC版 件数 */}
+      <div className="hidden sm:block">
+        <p className="text-sm text-muted">
+          {favorites.length}件のお気に入り
+        </p>
       </div>
 
-      {/* PC版 */}
-      <div className="mx-auto hidden max-w-5xl px-8 py-8 sm:block">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold">お気に入り</h1>
-            <p className="mt-1 text-sm text-muted">
-              {favorites.length}件のお気に入り
-            </p>
-          </div>
-          <Link
-            href="/home"
-            className="rounded-xl bg-card px-4 py-2 text-sm ring-1 ring-border hover:bg-background"
-          >
-            マイページに戻る
-          </Link>
+      {/* カテゴリフィルタ */}
+      {categories.length > 0 && (
+        <div className="mt-4 max-w-xs">
+          <CategorySelector
+            categories={categories}
+            selected={selectedCategory}
+            onChange={setSelectedCategory}
+            placeholder="カテゴリで絞り込む"
+          />
         </div>
+      )}
 
-        {/* カテゴリフィルタ */}
-        {categories.length > 0 && (
-          <div className="mt-6 max-w-xs">
-            <CategorySelector
-              categories={categories}
-              selected={selectedCategory}
-              onChange={setSelectedCategory}
-              placeholder="カテゴリで絞り込む"
-            />
+      {/* 一覧 */}
+      {filtered.length === 0 ? (
+        <div className="mt-8">
+          <EmptyState hasFilter={selectedCategory.length > 0} />
+        </div>
+      ) : (
+        <>
+          {/* モバイル版 */}
+          <div className="mt-4 space-y-2 sm:hidden">
+            {filtered.map((fav) => (
+              <FavoriteCard
+                key={fav.id}
+                favorite={fav}
+                onRemove={() => handleRemove(fav.provider.id, fav.id)}
+                isRemoving={removingId === fav.id}
+              />
+            ))}
           </div>
-        )}
-
-        {/* 一覧 */}
-        {filtered.length === 0 ? (
-          <div className="mt-8">
-            <EmptyState hasFilter={selectedCategory.length > 0} />
-          </div>
-        ) : (
-          <div className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-3">
+          {/* PC版 */}
+          <div className="mt-6 hidden grid-cols-2 gap-4 sm:grid lg:grid-cols-3">
             {filtered.map((fav) => (
               <FavoriteCardPC
                 key={fav.id}
@@ -131,9 +90,9 @@ export function FavoritesClient({
               />
             ))}
           </div>
-        )}
-      </div>
-    </main>
+        </>
+      )}
+    </div>
   );
 }
 

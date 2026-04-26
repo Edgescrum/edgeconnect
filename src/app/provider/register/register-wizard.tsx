@@ -26,12 +26,78 @@ export function RegisterWizard({ categories: PROVIDER_CATEGORIES }: { categories
   const [submitting, setSubmitting] = useState(false);
   const [keyboardOpen, setKeyboardOpen] = useState(false);
 
-  // Stripe Checkout完了後のリダイレクト処理
+  const [checkoutProcessing, setCheckoutProcessing] = useState(false);
+
+  // Stripe Checkout完了後のリダイレクト処理: provider を作成して完了画面へ
   useEffect(() => {
-    if (searchParams.get("checkout") === "success") {
-      setStep(3);
+    const checkoutStatus = searchParams.get("checkout");
+    const sessionId = searchParams.get("session_id");
+
+    if (checkoutStatus === "success" && !checkoutProcessing) {
+      setCheckoutProcessing(true);
+      (async () => {
+        try {
+          const savedData = sessionStorage.getItem("peco_register_form");
+          if (savedData) {
+            const parsed = JSON.parse(savedData);
+            const formData = new FormData();
+            Object.entries(parsed).forEach(([key, value]) => {
+              if (value != null) formData.set(key, String(value));
+            });
+            // Stripe checkout 成功後に provider を作成
+            await registerProvider(formData);
+            sessionStorage.removeItem("peco_register_form");
+            sessionStorage.removeItem("peco_user");
+
+            // Stripe サブスクリプションを provider に紐づけ
+            try {
+              await fetch("/api/stripe/link-subscription", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ sessionId }),
+              });
+            } catch {
+              // リンク失敗は致命的ではない（webhook が後から処理する）
+              console.warn("Failed to link subscription, webhook will handle it");
+            }
+          }
+          setStep(3);
+        } catch (e) {
+          setError(e instanceof Error ? e.message : "登録に失敗しました");
+          setStep(2); // フォームに戻す
+        } finally {
+          setCheckoutProcessing(false);
+        }
+      })();
+    } else if (checkoutStatus === "cancelled") {
+      setError("カード登録がキャンセルされました。再度お試しください。");
+      // sessionStorageからフォームデータを復元
+      const savedData = sessionStorage.getItem("peco_register_form");
+      if (savedData) {
+        try {
+          const parsed = JSON.parse(savedData);
+          if (parsed.name) setName(parsed.name);
+          if (parsed.slug) {
+            setSlug(parsed.slug);
+            setSlugStatus("available");
+          }
+          if (parsed.bio) setBio(parsed.bio);
+          if (parsed.category) setCategory(parsed.category);
+          if (parsed.terms_agreed === "1") setTermsAgreed(true);
+          if (parsed.line_id) {
+            setContactMethod(prev => ({ ...prev, lineEnabled: true, lineId: parsed.line_id }));
+          }
+          if (parsed.contact_email) {
+            setContactMethod(prev => ({ ...prev, emailEnabled: true, contactEmail: parsed.contact_email }));
+          }
+          if (parsed.contact_phone) {
+            setContactMethod(prev => ({ ...prev, phoneEnabled: true, contactPhone: parsed.contact_phone }));
+          }
+        } catch { /* ignore */ }
+      }
+      setStep(2);
     }
-  }, [searchParams]);
+  }, [searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // キーボードの開閉検知（フォーカスベース）
   useEffect(() => {
@@ -81,32 +147,37 @@ export function RegisterWizard({ categories: PROVIDER_CATEGORIES }: { categories
     setError(null);
     setSubmitting(true);
     try {
-      const formData = new FormData();
-      formData.set("slug", slug);
-      formData.set("name", name);
-      formData.set("bio", bio);
-      formData.set("plan", "standard");
-      if (category) formData.set("category", category);
+      // フォームデータを sessionStorage に保存（Stripe checkout 成功後に使う）
+      const formDataObj: Record<string, string> = {
+        slug,
+        name,
+        bio,
+        plan: "standard",
+      };
+      if (category) formDataObj.category = category;
       if (contactMethod.lineEnabled && contactMethod.lineId) {
-        formData.set("line_id", contactMethod.lineId);
+        formDataObj.line_id = contactMethod.lineId;
       }
       if (contactMethod.emailEnabled && contactMethod.contactEmail) {
-        formData.set("contact_email", contactMethod.contactEmail);
+        formDataObj.contact_email = contactMethod.contactEmail;
       }
       if (contactMethod.phoneEnabled && contactMethod.contactPhone) {
-        formData.set("contact_phone", contactMethod.contactPhone);
+        formDataObj.contact_phone = contactMethod.contactPhone;
       }
-      if (iconFile) formData.set("icon", iconFile);
-      if (termsAgreed) formData.set("terms_agreed", "1");
-      await registerProvider(formData);
-      // sessionStorageのキャッシュをクリア
-      sessionStorage.removeItem("peco_user");
+      if (termsAgreed) formDataObj.terms_agreed = "1";
+      // アイコンファイルは sessionStorage に保存できないため、checkout 後に再アップロードが必要
+      // ただし UX を優先して、provider 作成時にデフォルトアイコンを生成する
+      sessionStorage.setItem("peco_register_form", JSON.stringify(formDataObj));
 
-      // Stripe Checkout セッション作成 → リダイレクト
+      // Stripe Checkout セッション作成 → リダイレクト（provider 作成前）
       const checkoutRes = await fetch("/api/stripe/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan: "standard" }),
+        body: JSON.stringify({
+          plan: "standard",
+          context: "register",
+          providerName: name,
+        }),
       });
 
       if (!checkoutRes.ok) {
@@ -119,6 +190,15 @@ export function RegisterWizard({ categories: PROVIDER_CATEGORIES }: { categories
         window.location.href = url;
       } else {
         // Checkoutが不要な場合（将来の無料プラン等）
+        // sessionStorage からフォームデータを読んで provider を作成
+        const formData = new FormData();
+        Object.entries(formDataObj).forEach(([key, value]) => {
+          formData.set(key, value);
+        });
+        if (iconFile) formData.set("icon", iconFile);
+        await registerProvider(formData);
+        sessionStorage.removeItem("peco_register_form");
+        sessionStorage.removeItem("peco_user");
         setStep(3);
       }
     } catch (e) {

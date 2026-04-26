@@ -50,14 +50,14 @@ export function BillingClient({
       const res = await fetch("/api/stripe/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan: "standard" }),
+        body: JSON.stringify({ plan: "standard", context: "billing" }),
       });
       const data = await res.json();
       if (data.url) {
         window.location.href = data.url;
         return;
       }
-      setMessage({ type: "error", text: data.error || "エラーが発生しました" });
+      setMessage({ type: "error", text: data.error || "決済セッションの作成に失敗しました。しばらくしてから再度お試しください。" });
     } catch {
       setMessage({ type: "error", text: "通信エラーが発生しました" });
     } finally {
@@ -372,8 +372,8 @@ export function BillingClient({
             </button>
           )}
 
-          {/* 解約（トライアル中は専用セクションで表示） */}
-          {hasSubscription && !isTrialing && (
+          {/* 解約 */}
+          {hasSubscription && (
             <button
               onClick={() => setShowCancelModal(true)}
               disabled={!!loading}
@@ -436,6 +436,17 @@ export function BillingClient({
                 "カレンダー連携",
               ]}
               isCurrent={isBasic}
+              actionButton={
+                isStandard && !isTrialing ? (
+                  <button
+                    onClick={() => setShowDowngradeModal(true)}
+                    disabled={!!loading}
+                    className="w-full rounded-xl bg-background py-2.5 text-sm font-medium ring-1 ring-border hover:bg-accent-bg active:scale-[0.99] disabled:opacity-50"
+                  >
+                    ベーシックに変更する
+                  </button>
+                ) : undefined
+              }
             />
             <PlanCard
               name="スタンダード"
@@ -450,6 +461,21 @@ export function BillingClient({
               ]}
               isCurrent={isStandard}
               highlighted
+              actionButton={
+                isBasic ? (
+                  <button
+                    onClick={handleUpgrade}
+                    disabled={!!loading}
+                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-accent py-2.5 text-sm font-semibold text-white active:scale-[0.99] disabled:opacity-50"
+                  >
+                    {loading === "upgrade" ? (
+                      <Spinner size="sm" />
+                    ) : (
+                      "スタンダードにアップグレード"
+                    )}
+                  </button>
+                ) : undefined
+              }
             />
           </div>
         </div>
@@ -570,16 +596,18 @@ function PlanCard({
   features,
   isCurrent,
   highlighted,
+  actionButton,
 }: {
   name: string;
   price: number;
   features: string[];
   isCurrent: boolean;
   highlighted?: boolean;
+  actionButton?: React.ReactNode;
 }) {
   return (
     <div
-      className={`rounded-2xl p-5 ring-1 ${
+      className={`flex flex-col rounded-2xl p-5 ring-1 ${
         highlighted
           ? "bg-accent/5 ring-accent/30"
           : "bg-card ring-border"
@@ -597,7 +625,7 @@ function PlanCard({
         <span className="text-2xl font-bold">{price.toLocaleString()}</span>
         <span className="text-sm text-muted">円/月</span>
       </p>
-      <ul className="mt-4 space-y-2">
+      <ul className="mt-4 flex-1 space-y-2">
         {features.map((f) => (
           <li key={f} className="flex items-start gap-2 text-sm">
             <svg
@@ -615,6 +643,11 @@ function PlanCard({
           </li>
         ))}
       </ul>
+      {actionButton && (
+        <div className="mt-4 pt-2 border-t border-border">
+          {actionButton}
+        </div>
+      )}
     </div>
   );
 }
