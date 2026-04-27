@@ -2,7 +2,7 @@
 
 import { Toggle } from "@/components/Toggle";
 import { LineIcon, EmailIcon, PhoneIcon } from "@/components/icons";
-import { formatPhoneAsYouType } from "@/lib/phone";
+import { formatPhoneAsYouType, isValidJapanesePhone } from "@/lib/phone";
 import { isValidEmail } from "@/lib/validation/email";
 
 export interface ContactMethodState {
@@ -173,6 +173,11 @@ export function ContactMethodToggles({
                 required
                 className="w-full rounded-xl border border-border bg-white px-4 py-3"
               />
+              {state.contactPhone && !isValidJapanesePhone(state.contactPhone) && (
+                <p className="mt-1.5 text-xs text-red-500">
+                  正しい電話番号の形式で入力してください（例: 090-1234-5678）
+                </p>
+              )}
             </div>
           )}
           <input

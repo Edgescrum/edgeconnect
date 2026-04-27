@@ -11,6 +11,7 @@ import sharp from "sharp";
 import { brand } from "@/lib/brand";
 import { validateImageFile } from "@/lib/constants/upload";
 import { isValidEmail } from "@/lib/validation/email";
+import { isValidJapanesePhone, formatPhone } from "@/lib/phone";
 
 async function cleanOldIcons(adminSupabase: SupabaseClient, lineUserId: string) {
   const { data: files } = await adminSupabase.storage
@@ -109,7 +110,13 @@ export async function registerProvider(formData: FormData) {
   if (contactEmailRaw && !contactEmail) {
     throw new Error("メールアドレスの形式が正しくありません");
   }
-  const contactPhone = (formData.get("contact_phone") as string)?.trim() || null;
+  const contactPhoneRaw = (formData.get("contact_phone") as string)?.trim() || null;
+  const contactPhone = contactPhoneRaw && isValidJapanesePhone(contactPhoneRaw)
+    ? formatPhone(contactPhoneRaw)
+    : null;
+  if (contactPhoneRaw && !contactPhone) {
+    throw new Error("電話番号の形式が正しくありません。日本の電話番号を入力してください");
+  }
 
   const supabase = await createClient();
   const adminSupabase = createAdminClient();
@@ -200,7 +207,13 @@ export async function updateProfile(formData: FormData) {
     throw new Error("メールアドレスの形式が正しくありません");
   }
   const phoneEnabled = formData.get("phone_enabled") === "1";
-  const contactPhoneVal = (formData.get("contact_phone") as string)?.trim();
+  const contactPhoneRaw = (formData.get("contact_phone") as string)?.trim();
+  const contactPhoneVal = contactPhoneRaw && isValidJapanesePhone(contactPhoneRaw)
+    ? formatPhone(contactPhoneRaw)
+    : contactPhoneRaw;
+  if (phoneEnabled && contactPhoneRaw && !isValidJapanesePhone(contactPhoneRaw)) {
+    throw new Error("電話番号の形式が正しくありません。日本の電話番号を入力してください");
+  }
   const brandColor = formData.get("brand_color") as string;
 
   // 連絡先が1つも設定されていない場合はエラー
