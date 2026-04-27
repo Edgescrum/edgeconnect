@@ -10,6 +10,7 @@ import { Spinner } from "@/components/Spinner";
 import { Alert } from "@/components/Alert";
 import { ContactMethodToggles, type ContactMethodState } from "@/components/ContactMethodToggles";
 import { FormLabel, FormInput, FormTextarea } from "@/components/FormField";
+import { isValidEmail } from "@/lib/validation/email";
 
 const STEPS = [
   { title: "お店の名前", icon: "🏠" },
@@ -216,7 +217,7 @@ export function RegisterWizard({ categories: PROVIDER_CATEGORIES }: { categories
         if (!termsAgreed) return false;
         if (!contactMethod.lineEnabled && !contactMethod.emailEnabled && !contactMethod.phoneEnabled) return false;
         if (contactMethod.lineEnabled && !contactMethod.lineId.trim()) return false;
-        if (contactMethod.emailEnabled && !contactMethod.contactEmail.includes("@")) return false;
+        if (contactMethod.emailEnabled && !isValidEmail(contactMethod.contactEmail)) return false;
         if (contactMethod.phoneEnabled && !contactMethod.contactPhone.trim()) return false;
         return true;
       }
@@ -377,7 +378,7 @@ export function RegisterWizard({ categories: PROVIDER_CATEGORIES }: { categories
 
             <button
               onClick={handleSubmit}
-              disabled={submitting || !termsAgreed || !name.trim() || !category || slug.length < 3 || slugStatus !== "available" || (!contactMethod.lineEnabled && !contactMethod.emailEnabled && !contactMethod.phoneEnabled) || (contactMethod.lineEnabled && !contactMethod.lineId.trim()) || (contactMethod.emailEnabled && !contactMethod.contactEmail.includes("@")) || (contactMethod.phoneEnabled && !contactMethod.contactPhone.trim())}
+              disabled={submitting || !termsAgreed || !name.trim() || !category || slug.length < 3 || slugStatus !== "available" || (!contactMethod.lineEnabled && !contactMethod.emailEnabled && !contactMethod.phoneEnabled) || (contactMethod.lineEnabled && !contactMethod.lineId.trim()) || (contactMethod.emailEnabled && !isValidEmail(contactMethod.contactEmail)) || (contactMethod.phoneEnabled && !contactMethod.contactPhone.trim())}
               className="w-full rounded-xl bg-accent py-4 text-lg font-semibold text-white shadow-lg shadow-accent/25 disabled:opacity-40 hover:opacity-90 transition-opacity"
             >
               {submitting ? "処理中..." : "カード登録に進む（初月無料）"}
