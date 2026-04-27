@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Spinner } from "@/components/Spinner";
 
 interface BillingClientProps {
@@ -94,6 +94,86 @@ export function BillingClient({
     }
   }
 
+  // プランカード定義
+  const planCards = [
+    {
+      name: "ベーシック",
+      price: 500,
+      features: [
+        "予約管理",
+        "サービスメニュー管理",
+        "プロフィールページ",
+        "QRコード発行",
+        "カレンダー連携",
+      ],
+      isCurrent: isBasic,
+      highlighted: false,
+      actionButton: isBasic ? (
+        <div className="text-center text-sm font-medium text-muted">
+          現在ご利用中
+        </div>
+      ) : hasSubscription ? (
+        <button
+          onClick={() => handlePortal("subscription_update")}
+          disabled={!!loading}
+          className="w-full rounded-xl bg-background py-2.5 text-sm font-medium ring-1 ring-border hover:bg-accent-bg active:scale-[0.99] disabled:opacity-50"
+        >
+          {loading === "subscription_update" ? (
+            <Spinner size="sm" />
+          ) : (
+            "ベーシックに変更する"
+          )}
+        </button>
+      ) : undefined,
+    },
+    {
+      name: "スタンダード",
+      price: 980,
+      features: [
+        "ベーシックの全機能",
+        "顧客管理",
+        "予約分析",
+        "アンケート・口コミ",
+        "通知テンプレート",
+        "初回1ヶ月無料トライアル",
+      ],
+      isCurrent: isStandard,
+      highlighted: true,
+      actionButton: isStandard ? (
+        <div className="text-center text-sm font-medium text-muted">
+          現在ご利用中
+        </div>
+      ) : hasSubscription ? (
+        <button
+          onClick={() => handlePortal("subscription_update")}
+          disabled={!!loading}
+          className="flex w-full items-center justify-center gap-2 rounded-xl bg-accent py-2.5 text-sm font-semibold text-white active:scale-[0.99] disabled:opacity-50"
+        >
+          {loading === "subscription_update" ? (
+            <Spinner size="sm" />
+          ) : (
+            "スタンダードにアップグレード"
+          )}
+        </button>
+      ) : (
+        <button
+          onClick={handleUpgrade}
+          disabled={!!loading}
+          className="flex w-full items-center justify-center gap-2 rounded-xl bg-accent py-2.5 text-sm font-semibold text-white active:scale-[0.99] disabled:opacity-50"
+        >
+          {loading === "upgrade" ? (
+            <Spinner size="sm" />
+          ) : (
+            "スタンダードにアップグレード"
+          )}
+        </button>
+      ),
+    },
+  ];
+
+  // 現在のプランのインデックス（カルーセル初期位置）
+  const currentPlanIndex = isStandard ? 1 : 0;
+
   return (
     <main className="min-h-screen bg-background px-4 py-6 sm:px-8 sm:py-8">
       <div className="mx-auto max-w-2xl">
@@ -150,85 +230,26 @@ export function BillingClient({
           </div>
         )}
 
-        {/* プラン比較 */}
-        <div className="mt-6">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <PlanCard
-              name="ベーシック"
-              price={500}
-              features={[
-                "予約管理",
-                "サービスメニュー管理",
-                "プロフィールページ",
-                "QRコード発行",
-                "カレンダー連携",
-              ]}
-              isCurrent={isBasic}
-              actionButton={
-                isBasic ? (
-                  <div className="text-center text-sm font-medium text-muted">
-                    現在ご利用中
-                  </div>
-                ) : hasSubscription ? (
-                  <button
-                    onClick={() => handlePortal("subscription_update")}
-                    disabled={!!loading}
-                    className="w-full rounded-xl bg-background py-2.5 text-sm font-medium ring-1 ring-border hover:bg-accent-bg active:scale-[0.99] disabled:opacity-50"
-                  >
-                    {loading === "subscription_update" ? (
-                      <Spinner size="sm" />
-                    ) : (
-                      "ベーシックに変更する"
-                    )}
-                  </button>
-                ) : undefined
-              }
-            />
-            <PlanCard
-              name="スタンダード"
-              price={980}
-              features={[
-                "ベーシックの全機能",
-                "顧客管理",
-                "予約分析",
-                "アンケート・口コミ",
-                "通知テンプレート",
-                "初回1ヶ月無料トライアル",
-              ]}
-              isCurrent={isStandard}
-              highlighted
-              actionButton={
-                isStandard ? (
-                  <div className="text-center text-sm font-medium text-muted">
-                    現在ご利用中
-                  </div>
-                ) : hasSubscription ? (
-                  <button
-                    onClick={() => handlePortal("subscription_update")}
-                    disabled={!!loading}
-                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-accent py-2.5 text-sm font-semibold text-white active:scale-[0.99] disabled:opacity-50"
-                  >
-                    {loading === "subscription_update" ? (
-                      <Spinner size="sm" />
-                    ) : (
-                      "スタンダードにアップグレード"
-                    )}
-                  </button>
-                ) : (
-                  <button
-                    onClick={handleUpgrade}
-                    disabled={!!loading}
-                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-accent py-2.5 text-sm font-semibold text-white active:scale-[0.99] disabled:opacity-50"
-                  >
-                    {loading === "upgrade" ? (
-                      <Spinner size="sm" />
-                    ) : (
-                      "スタンダードにアップグレード"
-                    )}
-                  </button>
-                )
-              }
-            />
+        {/* モバイル: カルーセル表示 */}
+        <BillingPlanCarousel
+          plans={planCards}
+          initialIndex={currentPlanIndex}
+        />
+
+        {/* PC: グリッド表示 */}
+        <div className="mt-6 hidden sm:block">
+          <div className="grid grid-cols-2 gap-4">
+            {planCards.map((card) => (
+              <PlanCard
+                key={card.name}
+                name={card.name}
+                price={card.price}
+                features={card.features}
+                isCurrent={card.isCurrent}
+                highlighted={card.highlighted}
+                actionButton={card.actionButton}
+              />
+            ))}
           </div>
         </div>
 
@@ -273,6 +294,90 @@ export function BillingClient({
   );
 }
 
+/* --- モバイル用カルーセル --- */
+
+function BillingPlanCarousel({
+  plans,
+  initialIndex,
+}: {
+  plans: {
+    name: string;
+    price: number;
+    features: string[];
+    isCurrent: boolean;
+    highlighted: boolean;
+    actionButton?: React.ReactNode;
+  }[];
+  initialIndex: number;
+}) {
+  const [active, setActive] = useState(initialIndex);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const didInit = useRef(false);
+
+  // 初回: 現在のプランを中央にスクロール
+  useEffect(() => {
+    if (didInit.current || !scrollRef.current) return;
+    didInit.current = true;
+    const el = scrollRef.current;
+    const cardWidth = el.scrollWidth / plans.length;
+    el.scrollTo({ left: cardWidth * initialIndex, behavior: "instant" });
+  }, [initialIndex, plans.length]);
+
+  function handleScroll() {
+    if (!scrollRef.current) return;
+    const el = scrollRef.current;
+    const cardWidth = el.scrollWidth / plans.length;
+    const idx = Math.round(el.scrollLeft / cardWidth);
+    setActive(idx);
+  }
+
+  function scrollTo(idx: number) {
+    if (!scrollRef.current) return;
+    const cardWidth = scrollRef.current.scrollWidth / plans.length;
+    scrollRef.current.scrollTo({ left: cardWidth * idx, behavior: "smooth" });
+    setActive(idx);
+  }
+
+  return (
+    <div className="mt-6 sm:hidden">
+      <div
+        ref={scrollRef}
+        onScroll={handleScroll}
+        className="flex snap-x snap-mandatory gap-4 overflow-x-auto px-[10%] pb-2 scrollbar-hide"
+      >
+        {plans.map((card, i) => (
+          <div
+            key={card.name}
+            className="w-[80vw] max-w-[360px] shrink-0 snap-center"
+            onClick={() => scrollTo(i)}
+          >
+            <PlanCard
+              name={card.name}
+              price={card.price}
+              features={card.features}
+              isCurrent={card.isCurrent}
+              highlighted={card.highlighted}
+              actionButton={card.actionButton}
+            />
+          </div>
+        ))}
+      </div>
+      {/* ページネーション */}
+      <div className="mt-3 flex justify-center gap-1.5">
+        {plans.map((_, i) => (
+          <button
+            key={i}
+            onClick={() => scrollTo(i)}
+            className={`h-1.5 rounded-full transition-all ${
+              i === active ? "w-5 bg-accent" : "w-1.5 bg-border"
+            }`}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /* --- サブコンポーネント --- */
 
 function PlanCard({
@@ -292,7 +397,7 @@ function PlanCard({
 }) {
   return (
     <div
-      className={`flex flex-col rounded-2xl p-5 ring-1 ${
+      className={`flex h-full flex-col rounded-2xl p-5 ring-1 ${
         highlighted
           ? "bg-accent/5 ring-accent/30"
           : "bg-card ring-border"
@@ -329,7 +434,7 @@ function PlanCard({
         ))}
       </ul>
       {actionButton && (
-        <div className="mt-4 pt-2 border-t border-border">
+        <div className="mt-6 pt-4 border-t border-border">
           {actionButton}
         </div>
       )}

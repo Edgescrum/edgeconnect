@@ -53,7 +53,6 @@ export async function POST(request: NextRequest) {
     if (context === "register") {
       // 登録フロー: provider が未作成でも Checkout セッションを作成できる
       let customerId: string | undefined;
-      const customerEmail = body.email || undefined;
 
       if (provider?.stripe_customer_id) {
         customerId = provider.stripe_customer_id;
@@ -71,15 +70,13 @@ export async function POST(request: NextRequest) {
           // 確認失敗は無視（DB 側の had_trial で判定）
         }
       } else {
-        // Stripe Customer を先に作成（user_id ベース）
+        // Stripe Customer を先に作成（LINE ID のみ）
         const customer = await stripe.customers.create({
           metadata: {
             user_id: String(user.id),
             line_user_id: user.lineUserId,
             ...(provider ? { provider_id: String(provider.id) } : {}),
           },
-          name: body.providerName || user.displayName || undefined,
-          email: customerEmail,
         });
         customerId = customer.id;
 
@@ -135,13 +132,13 @@ export async function POST(request: NextRequest) {
     // Stripe Customerを作成（既存の場合は再利用）
     let customerId = provider.stripe_customer_id;
     if (!customerId) {
+      // Stripe Customer を LINE ID のみで作成
       const customer = await stripe.customers.create({
         metadata: {
           provider_id: String(provider.id),
           user_id: String(user.id),
           line_user_id: user.lineUserId,
         },
-        name: provider.name,
       });
       customerId = customer.id;
 

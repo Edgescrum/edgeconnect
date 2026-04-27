@@ -138,9 +138,6 @@ export async function registerProvider(formData: FormData) {
     if (plan && ["basic", "standard", "team"].includes(plan)) {
       extra.plan = plan;
     }
-    // Stripe 登録用メールアドレス
-    const email = (formData.get("email") as string)?.trim();
-    if (email) extra.email = email;
     if (Object.keys(extra).length > 0) {
       await supabase.from("providers").update(extra).eq("id", providerId);
     }
