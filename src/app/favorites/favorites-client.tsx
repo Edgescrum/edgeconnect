@@ -7,6 +7,7 @@ import type { FavoriteItem } from "@/lib/actions/favorite";
 import { toggleFavorite } from "@/lib/actions/favorite";
 import type { Category } from "@/lib/constants/categories";
 import { CategorySelector } from "@/components/CategorySelector";
+import { SearchIcon } from "@/components/icons";
 import { Spinner } from "@/components/Spinner";
 
 export function FavoritesClient({
@@ -18,12 +19,20 @@ export function FavoritesClient({
 }) {
   const [favorites, setFavorites] = useState(initialFavorites);
   const [selectedCategory, setSelectedCategory] = useState<string[]>([]);
+  const [query, setQuery] = useState("");
   const [removingId, setRemovingId] = useState<number | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  const filtered = selectedCategory.length > 0
-    ? favorites.filter((f) => selectedCategory.includes(f.provider.category || ""))
-    : favorites;
+  const filtered = favorites.filter((f) => {
+    const matchesCategory =
+      selectedCategory.length === 0 ||
+      selectedCategory.includes(f.provider.category || "");
+    const matchesQuery =
+      !query ||
+      f.provider.name.toLowerCase().includes(query.toLowerCase()) ||
+      (f.provider.bio || "").toLowerCase().includes(query.toLowerCase());
+    return matchesCategory && matchesQuery;
+  });
 
   function handleRemove(providerId: number, favoriteId: number) {
     setRemovingId(favoriteId);
@@ -37,26 +46,32 @@ export function FavoritesClient({
   }
 
   return (
-    <div>
-      <p className="text-sm text-muted sm:hidden">
+    <div className="w-full min-w-0">
+      <p className="text-sm text-muted">
         {favorites.length}件のお気に入り
       </p>
 
-      {/* PC版 件数 */}
-      <div className="hidden sm:block">
-        <p className="text-sm text-muted">
-          {favorites.length}件のお気に入り
-        </p>
+      {/* 検索バー */}
+      <div className="relative mt-4">
+        <SearchIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" />
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="屋号やキーワードで検索"
+          className="w-full rounded-xl border border-border bg-card py-2.5 pl-10 pr-4 text-sm sm:py-3"
+        />
       </div>
 
-      {/* カテゴリフィルタ */}
+      {/* カテゴリ選択 */}
       {categories.length > 0 && (
-        <div className="mt-4 max-w-xs">
+        <div className="mt-3 sm:mt-4">
           <CategorySelector
             categories={categories}
             selected={selectedCategory}
             onChange={setSelectedCategory}
-            placeholder="カテゴリで絞り込む"
+            multiple
+            placeholder="カテゴリで絞り込み"
           />
         </div>
       )}
@@ -64,7 +79,7 @@ export function FavoritesClient({
       {/* 一覧 */}
       {filtered.length === 0 ? (
         <div className="mt-8">
-          <EmptyState hasFilter={selectedCategory.length > 0} />
+          <EmptyState hasFilter={selectedCategory.length > 0 || !!query} />
         </div>
       ) : (
         <>

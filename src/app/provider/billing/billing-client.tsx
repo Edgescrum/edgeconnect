@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
 import { Spinner } from "@/components/Spinner";
+import { PlanCarousel } from "@/components/PlanCarousel";
 
 interface BillingClientProps {
   plan: string;
@@ -231,10 +232,19 @@ export function BillingClient({
         )}
 
         {/* モバイル: カルーセル表示 */}
-        <BillingPlanCarousel
-          plans={planCards}
-          initialIndex={currentPlanIndex}
-        />
+        <PlanCarousel initialIndex={currentPlanIndex} hideAbove="sm">
+          {planCards.map((card) => (
+            <PlanCard
+              key={card.name}
+              name={card.name}
+              price={card.price}
+              features={card.features}
+              isCurrent={card.isCurrent}
+              highlighted={card.highlighted}
+              actionButton={card.actionButton}
+            />
+          ))}
+        </PlanCarousel>
 
         {/* PC: グリッド表示 */}
         <div className="mt-6 hidden sm:block">
@@ -291,90 +301,6 @@ export function BillingClient({
         )}
       </div>
     </main>
-  );
-}
-
-/* --- モバイル用カルーセル --- */
-
-function BillingPlanCarousel({
-  plans,
-  initialIndex,
-}: {
-  plans: {
-    name: string;
-    price: number;
-    features: string[];
-    isCurrent: boolean;
-    highlighted: boolean;
-    actionButton?: React.ReactNode;
-  }[];
-  initialIndex: number;
-}) {
-  const [active, setActive] = useState(initialIndex);
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const didInit = useRef(false);
-
-  // 初回: 現在のプランを中央にスクロール
-  useEffect(() => {
-    if (didInit.current || !scrollRef.current) return;
-    didInit.current = true;
-    const el = scrollRef.current;
-    const cardWidth = el.scrollWidth / plans.length;
-    el.scrollTo({ left: cardWidth * initialIndex, behavior: "instant" });
-  }, [initialIndex, plans.length]);
-
-  function handleScroll() {
-    if (!scrollRef.current) return;
-    const el = scrollRef.current;
-    const cardWidth = el.scrollWidth / plans.length;
-    const idx = Math.round(el.scrollLeft / cardWidth);
-    setActive(idx);
-  }
-
-  function scrollTo(idx: number) {
-    if (!scrollRef.current) return;
-    const cardWidth = scrollRef.current.scrollWidth / plans.length;
-    scrollRef.current.scrollTo({ left: cardWidth * idx, behavior: "smooth" });
-    setActive(idx);
-  }
-
-  return (
-    <div className="mt-6 sm:hidden">
-      <div
-        ref={scrollRef}
-        onScroll={handleScroll}
-        className="flex snap-x snap-mandatory gap-4 overflow-x-auto px-[10%] pb-2 scrollbar-hide"
-      >
-        {plans.map((card, i) => (
-          <div
-            key={card.name}
-            className="w-[80vw] max-w-[360px] shrink-0 snap-center"
-            onClick={() => scrollTo(i)}
-          >
-            <PlanCard
-              name={card.name}
-              price={card.price}
-              features={card.features}
-              isCurrent={card.isCurrent}
-              highlighted={card.highlighted}
-              actionButton={card.actionButton}
-            />
-          </div>
-        ))}
-      </div>
-      {/* ページネーション */}
-      <div className="mt-3 flex justify-center gap-1.5">
-        {plans.map((_, i) => (
-          <button
-            key={i}
-            onClick={() => scrollTo(i)}
-            className={`h-1.5 rounded-full transition-all ${
-              i === active ? "w-5 bg-accent" : "w-1.5 bg-border"
-            }`}
-          />
-        ))}
-      </div>
-    </div>
   );
 }
 

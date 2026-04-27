@@ -281,7 +281,9 @@ export function LandingPage({ isLoggedIn = false, role }: { isLoggedIn?: boolean
               return (
                 <>
                   {/* モバイル: カルーセル */}
-                  <PlanCarousel plans={plans} isLoggedIn={isLoggedIn} role={role} />
+                  <PlanCarousel hideAbove="lg">
+                    {plans.map((plan) => renderCard(plan))}
+                  </PlanCarousel>
                   {/* PC: グリッド */}
                   <div className="mt-8 hidden items-stretch gap-5 lg:grid lg:grid-cols-3">
                     {plans.map((plan) => (
