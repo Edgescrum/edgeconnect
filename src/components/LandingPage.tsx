@@ -281,7 +281,9 @@ export function LandingPage({ isLoggedIn = false, role }: { isLoggedIn?: boolean
               return (
                 <>
                   {/* モバイル: カルーセル */}
-                  <PlanCarousel plans={plans} isLoggedIn={isLoggedIn} role={role} />
+                  <PlanCarousel hideAbove="lg">
+                    {plans.map((plan) => renderCard(plan))}
+                  </PlanCarousel>
                   {/* PC: グリッド */}
                   <div className="mt-8 hidden items-stretch gap-5 lg:grid lg:grid-cols-3">
                     {plans.map((plan) => (
@@ -291,9 +293,11 @@ export function LandingPage({ isLoggedIn = false, role }: { isLoggedIn?: boolean
                   {/* 統一CTAボタン */}
                   <div className="mt-8 flex flex-col items-center">
                     {ctaButton}
-                    <p className="mt-2 text-center text-xs text-muted">
-                      スタンダードプラン初月無料 / カード登録のみで課金は翌月から
-                    </p>
+                    {role !== "provider" && (
+                      <p className="mt-2 text-center text-xs text-muted">
+                        スタンダードプラン初月無料 / カード登録のみで課金は翌月から
+                      </p>
+                    )}
                   </div>
                 </>
               );

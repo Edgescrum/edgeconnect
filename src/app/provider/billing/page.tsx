@@ -11,6 +11,7 @@ interface ProviderBilling {
   stripe_subscription_id: string | null;
   plan_period_end: string | null;
   trial_ends_at: string | null;
+  had_trial: boolean;
 }
 
 export default async function BillingPage() {
@@ -21,7 +22,7 @@ export default async function BillingPage() {
   const { data: provider } = await supabase
     .from("providers")
     .select(
-      "id, plan, stripe_customer_id, stripe_subscription_id, plan_period_end, trial_ends_at"
+      "id, plan, stripe_customer_id, stripe_subscription_id, plan_period_end, trial_ends_at, had_trial"
     )
     .eq("user_id", user.id)
     .single();

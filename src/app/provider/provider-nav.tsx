@@ -20,6 +20,8 @@ export function ProviderNav() {
 
   // ダッシュボードでは非表示
   if (pathname === "/provider") return null;
+  // ウィザード（登録画面）ではモバイルナビも非表示にする（専用UIを使用）
+  if (pathname === "/provider/register") return null;
 
   const isServiceEditPage = /\/provider\/services\/\d+\/edit/.test(pathname);
   const isBookingDetailPage = /\/provider\/bookings\/[a-f0-9-]+/.test(pathname);

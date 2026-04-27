@@ -108,8 +108,8 @@ export default async function ProviderProfilePage({
             <div className="relative">
               <ProviderIcon provider={provider} size={96} className="rounded-2xl shadow-lg" />
               {isLoggedIn && (
-                <div className="absolute -right-3 -top-3">
-                  <FavoriteButton providerId={provider.id} initialFavorited={favorited} />
+                <div className="absolute -bottom-2 -right-2">
+                  <FavoriteButton providerId={provider.id} initialFavorited={favorited} size="sm" />
                 </div>
               )}
             </div>
@@ -153,7 +153,7 @@ export default async function ProviderProfilePage({
                 <div className="relative shrink-0">
                   <ProviderIcon provider={provider} size={120} className="rounded-3xl shadow-xl" />
                   {isLoggedIn && (
-                    <div className="absolute -right-3 -top-3">
+                    <div className="absolute -bottom-2 -right-2">
                       <FavoriteButton providerId={provider.id} initialFavorited={favorited} />
                     </div>
                   )}

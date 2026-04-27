@@ -17,6 +17,9 @@ const NAV_ITEMS = [
 export function ProviderSidebar() {
   const pathname = usePathname();
 
+  // ウィザード（登録画面）ではサイドバーを非表示にする
+  if (pathname === "/provider/register") return null;
+
   function isActive(href: string) {
     if (href === "/provider") return pathname === "/provider";
     return pathname.startsWith(href);

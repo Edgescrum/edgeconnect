@@ -7,6 +7,7 @@ import type { FavoriteItem } from "@/lib/actions/favorite";
 import { toggleFavorite } from "@/lib/actions/favorite";
 import type { Category } from "@/lib/constants/categories";
 import { CategorySelector } from "@/components/CategorySelector";
+import { SearchIcon } from "@/components/icons";
 import { Spinner } from "@/components/Spinner";
 
 export function FavoritesClient({
@@ -18,12 +19,20 @@ export function FavoritesClient({
 }) {
   const [favorites, setFavorites] = useState(initialFavorites);
   const [selectedCategory, setSelectedCategory] = useState<string[]>([]);
+  const [query, setQuery] = useState("");
   const [removingId, setRemovingId] = useState<number | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  const filtered = selectedCategory.length > 0
-    ? favorites.filter((f) => selectedCategory.includes(f.provider.category || ""))
-    : favorites;
+  const filtered = favorites.filter((f) => {
+    const matchesCategory =
+      selectedCategory.length === 0 ||
+      selectedCategory.includes(f.provider.category || "");
+    const matchesQuery =
+      !query ||
+      f.provider.name.toLowerCase().includes(query.toLowerCase()) ||
+      (f.provider.bio || "").toLowerCase().includes(query.toLowerCase());
+    return matchesCategory && matchesQuery;
+  });
 
   function handleRemove(providerId: number, favoriteId: number) {
     setRemovingId(favoriteId);
@@ -37,91 +46,56 @@ export function FavoritesClient({
   }
 
   return (
-    <main className="min-h-screen bg-background">
-      {/* モバイル版 */}
-      <div className="sm:hidden">
-        <header className="sticky top-0 z-40 border-b border-border bg-card/80 backdrop-blur-lg">
-          <div className="mx-auto flex max-w-lg items-center gap-3 px-4 py-3">
-            <Link
-              href="/home"
-              className="flex h-8 w-8 items-center justify-center rounded-lg active:bg-accent-bg"
-              aria-label="戻る"
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="m15 18-6-6 6-6" />
-              </svg>
-            </Link>
-            <h1 className="text-base font-semibold">お気に入り</h1>
-          </div>
-        </header>
+    <div className="w-full min-w-0">
+      <p className="text-sm text-muted">
+        {favorites.length}件のお気に入り
+      </p>
 
-        <div className="mx-auto max-w-lg px-4 py-4">
-          {/* カテゴリフィルタ */}
-          {categories.length > 0 && (
-            <div className="mb-4">
-              <CategorySelector
-                categories={categories}
-                selected={selectedCategory}
-                onChange={setSelectedCategory}
-                placeholder="カテゴリで絞り込む"
-              />
-            </div>
-          )}
-
-          {/* 一覧 */}
-          {filtered.length === 0 ? (
-            <EmptyState hasFilter={selectedCategory.length > 0} />
-          ) : (
-            <div className="space-y-2">
-              {filtered.map((fav) => (
-                <FavoriteCard
-                  key={fav.id}
-                  favorite={fav}
-                  onRemove={() => handleRemove(fav.provider.id, fav.id)}
-                  isRemoving={removingId === fav.id}
-                />
-              ))}
-            </div>
-          )}
-        </div>
+      {/* 検索バー */}
+      <div className="relative mt-4">
+        <SearchIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" />
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="屋号やキーワードで検索"
+          className="w-full rounded-xl border border-border bg-card py-2.5 pl-10 pr-4 text-sm sm:py-3"
+        />
       </div>
 
-      {/* PC版 */}
-      <div className="mx-auto hidden max-w-5xl px-8 py-8 sm:block">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold">お気に入り</h1>
-            <p className="mt-1 text-sm text-muted">
-              {favorites.length}件のお気に入り
-            </p>
-          </div>
-          <Link
-            href="/home"
-            className="rounded-xl bg-card px-4 py-2 text-sm ring-1 ring-border hover:bg-background"
-          >
-            マイページに戻る
-          </Link>
+      {/* カテゴリ選択 */}
+      {categories.length > 0 && (
+        <div className="mt-3 sm:mt-4">
+          <CategorySelector
+            categories={categories}
+            selected={selectedCategory}
+            onChange={setSelectedCategory}
+            multiple
+            placeholder="カテゴリで絞り込み"
+          />
         </div>
+      )}
 
-        {/* カテゴリフィルタ */}
-        {categories.length > 0 && (
-          <div className="mt-6 max-w-xs">
-            <CategorySelector
-              categories={categories}
-              selected={selectedCategory}
-              onChange={setSelectedCategory}
-              placeholder="カテゴリで絞り込む"
-            />
+      {/* 一覧 */}
+      {filtered.length === 0 ? (
+        <div className="mt-8">
+          <EmptyState hasFilter={selectedCategory.length > 0 || !!query} />
+        </div>
+      ) : (
+        <>
+          {/* モバイル版 */}
+          <div className="mt-4 space-y-2 sm:hidden">
+            {filtered.map((fav) => (
+              <FavoriteCard
+                key={fav.id}
+                favorite={fav}
+                onRemove={() => handleRemove(fav.provider.id, fav.id)}
+                isRemoving={removingId === fav.id}
+              />
+            ))}
           </div>
-        )}
-
-        {/* 一覧 */}
-        {filtered.length === 0 ? (
-          <div className="mt-8">
-            <EmptyState hasFilter={selectedCategory.length > 0} />
-          </div>
-        ) : (
-          <div className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-3">
+          {/* PC版 */}
+          <div className="mt-6 hidden grid-cols-2 gap-4 sm:grid lg:grid-cols-3">
             {filtered.map((fav) => (
               <FavoriteCardPC
                 key={fav.id}
@@ -131,9 +105,9 @@ export function FavoritesClient({
               />
             ))}
           </div>
-        )}
-      </div>
-    </main>
+        </>
+      )}
+    </div>
   );
 }
 

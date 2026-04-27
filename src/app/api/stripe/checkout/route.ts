@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getStripe, STRIPE_PLANS } from "@/lib/stripe";
 import { resolveUser } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
-import { logError } from "@/lib/log";
+import { logError, log } from "@/lib/log";
 
 export async function POST(request: NextRequest) {
   try {
@@ -11,18 +11,117 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
     }
 
-    // plan パラメータは廃止 - スタンダードプラン固定
-    // 後方互換性のためbodyは読むが、planは無視する
-    await request.json().catch(() => ({}));
+    // body から context を読む（register: 登録フロー, billing: プラン変更）
+    const body = await request.json().catch(() => ({}));
+    const context = body.context || "billing";
 
-    // 事業主情報を取得
     const supabase = await createClient();
+
+    // Stripe 設定の検証
+    if (!process.env.STRIPE_SECRET_KEY) {
+      logError("stripe/checkout", "STRIPE_SECRET_KEY is not configured");
+      return NextResponse.json(
+        { error: "決済サービスが設定されていません。管理者にお問い合わせください。" },
+        { status: 503 }
+      );
+    }
+
+    const planConfig = STRIPE_PLANS.standard;
+    if (!planConfig.priceId) {
+      logError("stripe/checkout", "STRIPE_STANDARD_PRICE_ID is not configured");
+      return NextResponse.json(
+        { error: "決済プランが設定されていません。管理者にお問い合わせください。" },
+        { status: 503 }
+      );
+    }
+
+    const stripe = getStripe();
+    const origin = request.headers.get("origin") || process.env.NEXT_PUBLIC_APP_URL || "";
+
+    // 事業主情報を取得（存在しない場合もある＝登録フロー）
     const { data: provider } = await supabase
       .from("providers")
-      .select("id, name, stripe_customer_id")
+      .select("id, name, stripe_customer_id, had_trial")
       .eq("user_id", user.id)
       .single();
 
+    // トライアル重複防止: 過去にトライアルを利用した場合はトライアルを適用しない
+    const hadTrial = provider?.had_trial === true;
+    // Stripe Customer でも過去のトライアル利用を確認
+    let hadTrialOnStripe = false;
+
+    if (context === "register") {
+      // 登録フロー: provider が未作成でも Checkout セッションを作成できる
+      let customerId: string | undefined;
+
+      if (provider?.stripe_customer_id) {
+        customerId = provider.stripe_customer_id;
+        // Stripe 側でも過去トライアルを確認
+        try {
+          const subs = await stripe.subscriptions.list({
+            customer: customerId,
+            status: "all",
+            limit: 10,
+          });
+          hadTrialOnStripe = subs.data.some(
+            (sub) => sub.trial_start !== null
+          );
+        } catch {
+          // 確認失敗は無視（DB 側の had_trial で判定）
+        }
+      } else {
+        // Stripe Customer を先に作成（LINE ID のみ）
+        const customer = await stripe.customers.create({
+          metadata: {
+            user_id: String(user.id),
+            line_user_id: user.lineUserId,
+            ...(provider ? { provider_id: String(provider.id) } : {}),
+          },
+        });
+        customerId = customer.id;
+
+        // provider が既に存在する場合は stripe_customer_id を保存
+        if (provider) {
+          await supabase
+            .from("providers")
+            .update({ stripe_customer_id: customerId })
+            .eq("id", provider.id);
+        }
+      }
+
+      const shouldApplyTrial = !hadTrial && !hadTrialOnStripe;
+
+      const session = await stripe.checkout.sessions.create({
+        customer: customerId,
+        mode: "subscription",
+        line_items: [{ price: planConfig.priceId, quantity: 1 }],
+        success_url: `${origin}/provider/register?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${origin}/provider/register?checkout=cancelled`,
+        metadata: {
+          user_id: String(user.id),
+          ...(provider ? { provider_id: String(provider.id) } : {}),
+          plan: "standard",
+          context: "register",
+        },
+        ...(shouldApplyTrial
+          ? {
+              subscription_data: {
+                trial_period_days: planConfig.trialDays,
+              },
+            }
+          : {}),
+      });
+
+      log("stripe/checkout", "Registration checkout session created", {
+        userId: user.id,
+        sessionId: session.id,
+        trialApplied: shouldApplyTrial,
+      });
+
+      return NextResponse.json({ url: session.url });
+    }
+
+    // billing フロー: provider が必須
     if (!provider) {
       return NextResponse.json(
         { error: "事業主情報が見つかりません" },
@@ -30,50 +129,61 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const stripe = getStripe();
-
     // Stripe Customerを作成（既存の場合は再利用）
     let customerId = provider.stripe_customer_id;
     if (!customerId) {
+      // Stripe Customer を LINE ID のみで作成
       const customer = await stripe.customers.create({
         metadata: {
           provider_id: String(provider.id),
           user_id: String(user.id),
           line_user_id: user.lineUserId,
         },
-        name: provider.name,
       });
       customerId = customer.id;
 
-      // stripe_customer_idを保存
       await supabase
         .from("providers")
         .update({ stripe_customer_id: customerId })
         .eq("id", provider.id);
     }
 
-    const planConfig = STRIPE_PLANS.standard;
-    const origin = request.headers.get("origin") || process.env.NEXT_PUBLIC_APP_URL || "";
+    // Stripe 側でも過去トライアルを確認
+    if (!hadTrialOnStripe && customerId) {
+      try {
+        const subs = await stripe.subscriptions.list({
+          customer: customerId,
+          status: "all",
+          limit: 10,
+        });
+        hadTrialOnStripe = subs.data.some(
+          (sub) => sub.trial_start !== null
+        );
+      } catch {
+        // 確認失敗は無視
+      }
+    }
+    const shouldApplyTrialBilling = !hadTrial && !hadTrialOnStripe;
 
-    // Checkout Session を作成（スタンダードプラン固定・トライアル30日）
+    // Checkout Session を作成（スタンダードプラン固定・トライアルは初回のみ）
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       mode: "subscription",
-      line_items: [
-        {
-          price: planConfig.priceId,
-          quantity: 1,
-        },
-      ],
-      success_url: `${origin}/provider/register?checkout=success`,
-      cancel_url: `${origin}/provider/register`,
+      line_items: [{ price: planConfig.priceId, quantity: 1 }],
+      success_url: `${origin}/provider/billing?checkout=success`,
+      cancel_url: `${origin}/provider/billing`,
       metadata: {
         provider_id: String(provider.id),
         plan: "standard",
+        context: "billing",
       },
-      subscription_data: {
-        trial_period_days: planConfig.trialDays,
-      },
+      ...(shouldApplyTrialBilling
+        ? {
+            subscription_data: {
+              trial_period_days: planConfig.trialDays,
+            },
+          }
+        : {}),
     });
 
     return NextResponse.json({ url: session.url });

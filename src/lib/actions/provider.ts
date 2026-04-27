@@ -128,7 +128,7 @@ export async function registerProvider(formData: FormData) {
       .eq("id", user.id);
   }
 
-  // category, contact_phone, planはRPC外で更新
+  // category, contact_phone, plan, emailはRPC外で更新
   const providerId = typeof data === "object" && data !== null ? (data as { id: number }).id : null;
   if (providerId) {
     const extra: Record<string, unknown> = {};

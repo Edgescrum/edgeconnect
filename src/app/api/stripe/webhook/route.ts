@@ -35,16 +35,37 @@ export async function POST(request: NextRequest) {
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
         const providerId = session.metadata?.provider_id;
+        const userId = session.metadata?.user_id;
         const plan = session.metadata?.plan;
+        const context = session.metadata?.context;
+
+        // トライアルが適用されたかチェック（had_trial フラグ更新用）
+        let hadTrialInSession = false;
+        if (session.subscription) {
+          try {
+            const stripe = getStripe();
+            const sub = await stripe.subscriptions.retrieve(
+              session.subscription as string
+            );
+            hadTrialInSession = sub.trial_start !== null;
+          } catch {
+            // 取得失敗は無視
+          }
+        }
 
         if (providerId && plan) {
+          // provider_id が分かっている場合は直接更新
+          const updates: Record<string, unknown> = {
+            plan,
+            stripe_customer_id: session.customer as string,
+            stripe_subscription_id: session.subscription as string,
+          };
+          if (hadTrialInSession) {
+            updates.had_trial = true;
+          }
           await supabase
             .from("providers")
-            .update({
-              plan,
-              stripe_customer_id: session.customer as string,
-              stripe_subscription_id: session.subscription as string,
-            })
+            .update(updates)
             .eq("id", Number(providerId));
 
           log("stripe/webhook", "checkout.session.completed", {
@@ -52,6 +73,43 @@ export async function POST(request: NextRequest) {
             plan,
             customerId: session.customer,
           });
+        } else if (context === "register" && userId && plan) {
+          // 登録フロー: provider がまだ作成されていない可能性がある
+          // user_id から provider を探す（既に作成済みの場合のみ更新）
+          const { data: provider } = await supabase
+            .from("providers")
+            .select("id")
+            .eq("user_id", Number(userId))
+            .single();
+
+          if (provider) {
+            const registerUpdates: Record<string, unknown> = {
+              plan,
+              stripe_customer_id: session.customer as string,
+              stripe_subscription_id: session.subscription as string,
+            };
+            if (hadTrialInSession) {
+              registerUpdates.had_trial = true;
+            }
+            await supabase
+              .from("providers")
+              .update(registerUpdates)
+              .eq("id", provider.id);
+
+            log("stripe/webhook", "checkout.session.completed (register)", {
+              providerId: provider.id,
+              userId,
+              plan,
+            });
+          } else {
+            // provider がまだ作成されていない場合はログだけ
+            // client 側の link-subscription API が後から紐づける
+            log("stripe/webhook", "checkout.session.completed - provider not yet created, will be linked later", {
+              userId,
+              plan,
+              customerId: session.customer,
+            });
+          }
         }
         break;
       }
