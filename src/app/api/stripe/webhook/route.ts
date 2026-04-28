@@ -62,6 +62,30 @@ export async function POST(request: NextRequest) {
           if (hadTrialInSession) {
             updates.had_trial = true;
           }
+
+          // トライアル期間・請求期間を subscription から取得して保存
+          if (session.subscription) {
+            try {
+              const stripe2 = getStripe();
+              const sub = await stripe2.subscriptions.retrieve(
+                session.subscription as string
+              );
+              if (sub.trial_end) {
+                updates.trial_ends_at = new Date(
+                  sub.trial_end * 1000
+                ).toISOString();
+              }
+              const currentPeriodEnd = sub.items?.data?.[0]?.current_period_end;
+              if (currentPeriodEnd) {
+                updates.plan_period_end = new Date(
+                  currentPeriodEnd * 1000
+                ).toISOString();
+              }
+            } catch {
+              // 取得失敗は無視
+            }
+          }
+
           await supabase
             .from("providers")
             .update(updates)
@@ -90,6 +114,30 @@ export async function POST(request: NextRequest) {
             if (hadTrialInSession) {
               registerUpdates.had_trial = true;
             }
+
+            // トライアル期間・請求期間を subscription から取得して保存
+            if (session.subscription) {
+              try {
+                const stripe2 = getStripe();
+                const sub = await stripe2.subscriptions.retrieve(
+                  session.subscription as string
+                );
+                if (sub.trial_end) {
+                  registerUpdates.trial_ends_at = new Date(
+                    sub.trial_end * 1000
+                  ).toISOString();
+                }
+                const currentPeriodEnd = sub.items?.data?.[0]?.current_period_end;
+                if (currentPeriodEnd) {
+                  registerUpdates.plan_period_end = new Date(
+                    currentPeriodEnd * 1000
+                  ).toISOString();
+                }
+              } catch {
+                // 取得失敗は無視
+              }
+            }
+
             await supabase
               .from("providers")
               .update(registerUpdates)

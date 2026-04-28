@@ -19,6 +19,7 @@ interface BillingClientProps {
   planPrice: number;
   isTrialing: boolean;
   trialDaysLeft: number;
+  trialEndDate: string | null;
   planPeriodEnd: string | null;
   hasSubscription: boolean;
   hasCustomer: boolean;
@@ -229,6 +230,7 @@ export function BillingClient({
   planPrice,
   isTrialing,
   trialDaysLeft,
+  trialEndDate,
   planPeriodEnd,
   hasSubscription,
   hasCustomer,
@@ -247,6 +249,7 @@ export function BillingClient({
 
   const periodEndLabel = planPeriodEnd ? formatDateLong(planPeriodEnd) : null;
   const cancelAtLabel = cancelAt ? formatDateLong(cancelAt) : null;
+  const trialEndLabel = trialEndDate ? formatDateLong(trialEndDate) : null;
   const features = PLAN_FEATURES[plan] || PLAN_FEATURES.basic;
 
   const planDescription =
@@ -336,6 +339,11 @@ export function BillingClient({
               <span className="inline-flex items-center rounded-full bg-accent/10 px-3 py-1 text-xs font-semibold text-accent">
                 {planName}プラン
               </span>
+              {isTrialing && (
+                <span className="inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-600 ring-1 ring-blue-200">
+                  トライアル中
+                </span>
+              )}
               {cancelAtPeriodEnd && (
                 <span className="inline-flex items-center rounded-full bg-red-50 px-3 py-1 text-xs font-semibold text-red-600 ring-1 ring-red-200">
                   解約予約済み
@@ -347,14 +355,24 @@ export function BillingClient({
 
         {/* ========== Trial Banner ========== */}
         {isTrialing && (
-          <div className="rounded-2xl bg-amber-50 p-5 ring-1 ring-amber-200">
+          <div className="rounded-2xl bg-blue-50 p-5 ring-1 ring-blue-200">
             <div className="flex items-start gap-3">
-              <AlertTriangleIcon className="mt-0.5 shrink-0 text-amber-600" />
+              <CalendarIcon className="mt-1 shrink-0 text-blue-600" />
               <div>
-                <p className="font-semibold text-amber-700">
-                  トライアル期間中 -- 残り{trialDaysLeft}日
+                <div className="flex items-center gap-2">
+                  <p className="font-semibold text-blue-700">
+                    トライアル期間中
+                  </p>
+                  <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-semibold text-blue-700">
+                    残り{trialDaysLeft}日
+                  </span>
+                </div>
+                <p className="mt-1 text-sm text-blue-600">
+                  {trialEndLabel
+                    ? `${trialEndLabel}までスタンダードプランの全機能を無料でお試しいただけます。`
+                    : "スタンダードプランの全機能を無料でお試しいただけます。"}
                 </p>
-                <p className="mt-1 text-sm text-amber-600">
+                <p className="mt-1 text-xs text-blue-500">
                   トライアル終了後、自動的に
                   {planPrice.toLocaleString()}
                   円/月の課金が開始されます
@@ -365,17 +383,29 @@ export function BillingClient({
         )}
 
         {/* ========== Cancel Scheduled Banner ========== */}
-        {cancelAtPeriodEnd && cancelAtLabel && (
-          <div className="rounded-2xl bg-amber-50 p-5 ring-1 ring-amber-200">
+        {cancelAtPeriodEnd && (
+          <div className="rounded-2xl bg-red-50 p-5 ring-1 ring-red-200">
             <div className="flex items-start gap-3">
-              <AlertTriangleIcon className="mt-0.5 shrink-0 text-amber-600" />
-              <div>
-                <p className="font-semibold text-amber-700">
-                  プラン解約予約済み
-                </p>
-                <p className="mt-1 text-sm text-amber-600">
-                  現在のプランは {cancelAtLabel}{" "}
-                  に終了予定です。それまでは引き続きサービスをご利用いただけます。
+              <AlertTriangleIcon className="mt-0.5 shrink-0 text-red-500" />
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <p className="font-semibold text-red-700">
+                    解約が予約されています
+                  </p>
+                  <span className="inline-flex items-center rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-semibold text-red-700 ring-1 ring-red-200">
+                    解約予約済み
+                  </span>
+                </div>
+                {cancelAtLabel && (
+                  <div className="mt-2 rounded-lg bg-white/60 px-3 py-2 ring-1 ring-red-100">
+                    <p className="text-sm text-red-700">
+                      <span className="font-medium">プラン終了日:</span>{" "}
+                      <span className="font-bold">{cancelAtLabel}</span>
+                    </p>
+                  </div>
+                )}
+                <p className="mt-2 text-sm text-red-600">
+                  終了日まではすべての機能を引き続きご利用いただけます。解約をキャンセルする場合は「プラン管理」から操作できます。
                 </p>
               </div>
             </div>
@@ -434,9 +464,22 @@ export function BillingClient({
                   <div className="flex items-center gap-2.5 text-sm">
                     <CalendarIcon className="shrink-0 text-muted" />
                     <div>
-                      <span className="text-muted">トライアル残り</span>
+                      <span className="text-muted">トライアル終了日</span>
                       <p className="font-medium text-foreground">
-                        {trialDaysLeft}日
+                        {trialEndLabel || `残り${trialDaysLeft}日`}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Cancel end date */}
+                {cancelAtPeriodEnd && cancelAtLabel && (
+                  <div className="flex items-center gap-2.5 text-sm">
+                    <CalendarIcon className="shrink-0 text-red-500" />
+                    <div>
+                      <span className="text-red-600">プラン終了日</span>
+                      <p className="font-semibold text-red-700">
+                        {cancelAtLabel}
                       </p>
                     </div>
                   </div>

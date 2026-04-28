@@ -47,13 +47,17 @@ export async function POST(request: NextRequest) {
       const session = await stripe.checkout.sessions.retrieve(sessionId);
 
       if (session.customer && session.subscription) {
-        // トライアルが適用されたかチェック
+        // トライアルが適用されたかチェック + 期間情報を取得
         let hadTrialInSession = false;
+        let trialEnd: number | null = null;
+        let currentPeriodEnd: number | undefined;
         try {
           const sub = await stripe.subscriptions.retrieve(
             session.subscription as string
           );
           hadTrialInSession = sub.trial_start !== null;
+          trialEnd = sub.trial_end;
+          currentPeriodEnd = sub.items?.data?.[0]?.current_period_end;
         } catch {
           // 取得失敗は無視
         }
@@ -65,6 +69,12 @@ export async function POST(request: NextRequest) {
         };
         if (hadTrialInSession) {
           updates.had_trial = true;
+        }
+        if (trialEnd) {
+          updates.trial_ends_at = new Date(trialEnd * 1000).toISOString();
+        }
+        if (currentPeriodEnd) {
+          updates.plan_period_end = new Date(currentPeriodEnd * 1000).toISOString();
         }
 
         await supabase
