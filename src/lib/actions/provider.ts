@@ -10,6 +10,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import sharp from "sharp";
 import { brand } from "@/lib/brand";
 import { validateImageFile } from "@/lib/constants/upload";
+import { isValidEmail } from "@/lib/validation/email";
+import { isValidJapanesePhone, formatPhone } from "@/lib/phone";
 
 async function cleanOldIcons(adminSupabase: SupabaseClient, lineUserId: string) {
   const { data: files } = await adminSupabase.storage
@@ -30,20 +32,33 @@ async function uploadIcon(
   lineUserId: string,
   file: File
 ): Promise<string> {
-  const buffer = Buffer.from(await file.arrayBuffer());
-  const pngBuffer = await sharp(buffer)
-    .rotate() // EXIF orientationに基づいて自動回転
-    .resize(512, 512, { fit: "cover" })
-    .png({ quality: 85 })
-    .toBuffer();
+  let pngBuffer: Buffer;
+  try {
+    const buffer = Buffer.from(await file.arrayBuffer());
+    pngBuffer = await sharp(buffer)
+      .rotate() // EXIF orientationに基づいて自動回転
+      .resize(512, 512, { fit: "cover" })
+      .png({ quality: 85 })
+      .toBuffer();
+  } catch (err) {
+    logError("uploadIcon", "image processing failed", err);
+    throw new Error("画像の処理に失敗しました。別の画像をお試しください");
+  }
   // 古いアイコンを削除（デフォルトは残す）
-  await cleanOldIcons(adminSupabase, lineUserId);
+  try {
+    await cleanOldIcons(adminSupabase, lineUserId);
+  } catch (err) {
+    logError("uploadIcon", "cleanOldIcons failed (non-fatal)", err);
+  }
   // キャッシュバスティング: タイムスタンプをファイル名に含める
   const path = `${lineUserId}/icon-${Date.now()}.png`;
   const { error } = await adminSupabase.storage
     .from("avatars")
     .upload(path, pngBuffer, { upsert: true, contentType: "image/png" });
-  if (error) throw new Error("Icon upload failed");
+  if (error) {
+    logError("uploadIcon", "storage upload failed", error);
+    throw new Error("画像のアップロードに失敗しました。しばらく時間をおいてお試しください");
+  }
   const { data: { publicUrl } } = adminSupabase.storage.from("avatars").getPublicUrl(path);
   return publicUrl;
 }
@@ -90,8 +105,18 @@ export async function registerProvider(formData: FormData) {
   const category = (formData.get("category") as string) || null;
   const lineId = (formData.get("line_id") as string)?.trim();
   const lineContactUrl = lineId ? `https://line.me/ti/p/~${lineId}` : null;
-  const contactEmail = (formData.get("contact_email") as string) || null;
-  const contactPhone = (formData.get("contact_phone") as string)?.trim() || null;
+  const contactEmailRaw = (formData.get("contact_email") as string) || null;
+  const contactEmail = contactEmailRaw && isValidEmail(contactEmailRaw) ? contactEmailRaw : null;
+  if (contactEmailRaw && !contactEmail) {
+    throw new Error("メールアドレスの形式が正しくありません");
+  }
+  const contactPhoneRaw = (formData.get("contact_phone") as string)?.trim() || null;
+  const contactPhone = contactPhoneRaw && isValidJapanesePhone(contactPhoneRaw)
+    ? formatPhone(contactPhoneRaw)
+    : null;
+  if (contactPhoneRaw && !contactPhone) {
+    throw new Error("電話番号の形式が正しくありません。日本の電話番号を入力してください");
+  }
 
   const supabase = await createClient();
   const adminSupabase = createAdminClient();
@@ -99,12 +124,20 @@ export async function registerProvider(formData: FormData) {
   // アイコン画像アップロード（512x512 PNGにリサイズ）
   let iconUrl: string | null = null;
   const iconFile = formData.get("icon") as File | null;
-  if (iconFile && iconFile.size > 0) {
-    validateImageFile(iconFile);
-    iconUrl = await uploadIcon(adminSupabase, user.lineUserId, iconFile);
-  } else {
-    // 未設定時: 頭文字のデフォルトアイコンを生成
-    iconUrl = await generateDefaultIcon(adminSupabase, user.lineUserId, name);
+  try {
+    if (iconFile && iconFile.size > 0) {
+      validateImageFile(iconFile);
+      iconUrl = await uploadIcon(adminSupabase, user.lineUserId, iconFile);
+    } else {
+      // 未設定時: 頭文字のデフォルトアイコンを生成
+      iconUrl = await generateDefaultIcon(adminSupabase, user.lineUserId, name);
+    }
+  } catch (err) {
+    // アップロードエラーは日本語メッセージを持つ Error をそのまま投げる
+    if (err instanceof Error && err.message.startsWith("画像")) throw err;
+    logError("registerProvider", "icon upload failed", err);
+    // アイコンなしで登録を続行
+    iconUrl = null;
   }
 
   const { data, error } = await supabase.rpc("register_provider", {
@@ -170,8 +203,17 @@ export async function updateProfile(formData: FormData) {
   const lineId = (formData.get("line_id") as string)?.trim();
   const emailEnabled = formData.get("email_enabled") === "1";
   const contactEmail = formData.get("contact_email") as string;
+  if (emailEnabled && contactEmail && !isValidEmail(contactEmail)) {
+    throw new Error("メールアドレスの形式が正しくありません");
+  }
   const phoneEnabled = formData.get("phone_enabled") === "1";
-  const contactPhoneVal = (formData.get("contact_phone") as string)?.trim();
+  const contactPhoneRaw = (formData.get("contact_phone") as string)?.trim();
+  const contactPhoneVal = contactPhoneRaw && isValidJapanesePhone(contactPhoneRaw)
+    ? formatPhone(contactPhoneRaw)
+    : contactPhoneRaw;
+  if (phoneEnabled && contactPhoneRaw && !isValidJapanesePhone(contactPhoneRaw)) {
+    throw new Error("電話番号の形式が正しくありません。日本の電話番号を入力してください");
+  }
   const brandColor = formData.get("brand_color") as string;
 
   // 連絡先が1つも設定されていない場合はエラー
@@ -198,7 +240,13 @@ export async function updateProfile(formData: FormData) {
   const iconFile = formData.get("icon") as File | null;
   if (iconFile && iconFile.size > 0) {
     validateImageFile(iconFile);
-    updates.icon_url = await uploadIcon(adminSupabase, user.lineUserId, iconFile);
+    try {
+      updates.icon_url = await uploadIcon(adminSupabase, user.lineUserId, iconFile);
+    } catch (err) {
+      if (err instanceof Error && err.message.startsWith("画像")) throw err;
+      logError("updateProfile", "icon upload failed", err);
+      throw new Error("画像のアップロードに失敗しました。しばらく時間をおいてお試しください");
+    }
   }
 
   const { error } = await supabase

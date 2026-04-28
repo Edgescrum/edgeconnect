@@ -16,3 +16,8 @@ INSERT INTO public.categories (value, label, sort_order, is_active) VALUES
   ('photography', '撮影・写真', 9, true),
   ('other', 'その他', 99, true)
 ON CONFLICT (value) DO NOTHING;
+
+-- Storage バケット
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES ('avatars', 'avatars', true, 3145728, ARRAY['image/png', 'image/jpeg', 'image/webp', 'image/gif'])
+ON CONFLICT (id) DO NOTHING;

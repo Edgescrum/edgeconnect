@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getStripe } from "@/lib/stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { pushFlexMessage } from "@/lib/line/messaging";
 import { log, logError } from "@/lib/log";
 import type Stripe from "stripe";
 
@@ -138,57 +137,10 @@ export async function POST(request: NextRequest) {
       }
 
       case "invoice.payment_failed": {
+        // LINE 通知は Stripe 側のメール通知に任せる（DB 更新は不要）
         const invoice = event.data.object as Stripe.Invoice;
         const customerId = invoice.customer as string;
-
-        if (customerId) {
-          // 事業主にLINE通知を送信
-          const { data: provider } = await supabase
-            .from("providers")
-            .select("user_id, name")
-            .eq("stripe_customer_id", customerId)
-            .single();
-
-          if (provider) {
-            const { data: user } = await supabase
-              .from("users")
-              .select("line_user_id")
-              .eq("id", provider.user_id)
-              .single();
-
-            if (user?.line_user_id) {
-              await pushFlexMessage(
-                user.line_user_id,
-                "決済失敗のお知らせ",
-                {
-                  type: "bubble",
-                  body: {
-                    type: "box",
-                    layout: "vertical",
-                    spacing: "md",
-                    contents: [
-                      {
-                        type: "text",
-                        text: "決済失敗のお知らせ",
-                        weight: "bold",
-                        size: "lg",
-                      },
-                      {
-                        type: "text",
-                        text: "月額料金の決済に失敗しました。お支払い方法をご確認ください。",
-                        size: "sm",
-                        wrap: true,
-                        color: "#666666",
-                      },
-                    ],
-                  },
-                }
-              );
-            }
-          }
-
-          logError("stripe/webhook", "invoice.payment_failed", { customerId });
-        }
+        logError("stripe/webhook", "invoice.payment_failed", { customerId });
         break;
       }
 
@@ -275,140 +227,10 @@ export async function POST(request: NextRequest) {
       }
 
       case "customer.subscription.trial_will_end": {
+        // LINE 通知は Stripe 側のメール通知に任せる（DB 更新は不要）
         const subscription = event.data.object as Stripe.Subscription;
         const customerId = subscription.customer as string;
-
-        if (customerId) {
-          const { data: provider } = await supabase
-            .from("providers")
-            .select("user_id, name")
-            .eq("stripe_customer_id", customerId)
-            .single();
-
-          if (provider) {
-            const { data: user } = await supabase
-              .from("users")
-              .select("line_user_id")
-              .eq("id", provider.user_id)
-              .single();
-
-            if (user?.line_user_id) {
-              const trialEnd = subscription.trial_end
-                ? new Date(subscription.trial_end * 1000)
-                : null;
-              const daysLeft = trialEnd
-                ? Math.ceil(
-                    (trialEnd.getTime() - Date.now()) / (1000 * 60 * 60 * 24)
-                  )
-                : 3;
-
-              const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://peco.edgescrum.com";
-              await pushFlexMessage(
-                user.line_user_id,
-                "トライアル終了のお知らせ",
-                {
-                  type: "bubble",
-                  body: {
-                    type: "box",
-                    layout: "vertical",
-                    spacing: "md",
-                    contents: [
-                      {
-                        type: "text",
-                        text: "トライアル終了のお知らせ",
-                        weight: "bold",
-                        size: "lg",
-                      },
-                      {
-                        type: "text",
-                        text: `トライアル期間が${daysLeft}日後に終了します。`,
-                        size: "sm",
-                        wrap: true,
-                        color: "#666666",
-                      },
-                      {
-                        type: "separator",
-                        margin: "lg",
-                      },
-                      {
-                        type: "text",
-                        text: "トライアル終了後:",
-                        weight: "bold",
-                        size: "sm",
-                        margin: "lg",
-                      },
-                      {
-                        type: "box",
-                        layout: "vertical",
-                        spacing: "sm",
-                        margin: "sm",
-                        contents: [
-                          {
-                            type: "text",
-                            text: "・そのまま → スタンダード継続（980円/月）",
-                            size: "xs",
-                            wrap: true,
-                            color: "#666666",
-                          },
-                          {
-                            type: "text",
-                            text: "・ダウングレード → ベーシック（500円/月）",
-                            size: "xs",
-                            wrap: true,
-                            color: "#666666",
-                          },
-                          {
-                            type: "text",
-                            text: "・解約 → 全機能停止",
-                            size: "xs",
-                            wrap: true,
-                            color: "#666666",
-                          },
-                        ],
-                      },
-                      {
-                        type: "text",
-                        text: "プランの変更・解約は下のボタンから行えます。",
-                        size: "xs",
-                        wrap: true,
-                        color: "#999999",
-                        margin: "lg",
-                      },
-                    ],
-                  },
-                  footer: {
-                    type: "box",
-                    layout: "vertical",
-                    spacing: "sm",
-                    contents: [
-                      {
-                        type: "button",
-                        action: {
-                          type: "uri",
-                          label: "プランを確認・変更する",
-                          uri: `${appUrl}/provider/billing`,
-                        },
-                        style: "primary",
-                        color: "#6366F1",
-                      },
-                      {
-                        type: "button",
-                        action: {
-                          type: "uri",
-                          label: "このまま継続する",
-                          uri: `${appUrl}/provider`,
-                        },
-                        style: "secondary",
-                      },
-                    ],
-                  },
-                }
-              );
-            }
-          }
-
-          log("stripe/webhook", "trial_will_end", { customerId });
-        }
+        log("stripe/webhook", "trial_will_end", { customerId });
         break;
       }
 
