@@ -11,11 +11,17 @@ export default async function QrCodePage() {
   const supabase = await createClient();
   const { data: provider } = await supabase
     .from("providers")
-    .select("slug, name")
+    .select("id, slug, name")
     .eq("user_id", user.id)
     .single();
 
   if (!provider) redirect("/provider/register");
+
+  // オンボーディングフラグ: QRコードページを閲覧済みにする
+  await supabase
+    .from("provider_settings")
+    .update({ qrcode_viewed: true })
+    .eq("provider_id", provider.id);
 
   const liffId = process.env.NEXT_PUBLIC_LIFF_ID!;
   const profileUrl = `https://liff.line.me/${liffId}?provider=${provider.slug}`;

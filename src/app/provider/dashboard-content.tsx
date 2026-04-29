@@ -5,8 +5,9 @@ import { ProviderAvatar } from "@/components/ProviderAvatar";
 
 interface Onboarding {
   hasService: boolean;
-  hasSchedule: boolean;
   hasProfile: boolean;
+  hasSchedule: boolean;
+  hasQrcode: boolean;
 }
 
 const onboardingSteps = [
@@ -17,16 +18,22 @@ const onboardingSteps = [
     desc: "お客さまが予約できるメニューを登録しましょう",
   },
   {
+    key: "hasProfile" as const,
+    href: "/provider/profile",
+    title: "プロフィールを設定",
+    desc: "連絡先・アイコン・紹介文を設定しましょう",
+  },
+  {
     key: "hasSchedule" as const,
     href: "/provider/schedule",
     title: "営業時間を設定",
     desc: "予約を受け付ける曜日・時間を設定しましょう",
   },
   {
-    key: "hasProfile" as const,
-    href: "/provider/profile",
-    title: "プロフィールを仕上げる",
-    desc: "アイコンや紹介文を設定しましょう",
+    key: "hasQrcode" as const,
+    href: "/provider/qrcode",
+    title: "QRコードを確認",
+    desc: "お客さまに共有するQRコードを確認しましょう",
   },
 ];
 
@@ -331,13 +338,6 @@ function MobileOnboarding({
             </Link>
           );
         })}
-        {completedCount >= 3 && (
-          <Link href="/provider/qrcode" className="flex items-center gap-3 rounded-xl bg-accent p-3 text-white active:scale-[0.99]">
-            <span className="text-lg">📱</span>
-            <div className="flex-1"><p className="text-sm font-semibold">QRコードをお客さまに共有</p></div>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="opacity-70"><path d="m9 18 6-6-6-6" /></svg>
-          </Link>
-        )}
       </div>
     </div>
   );

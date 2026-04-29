@@ -259,8 +259,15 @@ export async function updateProfile(formData: FormData) {
 
   if (error) throw new Error(error.message);
 
+  // オンボーディングフラグ: プロフィール保存完了
+  await supabase
+    .from("provider_settings")
+    .update({ profile_completed: true })
+    .eq("provider_id", provider.id);
+
   revalidatePath(`/p/${provider.slug}`);
   revalidatePath("/provider/profile");
+  revalidatePath("/provider");
 }
 
 /** Stripe Checkout 前にアイコンを事前アップロードする */
