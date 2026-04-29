@@ -421,10 +421,55 @@ export async function POST(request: NextRequest) {
       }
 
       case "customer.subscription.trial_will_end": {
-        // LINE 通知は Stripe 側のメール通知に任せる（DB 更新は不要）
         const subscription = event.data.object as Stripe.Subscription;
         const customerId = subscription.customer as string;
+
         log("stripe/webhook", "trial_will_end", { customerId });
+
+        // 事業主を検索して LINE 通知を送信
+        if (customerId) {
+          const { data: trialProvider } = await supabase
+            .from("providers")
+            .select("id, name, user_id")
+            .eq("stripe_customer_id", customerId)
+            .single();
+
+          if (trialProvider) {
+            const { data: trialUser } = await supabase
+              .from("users")
+              .select("line_user_id")
+              .eq("id", trialProvider.user_id)
+              .single();
+
+            if (trialUser?.line_user_id) {
+              // トライアル終了までの日数を計算
+              const trialEnd = subscription.trial_end;
+              const daysLeft = trialEnd
+                ? Math.max(0, Math.ceil((trialEnd * 1000 - Date.now()) / (1000 * 60 * 60 * 24)))
+                : 3;
+
+              const { trialWillEnd: trialWillEndTemplate } = await import("@/lib/line/templates");
+              const { pushFlexMessage } = await import("@/lib/line/messaging");
+
+              const liffId = process.env.NEXT_PUBLIC_LIFF_ID || "";
+
+              await pushFlexMessage(
+                trialUser.line_user_id,
+                `${trialProvider.name || "PeCo"}：トライアル期間が${daysLeft}日後に終了します`,
+                trialWillEndTemplate({
+                  providerName: trialProvider.name || "PeCo",
+                  daysLeft,
+                  liffId,
+                })
+              );
+
+              log("stripe/webhook", "trial_will_end - LINE notification sent", {
+                providerId: trialProvider.id,
+                daysLeft,
+              });
+            }
+          }
+        }
         break;
       }
 

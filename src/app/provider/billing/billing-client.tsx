@@ -464,6 +464,177 @@ function StatusNotice({
 }
 
 /* ============================================================
+ * Trial Plan Choice Component
+ * ========================================================== */
+
+function TrialPlanChoice({
+  trialEndLabel,
+  onDowngrade,
+  onCancel,
+  loading,
+}: {
+  trialEndLabel: string | null;
+  onDowngrade: () => void;
+  onCancel: () => void;
+  loading: string | null;
+}) {
+  const [selected, setSelected] = useState<"standard" | "basic" | "cancel">("standard");
+  const [confirmAction, setConfirmAction] = useState<"basic" | "cancel" | null>(null);
+
+  function handleSelect(plan: "standard" | "basic" | "cancel") {
+    setSelected(plan);
+    if (plan === "basic") {
+      setConfirmAction("basic");
+    } else if (plan === "cancel") {
+      setConfirmAction("cancel");
+    } else {
+      setConfirmAction(null);
+    }
+  }
+
+  return (
+    <div className="rounded-2xl bg-card p-4 sm:p-6 ring-1 ring-border">
+      <h2 className="text-base font-bold text-foreground">
+        トライアル終了後のプラン
+      </h2>
+      <p className="mt-1 text-sm text-muted">
+        何もしなければ、トライアル終了後にスタンダード（980円/月）の課金が自動的に開始されます。
+      </p>
+
+      <div className="mt-4 space-y-3">
+        {/* Standard continue */}
+        <button
+          type="button"
+          onClick={() => handleSelect("standard")}
+          className={`w-full rounded-xl p-4 text-left ring-2 transition-all ${
+            selected === "standard"
+              ? "bg-accent/5 ring-accent"
+              : "bg-card ring-border hover:ring-accent/40"
+          }`}
+        >
+          <div className="flex items-center gap-3">
+            <div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full ring-2 ${
+              selected === "standard" ? "bg-accent ring-accent" : "ring-border"
+            }`}>
+              {selected === "standard" && (
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3">
+                  <path d="M20 6 9 17l-5-5" />
+                </svg>
+              )}
+            </div>
+            <div className="flex-1">
+              <div className="flex items-center gap-2">
+                <span className="font-semibold text-foreground">スタンダードを継続する</span>
+                <span className="rounded-full bg-accent/10 px-2 py-0.5 text-[10px] font-semibold text-accent">
+                  現在の選択
+                </span>
+              </div>
+              <p className="mt-0.5 text-sm text-muted">980円/月 - LINE通知・カレンダー同期など全機能</p>
+            </div>
+          </div>
+        </button>
+
+        {/* Basic downgrade */}
+        <button
+          type="button"
+          onClick={() => handleSelect("basic")}
+          className={`w-full rounded-xl p-4 text-left ring-2 transition-all ${
+            selected === "basic"
+              ? "bg-amber-50 ring-amber-400"
+              : "bg-card ring-border hover:ring-amber-300"
+          }`}
+        >
+          <div className="flex items-center gap-3">
+            <div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full ring-2 ${
+              selected === "basic" ? "bg-amber-500 ring-amber-500" : "ring-border"
+            }`}>
+              {selected === "basic" && (
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3">
+                  <path d="M20 6 9 17l-5-5" />
+                </svg>
+              )}
+            </div>
+            <div className="flex-1">
+              <span className="font-semibold text-foreground">ベーシックにダウングレード</span>
+              <p className="mt-0.5 text-sm text-muted">500円/月 - 予約管理の基本機能のみ</p>
+            </div>
+          </div>
+        </button>
+
+        {/* Cancel */}
+        <button
+          type="button"
+          onClick={() => handleSelect("cancel")}
+          className={`w-full rounded-xl p-4 text-left ring-2 transition-all ${
+            selected === "cancel"
+              ? "bg-red-50 ring-red-400"
+              : "bg-card ring-border hover:ring-red-300"
+          }`}
+        >
+          <div className="flex items-center gap-3">
+            <div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full ring-2 ${
+              selected === "cancel" ? "bg-red-500 ring-red-500" : "ring-border"
+            }`}>
+              {selected === "cancel" && (
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3">
+                  <path d="M20 6 9 17l-5-5" />
+                </svg>
+              )}
+            </div>
+            <div className="flex-1">
+              <span className="font-semibold text-red-600">解約する</span>
+              <p className="mt-0.5 text-sm text-muted">トライアル終了後に全機能が停止します</p>
+            </div>
+          </div>
+        </button>
+      </div>
+
+      {/* Confirmation dialog */}
+      {confirmAction && (
+        <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4">
+          <p className="text-sm font-semibold text-amber-800">
+            {confirmAction === "basic"
+              ? "ベーシックプランにダウングレードしますか？"
+              : "本当に解約しますか？"}
+          </p>
+          <p className="mt-1 text-xs text-amber-700">
+            {confirmAction === "basic"
+              ? `トライアル終了${trialEndLabel ? `（${trialEndLabel}）` : ""}後、ベーシックプラン（500円/月）に変更されます。LINE通知やカレンダー同期は利用できなくなります。`
+              : `トライアル終了${trialEndLabel ? `（${trialEndLabel}）` : ""}後、全機能が停止します。予約の受付ができなくなります。`}
+          </p>
+          <div className="mt-3 flex gap-2">
+            <button
+              onClick={() => {
+                if (confirmAction === "basic") onDowngrade();
+                else onCancel();
+              }}
+              disabled={!!loading}
+              className={`flex items-center justify-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold text-white disabled:opacity-50 ${
+                confirmAction === "basic" ? "bg-amber-500" : "bg-red-500"
+              }`}
+            >
+              {loading === (confirmAction === "basic" ? "downgrade" : "cancel") ? (
+                <Spinner size="sm" className="border-white border-t-transparent" />
+              ) : null}
+              {confirmAction === "basic" ? "ダウングレードする" : "解約する"}
+            </button>
+            <button
+              onClick={() => {
+                setSelected("standard");
+                setConfirmAction(null);
+              }}
+              className="rounded-lg border border-border px-4 py-2 text-sm font-semibold"
+            >
+              キャンセル
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ============================================================
  * Main Component
  * ========================================================== */
 
@@ -522,6 +693,51 @@ export function BillingClient({
   useEffect(() => {
     fetchInvoices();
   }, [fetchInvoices]);
+
+  async function handleDowngrade() {
+    setLoading("downgrade");
+    setMessage(null);
+    try {
+      const res = await fetch("/api/stripe/change-plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plan: "basic" }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setMessage({ type: "success", text: "トライアル終了後にベーシックプランに変更されます。" });
+        setTimeout(() => window.location.reload(), 1500);
+      } else {
+        setMessage({ type: "error", text: data.error || "プラン変更に失敗しました" });
+      }
+    } catch {
+      setMessage({ type: "error", text: "通信エラーが発生しました" });
+    } finally {
+      setLoading(null);
+    }
+  }
+
+  async function handleCancel() {
+    setLoading("cancel");
+    setMessage(null);
+    try {
+      const res = await fetch("/api/stripe/cancel", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      const data = await res.json();
+      if (data.success) {
+        setMessage({ type: "success", text: "トライアル終了後に解約されます。" });
+        setTimeout(() => window.location.reload(), 1500);
+      } else {
+        setMessage({ type: "error", text: data.error || "解約に失敗しました" });
+      }
+    } catch {
+      setMessage({ type: "error", text: "通信エラーが発生しました" });
+    } finally {
+      setLoading(null);
+    }
+  }
 
   async function handlePortal(flow?: string) {
     const key = flow || "portal";
@@ -617,6 +833,16 @@ export function BillingClient({
           pendingPlanEffectiveDate={pendingPlanEffectiveDate}
           periodEndLabel={periodEndLabel}
         />
+
+        {/* ========== Trial Plan Choice ========== */}
+        {isTrialing && !cancelAtPeriodEnd && !pendingPlan && (
+          <TrialPlanChoice
+            trialEndLabel={trialEndLabel}
+            onDowngrade={handleDowngrade}
+            onCancel={handleCancel}
+            loading={loading}
+          />
+        )}
 
         {/* ========== Plan Info + Features Grid ========== */}
         <h2 className="text-base font-bold text-foreground">
