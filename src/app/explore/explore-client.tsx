@@ -3,8 +3,8 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
 import { searchProviders, type ProviderCard } from "@/lib/actions/explore";
+import { ProviderAvatar } from "@/components/ProviderAvatar";
 import { CategorySelector } from "@/components/CategorySelector";
 import type { Category } from "@/lib/constants/categories";
 import { SearchIcon, ChevronRightIcon } from "@/components/icons";
@@ -128,12 +128,8 @@ export function ExploreClient({
             href={`/p/${p.slug}`}
             className="flex items-center gap-3 rounded-2xl bg-card p-3 shadow-sm ring-1 ring-border active:scale-[0.99] sm:gap-3.5 sm:p-4"
           >
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-accent-bg text-base font-semibold text-accent sm:h-12 sm:w-12">
-              {p.icon_url ? (
-                <Image src={p.icon_url} alt={p.name || ""} width={48} height={48} className="h-11 w-11 object-cover sm:h-12 sm:w-12" />
-              ) : (
-                (p.name || "?")[0]
-              )}
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl sm:h-12 sm:w-12">
+              <ProviderAvatar iconUrl={p.icon_url} name={p.name} size={48} className="rounded-xl" />
             </div>
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-semibold">{p.name}</p>

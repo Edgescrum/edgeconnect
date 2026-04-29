@@ -66,13 +66,12 @@ async function uploadIcon(
 async function generateDefaultIcon(
   adminSupabase: SupabaseClient,
   lineUserId: string,
-  name: string
+  _name: string
 ): Promise<string | null> {
-  const initial = (name || "?")[0];
+  // フォント依存のSVGテキストはサーバー環境で日本語がレンダリングできないため、
+  // テキストなしの単色アイコンを生成し、イニシャル表示はクライアント側のフォールバックに任せる
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256">
     <rect width="256" height="256" rx="48" fill="${brand.primary}"/>
-    <text x="128" y="140" text-anchor="middle" dominant-baseline="middle"
-      font-family="sans-serif" font-size="120" font-weight="bold" fill="#fff">${initial}</text>
   </svg>`;
   const pngBuffer = await sharp(Buffer.from(svg)).png().toBuffer();
   const path = `${lineUserId}/icon-default.png`;
@@ -123,13 +122,17 @@ export async function registerProvider(formData: FormData) {
 
   // アイコン画像アップロード（512x512 PNGにリサイズ）
   let iconUrl: string | null = null;
+  const preUploadedIconUrl = formData.get("icon_url") as string | null;
   const iconFile = formData.get("icon") as File | null;
   try {
-    if (iconFile && iconFile.size > 0) {
+    if (preUploadedIconUrl) {
+      // Stripe Checkout フロー: 事前アップロード済みのURLを使用
+      iconUrl = preUploadedIconUrl;
+    } else if (iconFile && iconFile.size > 0) {
       validateImageFile(iconFile);
       iconUrl = await uploadIcon(adminSupabase, user.lineUserId, iconFile);
     } else {
-      // 未設定時: 頭文字のデフォルトアイコンを生成
+      // 未設定時: デフォルトアイコンを生成
       iconUrl = await generateDefaultIcon(adminSupabase, user.lineUserId, name);
     }
   } catch (err) {
@@ -258,6 +261,19 @@ export async function updateProfile(formData: FormData) {
 
   revalidatePath(`/p/${provider.slug}`);
   revalidatePath("/provider/profile");
+}
+
+/** Stripe Checkout 前にアイコンを事前アップロードする */
+export async function uploadProviderIcon(formData: FormData): Promise<string | null> {
+  const user = await resolveUser();
+  if (!user) throw new Error("Not authenticated");
+
+  const iconFile = formData.get("icon") as File | null;
+  if (!iconFile || iconFile.size === 0) return null;
+
+  validateImageFile(iconFile);
+  const adminSupabase = createAdminClient();
+  return await uploadIcon(adminSupabase, user.lineUserId, iconFile);
 }
 
 export async function checkSlugAvailability(slug: string): Promise<{ available: boolean; reason?: string }> {

@@ -1,6 +1,6 @@
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
-import Image from "next/image";
+
 import { notFound } from "next/navigation";
 import { getCategoryLabel } from "@/lib/constants/categories";
 import { PublicFooter } from "@/components/PublicFooter";
@@ -8,6 +8,7 @@ import { resolveUser } from "@/lib/auth/session";
 import { ServiceMenuList } from "./service-menu-list";
 import { brand } from "@/lib/brand";
 import { isFavorited } from "@/lib/actions/favorite";
+import { ProviderAvatar } from "@/components/ProviderAvatar";
 import { FavoriteButton } from "./favorite-button";
 import type { Metadata } from "next";
 
@@ -190,22 +191,13 @@ export default async function ProviderProfilePage({
 /* --- サブコンポーネント --- */
 
 function ProviderIcon({ provider, size, className }: { provider: ProviderProfile; size: number; className?: string }) {
-  return provider.icon_url ? (
-    <Image
-      src={provider.icon_url}
-      alt={provider.name || ""}
-      width={size}
-      height={size}
-      className={`object-cover ${className}`}
-      style={{ width: size, height: size }}
+  return (
+    <ProviderAvatar
+      iconUrl={provider.icon_url}
+      name={provider.name}
+      size={size}
+      className={className}
     />
-  ) : (
-    <div
-      className={`flex items-center justify-center bg-accent font-bold text-white ${className}`}
-      style={{ width: size, height: size, fontSize: size * 0.35 }}
-    >
-      {(provider.name || "?")[0]}
-    </div>
   );
 }
 

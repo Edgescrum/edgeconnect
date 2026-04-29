@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { registerProvider, checkSlugAvailability } from "@/lib/actions/provider";
+import { registerProvider, checkSlugAvailability, uploadProviderIcon } from "@/lib/actions/provider";
 import type { Category } from "@/lib/constants/categories";
 import { CategorySelector } from "@/components/CategorySelector";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -180,8 +180,18 @@ export function RegisterWizard({ categories: PROVIDER_CATEGORIES }: { categories
         formDataObj.contact_phone = contactMethod.contactPhone;
       }
       if (termsAgreed) formDataObj.terms_agreed = "1";
-      // アイコンファイルは sessionStorage に保存できないため、checkout 後に再アップロードが必要
-      // ただし UX を優先して、provider 作成時にデフォルトアイコンを生成する
+      // アイコンファイルは sessionStorage に JSON 保存できないため、Checkout 前にアップロードしてURLを保存する
+      if (iconFile) {
+        try {
+          const iconFormData = new FormData();
+          iconFormData.set("icon", iconFile);
+          const iconUrl = await uploadProviderIcon(iconFormData);
+          if (iconUrl) formDataObj.icon_url = iconUrl;
+        } catch (err) {
+          console.warn("アイコンの事前アップロードに失敗:", err);
+          // アイコンなしで続行（デフォルトアイコンが生成される）
+        }
+      }
       sessionStorage.setItem("peco_register_form", JSON.stringify(formDataObj));
 
       // Stripe Checkout セッション作成 → リダイレクト（provider 作成前）
