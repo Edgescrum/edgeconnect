@@ -350,22 +350,23 @@ export async function POST(request: NextRequest) {
           ).toISOString();
         }
 
-        // cancel_at_period_end の検知: 解約予約状態を DB に反映
-        if (subscription.cancel_at_period_end) {
-          // 解約予約あり: cancel_at を記録
+        // 解約予約状態を DB に反映
+        // cancel_at_period_end=true（通常の解約予約）または
+        // cancel_at が設定されている（トライアル中の解約: cancel_at_period_end=false だが cancel_at にトライアル終了日が入る）
+        if (subscription.cancel_at_period_end || subscription.cancel_at) {
           if (subscription.cancel_at) {
             updates.cancel_at = new Date(subscription.cancel_at * 1000).toISOString();
           } else if (currentPeriodEnd) {
-            // cancel_at がない場合は期間終了日をフォールバックとして使用
             updates.cancel_at = new Date(currentPeriodEnd * 1000).toISOString();
           }
           log("stripe/webhook", "subscription.updated - cancel scheduled", {
             customerId,
             providerId: currentProvider.id,
             cancelAt: updates.cancel_at,
+            cancelAtPeriodEnd: subscription.cancel_at_period_end,
           });
         } else {
-          // 解約予約なし（キャンセルされた or 最初からなし）: cancel_at をクリア
+          // 解約予約なし: cancel_at をクリア
           updates.cancel_at = null;
         }
 
