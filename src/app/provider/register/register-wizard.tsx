@@ -107,8 +107,10 @@ export function RegisterWizard({ categories: PROVIDER_CATEGORIES }: { categories
     function onFocus() { setKeyboardOpen(true); }
     function onBlur() { setKeyboardOpen(false); }
     document.addEventListener("focusin", (e) => {
-      const tag = (e.target as HTMLElement)?.tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") onFocus();
+      const el = e.target as HTMLInputElement;
+      const tag = el?.tagName;
+      // チェックボックス・ラジオはキーボードを開かないので除外
+      if ((tag === "INPUT" && el.type !== "checkbox" && el.type !== "radio") || tag === "TEXTAREA" || tag === "SELECT") onFocus();
     });
     document.addEventListener("focusout", onBlur);
     return () => {
