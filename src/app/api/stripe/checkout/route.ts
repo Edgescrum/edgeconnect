@@ -72,6 +72,7 @@ export async function POST(request: NextRequest) {
       } else {
         // Stripe Customer を先に作成（LINE ID のみ）
         const customer = await stripe.customers.create({
+          preferred_locales: ["ja"],
           metadata: {
             user_id: String(user.id),
             line_user_id: user.lineUserId,
@@ -93,6 +94,7 @@ export async function POST(request: NextRequest) {
 
       const session = await stripe.checkout.sessions.create({
         customer: customerId,
+        locale: "ja",
         mode: "subscription",
         line_items: [{ price: planConfig.priceId, quantity: 1 }],
         success_url: `${origin}/provider/register?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
@@ -134,6 +136,7 @@ export async function POST(request: NextRequest) {
     if (!customerId) {
       // Stripe Customer を LINE ID のみで作成
       const customer = await stripe.customers.create({
+        preferred_locales: ["ja"],
         metadata: {
           provider_id: String(provider.id),
           user_id: String(user.id),
@@ -168,6 +171,7 @@ export async function POST(request: NextRequest) {
     // Checkout Session を作成（スタンダードプラン固定・トライアルは初回のみ）
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
+      locale: "ja",
       mode: "subscription",
       line_items: [{ price: planConfig.priceId, quantity: 1 }],
       success_url: `${origin}/provider/billing?checkout=success`,

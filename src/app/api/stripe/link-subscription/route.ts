@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
     // provider を取得
     const { data: provider } = await supabase
       .from("providers")
-      .select("id, stripe_customer_id, stripe_subscription_id")
+      .select("id, stripe_customer_id, stripe_subscription_id, trial_ends_at, plan_period_end")
       .eq("user_id", user.id)
       .single();
 
@@ -35,27 +35,59 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 既に紐づけ済みの場合はスキップ
-    if (provider.stripe_customer_id && provider.stripe_subscription_id) {
+    // 既に紐づけ済みで、かつ trial/period 情報も揃っている場合のみスキップ
+    const isFullyLinked = provider.stripe_customer_id
+      && provider.stripe_subscription_id
+      && (provider.trial_ends_at || provider.plan_period_end);
+    if (isFullyLinked) {
       return NextResponse.json({ success: true, alreadyLinked: true });
     }
 
     const stripe = getStripe();
 
+    log("stripe/link-subscription", "Starting link process", {
+      providerId: provider.id,
+      hasSessionId: !!sessionId,
+      existingCustomerId: provider.stripe_customer_id,
+      existingSubscriptionId: provider.stripe_subscription_id,
+      existingTrialEndsAt: provider.trial_ends_at,
+      existingPlanPeriodEnd: provider.plan_period_end,
+    });
+
     if (sessionId) {
       // Checkout Session から情報を取得
       const session = await stripe.checkout.sessions.retrieve(sessionId);
 
+      log("stripe/link-subscription", "Session retrieved", {
+        sessionId,
+        customer: session.customer,
+        subscription: session.subscription,
+        status: session.status,
+      });
+
       if (session.customer && session.subscription) {
-        // トライアルが適用されたかチェック
+        // トライアルが適用されたかチェック + 期間情報を取得
         let hadTrialInSession = false;
+        let trialEnd: number | null = null;
+        let currentPeriodEnd: number | undefined;
         try {
           const sub = await stripe.subscriptions.retrieve(
             session.subscription as string
           );
           hadTrialInSession = sub.trial_start !== null;
-        } catch {
-          // 取得失敗は無視
+          trialEnd = sub.trial_end;
+          currentPeriodEnd = sub.items?.data?.[0]?.current_period_end;
+
+          log("stripe/link-subscription", "Subscription details", {
+            subscriptionId: sub.id,
+            status: sub.status,
+            trialStart: sub.trial_start,
+            trialEnd: sub.trial_end,
+            currentPeriodEnd,
+            itemsCount: sub.items?.data?.length,
+          });
+        } catch (subErr) {
+          logError("stripe/link-subscription", "Failed to retrieve subscription", subErr);
         }
 
         const updates: Record<string, unknown> = {
@@ -66,11 +98,26 @@ export async function POST(request: NextRequest) {
         if (hadTrialInSession) {
           updates.had_trial = true;
         }
+        if (trialEnd) {
+          updates.trial_ends_at = new Date(trialEnd * 1000).toISOString();
+        }
+        if (currentPeriodEnd) {
+          updates.plan_period_end = new Date(currentPeriodEnd * 1000).toISOString();
+        }
 
-        await supabase
+        log("stripe/link-subscription", "Updating provider", {
+          providerId: provider.id,
+          updates,
+        });
+
+        const { error: updateError } = await supabase
           .from("providers")
           .update(updates)
           .eq("id", provider.id);
+
+        if (updateError) {
+          logError("stripe/link-subscription", "Failed to update provider", updateError);
+        }
 
         // Stripe Customer の metadata にも provider_id を追加
         await stripe.customers.update(session.customer as string, {
@@ -85,6 +132,8 @@ export async function POST(request: NextRequest) {
           providerId: provider.id,
           customerId: session.customer,
           subscriptionId: session.subscription,
+          trialEndsAt: updates.trial_ends_at,
+          planPeriodEnd: updates.plan_period_end,
         });
 
         return NextResponse.json({ success: true });
@@ -106,13 +155,27 @@ export async function POST(request: NextRequest) {
 
       if (subscriptions.data.length > 0) {
         const subscription = subscriptions.data[0];
+        const fallbackUpdates: Record<string, unknown> = {
+          stripe_customer_id: customer.id,
+          stripe_subscription_id: subscription.id,
+          plan: "standard",
+        };
+
+        // trial/period 情報も取得
+        if (subscription.trial_end) {
+          fallbackUpdates.trial_ends_at = new Date(subscription.trial_end * 1000).toISOString();
+        }
+        if (subscription.trial_start !== null) {
+          fallbackUpdates.had_trial = true;
+        }
+        const fallbackPeriodEnd = subscription.items?.data?.[0]?.current_period_end;
+        if (fallbackPeriodEnd) {
+          fallbackUpdates.plan_period_end = new Date(fallbackPeriodEnd * 1000).toISOString();
+        }
+
         await supabase
           .from("providers")
-          .update({
-            stripe_customer_id: customer.id,
-            stripe_subscription_id: subscription.id,
-            plan: "standard",
-          })
+          .update(fallbackUpdates)
           .eq("id", provider.id);
 
         // Stripe Customer の metadata に provider_id を追加
@@ -126,6 +189,7 @@ export async function POST(request: NextRequest) {
         log("stripe/link-subscription", "Linked via customer search", {
           providerId: provider.id,
           customerId: customer.id,
+          updates: fallbackUpdates,
         });
 
         return NextResponse.json({ success: true });
