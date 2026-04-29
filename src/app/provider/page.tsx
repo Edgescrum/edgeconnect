@@ -1,12 +1,15 @@
 import { resolveUser } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { requireActiveSubscription } from "@/lib/auth/provider-session";
 import { ProviderDashboard } from "./dashboard-content";
 
 export default async function ProviderPage() {
   const user = await resolveUser();
   if (!user) redirect("/");
   if (user.role !== "provider") redirect("/provider/register");
+
+  await requireActiveSubscription(user.id);
 
   const supabase = await createClient();
   const { data: provider } = await supabase

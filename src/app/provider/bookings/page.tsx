@@ -1,6 +1,7 @@
 import { resolveUser } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { requireActiveSubscription } from "@/lib/auth/provider-session";
 import { BookingList } from "./booking-list";
 
 export default async function ProviderBookingsPage({
@@ -11,6 +12,8 @@ export default async function ProviderBookingsPage({
   const user = await resolveUser();
   if (!user) redirect("/");
   if (user.role !== "provider") redirect("/");
+
+  await requireActiveSubscription(user.id);
 
   const { filter } = await searchParams;
 

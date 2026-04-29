@@ -3,10 +3,12 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { STRIPE_PLANS, getStripe } from "@/lib/stripe";
 import { BillingClient } from "./billing-client";
+import { InactiveSubscriptionView } from "./inactive-view";
 
 interface ProviderBilling {
   id: number;
   plan: string;
+  subscription_status: string;
   stripe_customer_id: string | null;
   stripe_subscription_id: string | null;
   plan_period_end: string | null;
@@ -23,7 +25,7 @@ export default async function BillingPage() {
   const { data: provider } = await supabase
     .from("providers")
     .select(
-      "id, plan, stripe_customer_id, stripe_subscription_id, plan_period_end, trial_ends_at, had_trial, cancel_at"
+      "id, plan, subscription_status, stripe_customer_id, stripe_subscription_id, plan_period_end, trial_ends_at, had_trial, cancel_at"
     )
     .eq("user_id", user.id)
     .single();
@@ -31,6 +33,11 @@ export default async function BillingPage() {
   if (!provider) redirect("/provider/register");
 
   const p = provider as ProviderBilling;
+
+  // inactive 時は再登録ビューを表示
+  if (p.subscription_status === "inactive") {
+    return <InactiveSubscriptionView plan={p.plan} hasCustomer={!!p.stripe_customer_id} />;
+  }
 
   const now = new Date();
   const trialEndsAt = p.trial_ends_at ? new Date(p.trial_ends_at) : null;
@@ -190,6 +197,7 @@ export default async function BillingPage() {
 
   return (
     <BillingClient
+      subscriptionStatus={p.subscription_status}
       plan={p.plan}
       planName={planName}
       planPrice={planPrice}

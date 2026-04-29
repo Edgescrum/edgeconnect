@@ -56,10 +56,49 @@ export default async function BookingPage({
     slug: string;
     name: string;
     brand_color: string;
+    subscription_status: string;
     services: { id: number; name: string; description: string | null; duration_min: number; price: number; custom_fields: { label: string; type: "input" | "textarea"; required: boolean }[] | null }[];
   } | null;
 
   if (!profile) notFound();
+
+  // 事業主が inactive の場合は予約不可ページを表示
+  if (profile.subscription_status === "inactive") {
+    return (
+      <main className="flex min-h-screen flex-col items-center justify-center bg-background px-4 py-12">
+        <div className="mx-auto max-w-md text-center">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-gray-100">
+            <svg
+              width="32"
+              height="32"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="text-gray-400"
+            >
+              <circle cx="12" cy="12" r="10" />
+              <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
+            </svg>
+          </div>
+          <h1 className="mt-4 text-xl font-bold text-foreground">
+            現在予約の受付を停止しています
+          </h1>
+          <p className="mt-2 text-sm text-muted">
+            このサービスは現在新規の予約を受け付けておりません。
+          </p>
+          <a
+            href={`/p/${slug}`}
+            className="mt-6 inline-flex items-center gap-2 rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-white hover:bg-accent/90 active:scale-[0.99]"
+          >
+            プロフィールページに戻る
+          </a>
+        </div>
+      </main>
+    );
+  }
 
   const service = profile.services.find(
     (s) => s.id === parseInt(serviceId, 10)

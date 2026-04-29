@@ -43,7 +43,8 @@ export async function POST(request: NextRequest) {
           hadTrial: boolean;
           trialEnd: number | null;
           periodEnd: number | undefined;
-        } = { hadTrial: false, trialEnd: null, periodEnd: undefined };
+          stripeStatus: string | null;
+        } = { hadTrial: false, trialEnd: null, periodEnd: undefined, stripeStatus: null };
 
         if (session.subscription) {
           try {
@@ -55,6 +56,7 @@ export async function POST(request: NextRequest) {
               hadTrial: sub.trial_start !== null,
               trialEnd: sub.trial_end,
               periodEnd: sub.items?.data?.[0]?.current_period_end,
+              stripeStatus: sub.status,
             };
             log("stripe/webhook", "checkout.session.completed - subscription details", {
               subscriptionId: sub.id,
@@ -76,6 +78,12 @@ export async function POST(request: NextRequest) {
             stripe_customer_id: session.customer as string,
             stripe_subscription_id: session.subscription as string,
           };
+          // subscription_status を Stripe の状態に応じて設定
+          if (subData.stripeStatus === "trialing") {
+            updates.subscription_status = "trialing";
+          } else {
+            updates.subscription_status = "active";
+          }
           if (subData.hadTrial) {
             updates.had_trial = true;
           }
@@ -322,6 +330,16 @@ export async function POST(request: NextRequest) {
 
         const updates: Record<string, unknown> = {};
 
+        // subscription_status を Stripe の status に応じて更新
+        const stripeStatus = subscription.status;
+        if (stripeStatus === "active") {
+          updates.subscription_status = "active";
+        } else if (stripeStatus === "trialing") {
+          updates.subscription_status = "trialing";
+        } else if (stripeStatus === "past_due") {
+          updates.subscription_status = "past_due";
+        }
+
         // プラン変更がある場合
         if (newPlan) {
           updates.plan = newPlan;
@@ -403,10 +421,12 @@ export async function POST(request: NextRequest) {
         if (customerId) {
           // stripe_customer_id は残す（再サブスクライブ時に Customer を再利用するため）
           // stripe_subscription_id のみクリアする
+          // plan はそのまま維持（最後に有効だったプランを保持）
+          // subscription_status を inactive に設定
           await supabase
             .from("providers")
             .update({
-              plan: "basic",
+              subscription_status: "inactive",
               stripe_subscription_id: null,
               plan_period_end: null,
               trial_ends_at: null,

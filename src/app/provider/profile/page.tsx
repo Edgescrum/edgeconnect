@@ -1,6 +1,7 @@
 import { resolveUser } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { requireActiveSubscription } from "@/lib/auth/provider-session";
 import { getCategories } from "@/lib/constants/categories";
 import { ProfileEditForm } from "./profile-edit-form";
 
@@ -8,6 +9,8 @@ export default async function ProfileEditPage() {
   const user = await resolveUser();
   if (!user) redirect("/");
   if (user.role !== "provider") redirect("/");
+
+  await requireActiveSubscription(user.id);
 
   const supabase = await createClient();
   const { data: provider } = await supabase

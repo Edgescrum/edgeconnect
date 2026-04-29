@@ -14,6 +14,7 @@ interface InvoiceItem {
 }
 
 interface BillingClientProps {
+  subscriptionStatus: string;
   plan: string;
   planName: string;
   planPrice: number;
@@ -468,6 +469,7 @@ function StatusNotice({
  * ========================================================== */
 
 export function BillingClient({
+  subscriptionStatus,
   plan,
   planName,
   planPrice,
@@ -562,6 +564,37 @@ export function BillingClient({
             }`}
           >
             {message.text}
+          </div>
+        )}
+
+        {/* past_due 警告バナー */}
+        {subscriptionStatus === "past_due" && (
+          <div className="rounded-2xl bg-amber-50 p-4 sm:p-5 ring-1 ring-amber-200">
+            <div className="flex items-start gap-3">
+              <AlertTriangleIcon className="mt-0.5 shrink-0 text-amber-600" />
+              <div className="min-w-0 flex-1">
+                <p className="font-semibold text-amber-700">
+                  お支払いに問題があります
+                </p>
+                <p className="mt-1.5 text-sm text-amber-600">
+                  カード情報を更新してください。更新されない場合、サブスクリプションが停止される可能性があります。
+                </p>
+                <button
+                  onClick={() => handlePortal("payment_method_update")}
+                  disabled={!!loading}
+                  className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700 active:scale-[0.99] disabled:opacity-50"
+                >
+                  {loading === "payment_method_update" ? (
+                    <Spinner size="sm" />
+                  ) : (
+                    <>
+                      <CreditCardIcon className="text-white" />
+                      カード情報を更新する
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
           </div>
         )}
 

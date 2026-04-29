@@ -94,6 +94,7 @@ export async function POST(request: NextRequest) {
           stripe_customer_id: session.customer as string,
           stripe_subscription_id: session.subscription as string,
           plan: "standard",
+          subscription_status: hadTrialInSession ? "trialing" : "active",
         };
         if (hadTrialInSession) {
           updates.had_trial = true;
@@ -159,6 +160,7 @@ export async function POST(request: NextRequest) {
           stripe_customer_id: customer.id,
           stripe_subscription_id: subscription.id,
           plan: "standard",
+          subscription_status: subscription.status === "trialing" ? "trialing" : "active",
         };
 
         // trial/period 情報も取得
