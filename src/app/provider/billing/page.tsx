@@ -130,7 +130,8 @@ export default async function BillingPage() {
       }
 
       // DB sync: if trial/period/cancel_at not in DB but available from Stripe, update DB
-      const stripeCancelAt = cancelAtPeriodEnd && cancelAt ? cancelAt : null;
+      // cancelAt は cancel_at_period_end=true（通常解約）でも cancel_at 単体（トライアル中解約）でも有効
+      const stripeCancelAt = cancelAt || null;
       const needsSync =
         (!p.trial_ends_at && stripeTrialEnd) ||
         (!p.plan_period_end && stripePeriodEnd) ||
@@ -165,8 +166,8 @@ export default async function BillingPage() {
     }
   }
 
-  // Stripe API が cancelAtPeriodEnd を返さなかった場合、DB の cancel_at をフォールバック
-  if (!cancelAtPeriodEnd && p.cancel_at) {
+  // Stripe API から cancel_at を取得できなかった場合、DB の cancel_at をフォールバック
+  if (!cancelAt && p.cancel_at) {
     cancelAtPeriodEnd = true;
     cancelAt = p.cancel_at;
   }
