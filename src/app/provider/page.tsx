@@ -53,19 +53,16 @@ export default async function ProviderPage() {
       .eq("provider_id", provider.id),
     supabase
       .from("provider_settings")
-      .select("business_hours")
+      .select("business_hours, profile_completed, schedule_completed, qrcode_viewed")
       .eq("provider_id", provider.id)
       .single(),
   ]);
 
-  const hasBusinessHours = settings?.business_hours
-    ? Object.values(settings.business_hours as Record<string, unknown>).some((v) => v !== null)
-    : false;
-
   const onboarding = {
     hasService: (serviceCount || 0) > 0,
-    hasSchedule: hasBusinessHours,
-    hasProfile: !!(provider.icon_url || provider.name),
+    hasProfile: settings?.profile_completed ?? false,
+    hasSchedule: settings?.schedule_completed ?? false,
+    hasQrcode: settings?.qrcode_viewed ?? false,
   };
 
   return (

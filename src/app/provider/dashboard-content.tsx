@@ -1,12 +1,13 @@
 import Link from "next/link";
-import Image from "next/image";
 import type { ProviderBase } from "@/lib/types/provider";
 import { RegisterCompleteModal } from "@/components/RegisterCompleteModal";
+import { ProviderAvatar } from "@/components/ProviderAvatar";
 
 interface Onboarding {
   hasService: boolean;
-  hasSchedule: boolean;
   hasProfile: boolean;
+  hasSchedule: boolean;
+  hasQrcode: boolean;
 }
 
 const onboardingSteps = [
@@ -17,16 +18,22 @@ const onboardingSteps = [
     desc: "お客さまが予約できるメニューを登録しましょう",
   },
   {
+    key: "hasProfile" as const,
+    href: "/provider/profile",
+    title: "プロフィールを設定",
+    desc: "連絡先・アイコン・紹介文を設定しましょう",
+  },
+  {
     key: "hasSchedule" as const,
     href: "/provider/schedule",
     title: "営業時間を設定",
     desc: "予約を受け付ける曜日・時間を設定しましょう",
   },
   {
-    key: "hasProfile" as const,
-    href: "/provider/profile",
-    title: "プロフィールを仕上げる",
-    desc: "アイコンや紹介文を設定しましょう",
+    key: "hasQrcode" as const,
+    href: "/provider/qrcode",
+    title: "QRコードを確認",
+    desc: "お客さまに共有するQRコードを確認しましょう",
   },
 ];
 
@@ -105,13 +112,9 @@ export function ProviderDashboard({
           </div>
           <Link
             href={`/p/${provider.slug}`}
-            className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent text-sm font-bold text-white overflow-hidden"
+            className="flex h-10 w-10 items-center justify-center rounded-xl overflow-hidden"
           >
-            {provider.icon_url ? (
-              <Image src={provider.icon_url} alt={provider.name} width={40} height={40} className="h-10 w-10 object-cover" />
-            ) : (
-              provider.name[0]
-            )}
+            <ProviderAvatar iconUrl={provider.icon_url} name={provider.name} size={40} className="rounded-xl" />
           </Link>
         </div>
 
@@ -150,12 +153,8 @@ export function ProviderDashboard({
             href={`/p/${provider.slug}`}
             className="flex items-center gap-3 rounded-xl bg-card px-4 py-2.5 ring-1 ring-border hover:bg-background"
           >
-            <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-lg bg-accent text-xs font-bold text-white">
-              {provider.icon_url ? (
-                <Image src={provider.icon_url} alt={provider.name} width={32} height={32} className="h-8 w-8 object-cover" />
-              ) : (
-                provider.name[0]
-              )}
+            <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-lg">
+              <ProviderAvatar iconUrl={provider.icon_url} name={provider.name} size={32} className="rounded-lg" />
             </div>
             <span className="text-sm font-medium">公開ページを見る</span>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-muted">
@@ -339,13 +338,6 @@ function MobileOnboarding({
             </Link>
           );
         })}
-        {completedCount >= 3 && (
-          <Link href="/provider/qrcode" className="flex items-center gap-3 rounded-xl bg-accent p-3 text-white active:scale-[0.99]">
-            <span className="text-lg">📱</span>
-            <div className="flex-1"><p className="text-sm font-semibold">QRコードをお客さまに共有</p></div>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="opacity-70"><path d="m9 18 6-6-6-6" /></svg>
-          </Link>
-        )}
       </div>
     </div>
   );

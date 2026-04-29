@@ -8,14 +8,12 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Spinner } from "@/components/Spinner";
 import { Alert } from "@/components/Alert";
-import { ContactMethodToggles, type ContactMethodState } from "@/components/ContactMethodToggles";
-import { FormLabel, FormInput, FormTextarea } from "@/components/FormField";
-import { isValidEmail } from "@/lib/validation/email";
+import { FormLabel, FormInput } from "@/components/FormField";
 
 const STEPS = [
   { title: "お店の名前", icon: "🏠" },
   { title: "予約ページURL", icon: "🔗" },
-  { title: "連絡先・プロフィール", icon: "✨" },
+  { title: "利用規約", icon: "📋" },
   { title: "完了", icon: "🎉" },
 ];
 
@@ -80,7 +78,7 @@ export function RegisterWizard({ categories: PROVIDER_CATEGORIES }: { categories
           router.push("/provider");
         } catch (e) {
           setError(e instanceof Error ? e.message : "登録に失敗しました");
-          setStep(2); // フォームに戻す
+          setStep(1); // フォームに戻す
           setCheckoutProcessing(false);
         }
       })();
@@ -96,18 +94,8 @@ export function RegisterWizard({ categories: PROVIDER_CATEGORIES }: { categories
             setSlug(parsed.slug);
             setSlugStatus("available");
           }
-          if (parsed.bio) setBio(parsed.bio);
           if (parsed.category) setCategory(parsed.category);
           if (parsed.terms_agreed === "1") setTermsAgreed(true);
-          if (parsed.line_id) {
-            setContactMethod(prev => ({ ...prev, lineEnabled: true, lineId: parsed.line_id }));
-          }
-          if (parsed.contact_email) {
-            setContactMethod(prev => ({ ...prev, emailEnabled: true, contactEmail: parsed.contact_email }));
-          }
-          if (parsed.contact_phone) {
-            setContactMethod(prev => ({ ...prev, phoneEnabled: true, contactPhone: parsed.contact_phone }));
-          }
         } catch { /* ignore */ }
       }
       setStep(2);
@@ -133,17 +121,7 @@ export function RegisterWizard({ categories: PROVIDER_CATEGORIES }: { categories
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
   const [slugStatus, setSlugStatus] = useState<"idle" | "checking" | "available" | "taken" | "reserved">("idle");
-  const [bio, setBio] = useState("");
-  const [iconFile, setIconFile] = useState<File | null>(null);
   const [category, setCategory] = useState("");
-  const [contactMethod, setContactMethod] = useState<ContactMethodState>({
-    lineEnabled: true,
-    lineId: "",
-    emailEnabled: false,
-    contactEmail: "",
-    phoneEnabled: false,
-    contactPhone: "",
-  });
   const [termsAgreed, setTermsAgreed] = useState(false);
 
   async function handleSlugChange(value: string) {
@@ -166,22 +144,10 @@ export function RegisterWizard({ categories: PROVIDER_CATEGORIES }: { categories
       const formDataObj: Record<string, string> = {
         slug,
         name,
-        bio,
         plan: "standard",
       };
       if (category) formDataObj.category = category;
-      if (contactMethod.lineEnabled && contactMethod.lineId) {
-        formDataObj.line_id = contactMethod.lineId;
-      }
-      if (contactMethod.emailEnabled && contactMethod.contactEmail) {
-        formDataObj.contact_email = contactMethod.contactEmail;
-      }
-      if (contactMethod.phoneEnabled && contactMethod.contactPhone) {
-        formDataObj.contact_phone = contactMethod.contactPhone;
-      }
       if (termsAgreed) formDataObj.terms_agreed = "1";
-      // アイコンファイルは sessionStorage に保存できないため、checkout 後に再アップロードが必要
-      // ただし UX を優先して、provider 作成時にデフォルトアイコンを生成する
       sessionStorage.setItem("peco_register_form", JSON.stringify(formDataObj));
 
       // Stripe Checkout セッション作成 → リダイレクト（provider 作成前）
@@ -210,7 +176,6 @@ export function RegisterWizard({ categories: PROVIDER_CATEGORIES }: { categories
         Object.entries(formDataObj).forEach(([key, value]) => {
           formData.set(key, value);
         });
-        if (iconFile) formData.set("icon", iconFile);
         await registerProvider(formData);
         sessionStorage.removeItem("peco_register_form");
         sessionStorage.removeItem("peco_user");
@@ -227,14 +192,7 @@ export function RegisterWizard({ categories: PROVIDER_CATEGORIES }: { categories
     switch (step) {
       case 0: return name.trim().length > 0 && category !== "";
       case 1: return slug.length >= 3 && slugStatus === "available";
-      case 2: {
-        if (!termsAgreed) return false;
-        if (!contactMethod.lineEnabled && !contactMethod.emailEnabled && !contactMethod.phoneEnabled) return false;
-        if (contactMethod.lineEnabled && !contactMethod.lineId.trim()) return false;
-        if (contactMethod.emailEnabled && !isValidEmail(contactMethod.contactEmail)) return false;
-        if (contactMethod.phoneEnabled && !contactMethod.contactPhone.trim()) return false;
-        return true;
-      }
+      case 2: return termsAgreed;
       default: return true;
     }
   };
@@ -321,63 +279,13 @@ export function RegisterWizard({ categories: PROVIDER_CATEGORIES }: { categories
                 {slugStatus === "reserved" && <p className="text-xs text-red-500">このURLは使用できません</p>}
               </div>
               <p className="mt-2 text-xs text-muted">半角英数字とハイフン（-）が使えます。3文字以上で入力してください。</p>
-            </section>
-
-            {/* 連絡先・プロフィール */}
-            <section className="rounded-2xl bg-card p-6 shadow-sm ring-1 ring-border">
-              <div className="flex items-center gap-3 mb-5">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-accent text-sm font-bold text-white">3</div>
-                <h2 className="text-lg font-bold">連絡先・プロフィール</h2>
-              </div>
-              <div className="space-y-5">
-                <ContactMethodToggles
-                  state={contactMethod}
-                  onChange={setContactMethod}
-                  showValidationError={!contactMethod.lineEnabled && !contactMethod.emailEnabled && !contactMethod.phoneEnabled}
-                />
-
-                {/* Bio */}
-                <div>
-                  <FormLabel>
-                    自己紹介 <span className="text-xs text-muted">(任意)</span>
-                  </FormLabel>
-                  <FormTextarea
-                    value={bio}
-                    onChange={(e) => setBio(e.target.value)}
-                    rows={3}
-                    placeholder="例：表参道で10年の経験を持つヘアスタイリストです。"
-                    className="text-sm"
-                  />
-                </div>
-
-                {/* Icon */}
-                <div>
-                  <FormLabel>
-                    アイコン画像 <span className="text-xs text-muted">(任意)</span>
-                  </FormLabel>
-                  <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-dashed border-border bg-background px-4 py-4 hover:bg-accent-bg transition-colors">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-accent-bg text-accent">
-                      {iconFile ? "✓" : "+"}
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium">{iconFile ? iconFile.name : "画像を選択"}</p>
-                      <p className="text-xs text-muted">お客さまに表示されるアイコンです</p>
-                    </div>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => setIconFile(e.target.files?.[0] || null)}
-                    />
-                  </label>
-                </div>
-              </div>
+              <p className="mt-1 text-xs text-red-500">※ 予約ページURLはあとから変更できません</p>
             </section>
 
             {/* 利用規約同意 */}
             <section className="rounded-2xl bg-card p-6 shadow-sm ring-1 ring-border">
               <div className="flex items-center gap-3 mb-5">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-accent text-sm font-bold text-white">4</div>
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-accent text-sm font-bold text-white">3</div>
                 <h2 className="text-lg font-bold">利用規約への同意</h2>
               </div>
               <label className="flex items-start gap-3 cursor-pointer">
@@ -405,7 +313,7 @@ export function RegisterWizard({ categories: PROVIDER_CATEGORIES }: { categories
 
             <button
               onClick={handleSubmit}
-              disabled={submitting || !termsAgreed || !name.trim() || !category || slug.length < 3 || slugStatus !== "available" || (!contactMethod.lineEnabled && !contactMethod.emailEnabled && !contactMethod.phoneEnabled) || (contactMethod.lineEnabled && !contactMethod.lineId.trim()) || (contactMethod.emailEnabled && !isValidEmail(contactMethod.contactEmail)) || (contactMethod.phoneEnabled && !contactMethod.contactPhone.trim())}
+              disabled={submitting || !termsAgreed || !name.trim() || !category || slug.length < 3 || slugStatus !== "available"}
               className="w-full rounded-xl bg-accent py-4 text-lg font-semibold text-white shadow-lg shadow-accent/25 disabled:opacity-40 hover:opacity-90 transition-opacity"
             >
               {submitting ? "処理中..." : "カード登録に進む（初月無料）"}
@@ -552,6 +460,7 @@ export function RegisterWizard({ categories: PROVIDER_CATEGORIES }: { categories
                   お店の名前やあなたの名前がおすすめです。
                 </p>
               </div>
+              <p className="mt-2 text-xs text-red-500">※ 予約ページURLはあとから変更できません</p>
             </div>
 
             <div className={`fixed bottom-0 left-0 right-0 bg-background px-4 pb-8 pt-3 transition-opacity ${keyboardOpen ? "pointer-events-none opacity-0" : ""}`}>
@@ -574,87 +483,34 @@ export function RegisterWizard({ categories: PROVIDER_CATEGORIES }: { categories
           </div>
         )}
 
-        {/* Step 2: Contact & Profile */}
+        {/* Step 2: Terms Agreement */}
         {step === 2 && (
           <div className="pt-4 pb-24">
-            <div>
-              <p className="text-4xl">{STEPS[2].icon}</p>
-              <h1 className="mt-4 text-2xl font-bold">連絡先・プロフィール</h1>
-              <p className="mt-2 text-sm text-muted">
-                お客さまからの連絡方法を選択してください。
-              </p>
+            <p className="text-4xl">{STEPS[2].icon}</p>
+            <h1 className="mt-4 text-2xl font-bold">利用規約への同意</h1>
+            <p className="mt-2 text-sm text-muted">
+              ご利用の前に、以下の規約をご確認ください。
+            </p>
 
-              <div className="mt-6 space-y-5">
-                <ContactMethodToggles
-                  state={contactMethod}
-                  onChange={setContactMethod}
-                  showValidationError={!contactMethod.lineEnabled && !contactMethod.emailEnabled && !contactMethod.phoneEnabled}
-                />
-
-                {/* Bio */}
-                <div>
-                  <FormLabel>
-                    自己紹介
-                    <span className="ml-1 text-xs text-muted">(任意)</span>
-                  </FormLabel>
-                  <FormTextarea
-                    id="bio-input"
-                    value={bio}
-                    onChange={(e) => setBio(e.target.value)}
-                    rows={3}
-                    enterKeyHint="done"
-                    placeholder="例：表参道で10年の経験を持つヘアスタイリストです。"
-                    className="text-sm"
+            <div className="mt-6">
+              <div className="rounded-xl border border-border bg-card p-4">
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={termsAgreed}
+                    onChange={(e) => setTermsAgreed(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 shrink-0 rounded border-border accent-accent"
                   />
-                </div>
-
-                {/* Icon */}
-                <div>
-                  <FormLabel>
-                    アイコン画像
-                    <span className="ml-1 text-xs text-muted">(任意)</span>
-                  </FormLabel>
-                  <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-dashed border-border bg-card px-4 py-4 active:bg-accent-bg">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-accent-bg text-accent">
-                      {iconFile ? "✓" : "+"}
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium">
-                        {iconFile ? iconFile.name : "画像を選択"}
-                      </p>
-                      <p className="text-xs text-muted">
-                        お客さまに表示されるアイコンです
-                      </p>
-                    </div>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => setIconFile(e.target.files?.[0] || null)}
-                    />
-                  </label>
-                </div>
-
-                {/* 利用規約同意 */}
-                <div className="rounded-xl border border-border bg-card p-4">
-                  <label className="flex items-start gap-3 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={termsAgreed}
-                      onChange={(e) => setTermsAgreed(e.target.checked)}
-                      className="mt-0.5 h-4 w-4 shrink-0 rounded border-border accent-accent"
-                    />
-                    <span className="text-xs leading-relaxed">
-                      <Link href="/legal/terms" target="_blank" className="text-accent underline">利用規約</Link>
-                      {" "}および{" "}
-                      <Link href="/legal/privacy" target="_blank" className="text-accent underline">プライバシーポリシー</Link>
-                      {" "}に同意します
-                    </span>
-                  </label>
-                  <p className="mt-2 pl-7 text-[10px] text-muted">
-                    <Link href="/legal/commercial" target="_blank" className="text-accent underline">特定商取引法に基づく表記</Link>もご確認ください。
-                  </p>
-                </div>
+                  <span className="text-xs leading-relaxed">
+                    <Link href="/legal/terms" target="_blank" className="text-accent underline">利用規約</Link>
+                    {" "}および{" "}
+                    <Link href="/legal/privacy" target="_blank" className="text-accent underline">プライバシーポリシー</Link>
+                    {" "}に同意します
+                  </span>
+                </label>
+                <p className="mt-2 pl-7 text-[10px] text-muted">
+                  <Link href="/legal/commercial" target="_blank" className="text-accent underline">特定商取引法に基づく表記</Link>もご確認ください。
+                </p>
               </div>
             </div>
 

@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 
 import type { ProviderBase } from "@/lib/types/provider";
 import { GearIcon, SearchIcon, CalendarIcon, ChevronRightIcon, HeartIcon } from "@/components/icons";
+import { ProviderAvatar } from "@/components/ProviderAvatar";
 
 interface RecentProvider extends ProviderBase {
   lastService: string;
@@ -80,12 +80,8 @@ export function DashboardClient({
                 href="/provider"
                 className="flex items-center gap-4 rounded-2xl bg-card p-4 shadow-sm ring-1 ring-border active:scale-[0.99]"
               >
-                <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-xl bg-accent text-sm font-bold text-white">
-                  {provider?.icon_url ? (
-                    <Image src={provider.icon_url} alt={provider.name || ""} width={44} height={44} className="h-11 w-11 object-cover" />
-                  ) : (
-                    provider?.name?.[0] || "E"
-                  )}
+                <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-xl">
+                  <ProviderAvatar iconUrl={provider?.icon_url} name={provider?.name} size={44} className="rounded-xl" />
                 </div>
                 <div className="flex-1">
                   <p className="font-semibold">{provider?.name || "管理画面"}</p>
@@ -177,12 +173,8 @@ export function DashboardClient({
               href="/provider"
               className="col-span-12 flex items-center gap-5 rounded-2xl bg-card p-5 shadow-sm ring-1 ring-border hover:ring-accent/30 hover:shadow-md transition-all lg:col-span-6"
             >
-              <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-accent text-lg font-bold text-white">
-                {provider?.icon_url ? (
-                  <Image src={provider.icon_url} alt={provider.name || ""} width={56} height={56} className="h-14 w-14 object-cover" />
-                ) : (
-                  provider?.name?.[0] || "E"
-                )}
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl">
+                <ProviderAvatar iconUrl={provider?.icon_url} name={provider?.name} size={56} className="rounded-2xl" />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-lg font-bold truncate">{provider?.name || "管理画面"}</p>
@@ -237,12 +229,8 @@ export function DashboardClient({
                       href={`/p/${rp.slug}`}
                       className="flex items-center gap-4 rounded-2xl bg-card p-4 shadow-sm ring-1 ring-border hover:ring-accent/30 hover:shadow-md transition-all"
                     >
-                      <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-slate-100 text-sm font-semibold text-slate-400">
-                        {rp.icon_url ? (
-                          <Image src={rp.icon_url} alt={rp.name} width={44} height={44} className="h-11 w-11 object-cover" />
-                        ) : (
-                          rp.name[0]
-                        )}
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl">
+                        <ProviderAvatar iconUrl={rp.icon_url} name={rp.name} size={44} className="rounded-xl" />
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="font-semibold truncate">{rp.name}</p>
@@ -268,12 +256,8 @@ function RecentProviderCard({ rp }: { rp: RecentProvider }) {
       href={`/p/${rp.slug}`}
       className="flex items-center gap-3.5 rounded-xl bg-background p-3.5 ring-1 ring-border active:scale-[0.99]"
     >
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-slate-100 text-sm font-semibold text-slate-500">
-        {rp.icon_url ? (
-          <Image src={rp.icon_url} alt={rp.name} width={36} height={36} className="h-9 w-9 object-cover" />
-        ) : (
-          rp.name[0]
-        )}
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full">
+        <ProviderAvatar iconUrl={rp.icon_url} name={rp.name} size={36} className="rounded-full" />
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-semibold truncate">{rp.name}</p>

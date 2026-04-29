@@ -18,10 +18,8 @@ async function cleanOldIcons(adminSupabase: SupabaseClient, lineUserId: string) 
     .from("avatars")
     .list(lineUserId);
   if (!files) return;
-  // icon-default.png以外の古いファイルを削除
-  const toDelete = files
-    .filter((f) => f.name !== "icon-default.png")
-    .map((f) => `${lineUserId}/${f.name}`);
+  // 古いファイルを削除
+  const toDelete = files.map((f) => `${lineUserId}/${f.name}`);
   if (toDelete.length > 0) {
     await adminSupabase.storage.from("avatars").remove(toDelete);
   }
@@ -63,32 +61,6 @@ async function uploadIcon(
   return publicUrl;
 }
 
-async function generateDefaultIcon(
-  adminSupabase: SupabaseClient,
-  lineUserId: string,
-  name: string
-): Promise<string | null> {
-  const initial = (name || "?")[0];
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256">
-    <rect width="256" height="256" rx="48" fill="${brand.primary}"/>
-    <text x="128" y="140" text-anchor="middle" dominant-baseline="middle"
-      font-family="sans-serif" font-size="120" font-weight="bold" fill="#fff">${initial}</text>
-  </svg>`;
-  const pngBuffer = await sharp(Buffer.from(svg)).png().toBuffer();
-  const path = `${lineUserId}/icon-default.png`;
-  const { error } = await adminSupabase.storage
-    .from("avatars")
-    .upload(path, pngBuffer, {
-      upsert: true,
-      contentType: "image/png",
-    });
-  if (error) {
-    logError("generateDefaultIcon", "upload failed", error);
-    return null;
-  }
-  const { data: { publicUrl } } = adminSupabase.storage.from("avatars").getPublicUrl(path);
-  return publicUrl;
-}
 
 export async function registerProvider(formData: FormData) {
   // cookieからのみ認証（formDataのlineUserIdは受け付けない）
@@ -123,14 +95,18 @@ export async function registerProvider(formData: FormData) {
 
   // アイコン画像アップロード（512x512 PNGにリサイズ）
   let iconUrl: string | null = null;
+  const preUploadedIconUrl = formData.get("icon_url") as string | null;
   const iconFile = formData.get("icon") as File | null;
   try {
-    if (iconFile && iconFile.size > 0) {
+    if (preUploadedIconUrl) {
+      // Stripe Checkout フロー: 事前アップロード済みのURLを使用
+      iconUrl = preUploadedIconUrl;
+    } else if (iconFile && iconFile.size > 0) {
       validateImageFile(iconFile);
       iconUrl = await uploadIcon(adminSupabase, user.lineUserId, iconFile);
     } else {
-      // 未設定時: 頭文字のデフォルトアイコンを生成
-      iconUrl = await generateDefaultIcon(adminSupabase, user.lineUserId, name);
+      // 未設定時: icon_url を null のまま（ProviderAvatar のフォールバックで人型アイコンを表示）
+      iconUrl = null;
     }
   } catch (err) {
     // アップロードエラーは日本語メッセージを持つ Error をそのまま投げる
@@ -256,8 +232,28 @@ export async function updateProfile(formData: FormData) {
 
   if (error) throw new Error(error.message);
 
+  // オンボーディングフラグ: プロフィール保存完了
+  await supabase
+    .from("provider_settings")
+    .update({ profile_completed: true })
+    .eq("provider_id", provider.id);
+
   revalidatePath(`/p/${provider.slug}`);
   revalidatePath("/provider/profile");
+  revalidatePath("/provider");
+}
+
+/** Stripe Checkout 前にアイコンを事前アップロードする */
+export async function uploadProviderIcon(formData: FormData): Promise<string | null> {
+  const user = await resolveUser();
+  if (!user) throw new Error("Not authenticated");
+
+  const iconFile = formData.get("icon") as File | null;
+  if (!iconFile || iconFile.size === 0) return null;
+
+  validateImageFile(iconFile);
+  const adminSupabase = createAdminClient();
+  return await uploadIcon(adminSupabase, user.lineUserId, iconFile);
 }
 
 export async function checkSlugAvailability(slug: string): Promise<{ available: boolean; reason?: string }> {

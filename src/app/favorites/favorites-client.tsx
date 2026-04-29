@@ -2,8 +2,8 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import type { FavoriteItem } from "@/lib/actions/favorite";
+import { ProviderAvatar } from "@/components/ProviderAvatar";
 import { toggleFavorite } from "@/lib/actions/favorite";
 import type { Category } from "@/lib/constants/categories";
 import { CategorySelector } from "@/components/CategorySelector";
@@ -133,18 +133,8 @@ function FavoriteCard({
   return (
     <div className="flex items-center gap-3.5 rounded-xl bg-card p-3.5 ring-1 ring-border">
       <Link href={`/p/${provider.slug}`} className="flex flex-1 items-center gap-3.5 min-w-0">
-        <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-slate-100 text-sm font-semibold text-slate-400">
-          {provider.icon_url ? (
-            <Image
-              src={provider.icon_url}
-              alt={provider.name}
-              width={48}
-              height={48}
-              className="h-12 w-12 object-cover"
-            />
-          ) : (
-            provider.name[0]
-          )}
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl">
+          <ProviderAvatar iconUrl={provider.icon_url} name={provider.name} size={48} className="rounded-xl" />
         </div>
         <div className="min-w-0 flex-1">
           <p className="font-semibold truncate">{provider.name}</p>
@@ -195,18 +185,8 @@ function FavoriteCardPC({
     <div className="rounded-2xl bg-card p-5 shadow-sm ring-1 ring-border hover:ring-accent/30 hover:shadow-md transition-all">
       <div className="flex items-start justify-between">
         <Link href={`/p/${provider.slug}`} className="flex items-center gap-3.5 min-w-0 flex-1">
-          <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-slate-100 text-lg font-semibold text-slate-400">
-            {provider.icon_url ? (
-              <Image
-                src={provider.icon_url}
-                alt={provider.name}
-                width={56}
-                height={56}
-                className="h-14 w-14 object-cover"
-              />
-            ) : (
-              provider.name[0]
-            )}
+          <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl">
+            <ProviderAvatar iconUrl={provider.icon_url} name={provider.name} size={56} className="rounded-2xl" />
           </div>
           <div className="min-w-0 flex-1">
             <p className="font-semibold truncate">{provider.name}</p>

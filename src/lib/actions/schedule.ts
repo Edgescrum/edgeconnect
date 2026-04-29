@@ -21,11 +21,12 @@ export async function updateBusinessHours(hours: BusinessHours) {
 
   const { error } = await supabase
     .from("provider_settings")
-    .update({ business_hours: hours })
+    .update({ business_hours: hours, schedule_completed: true })
     .eq("provider_id", providerId);
 
   if (error) throw new Error(error.message);
   revalidatePath("/provider/schedule");
+  revalidatePath("/provider");
 }
 
 export async function updateInterval(
@@ -40,11 +41,13 @@ export async function updateInterval(
     .update({
       interval_before_min: intervalBeforeMin,
       interval_after_min: intervalAfterMin,
+      schedule_completed: true,
     })
     .eq("provider_id", providerId);
 
   if (error) throw new Error(error.message);
   revalidatePath("/provider/schedule");
+  revalidatePath("/provider");
 }
 
 export async function updateSlotStep(slotStepMin: number) {
