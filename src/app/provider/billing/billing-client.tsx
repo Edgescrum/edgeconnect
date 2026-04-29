@@ -654,19 +654,6 @@ export function BillingClient({
                   </div>
                 )}
 
-                {/* Trial end date */}
-                {isTrialing && trialEndLabel && (
-                  <div className="flex items-center gap-2.5 text-sm">
-                    <CalendarIcon className="shrink-0 text-blue-500" />
-                    <div className="min-w-0">
-                      <span className="text-blue-600">トライアル終了日</span>
-                      <p className="font-medium text-blue-700">
-                        {trialEndLabel}
-                      </p>
-                    </div>
-                  </div>
-                )}
-
                 {/* Cancel end date */}
                 {cancelAtPeriodEnd && cancelAtLabel && (
                   <div className="flex items-center gap-2.5 text-sm">
