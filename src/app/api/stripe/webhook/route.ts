@@ -280,6 +280,14 @@ export async function POST(request: NextRequest) {
         const subscription = event.data.object as Stripe.Subscription;
         const customerId = subscription.customer as string;
 
+        log("stripe/webhook", "subscription.updated - received", {
+          customerId,
+          subscriptionId: subscription.id,
+          cancelAtPeriodEnd: subscription.cancel_at_period_end,
+          cancelAt: subscription.cancel_at,
+          status: subscription.status,
+        });
+
         if (!customerId) break;
 
         // プラン変更を検出
@@ -293,11 +301,24 @@ export async function POST(request: NextRequest) {
         }
 
         // 現在のプランを取得してダウングレード/アップグレードを判定
-        const { data: currentProvider } = await supabase
+        const { data: currentProvider, error: providerLookupErr } = await supabase
           .from("providers")
-          .select("plan")
+          .select("id, plan")
           .eq("stripe_customer_id", customerId)
           .single();
+
+        if (providerLookupErr || !currentProvider) {
+          logError("stripe/webhook", "subscription.updated - provider not found", {
+            customerId,
+            error: providerLookupErr,
+          });
+          break;
+        }
+
+        log("stripe/webhook", "subscription.updated - provider found", {
+          providerId: currentProvider.id,
+          currentPlan: currentProvider.plan,
+        });
 
         const updates: Record<string, unknown> = {};
 
@@ -306,11 +327,11 @@ export async function POST(request: NextRequest) {
           updates.plan = newPlan;
 
           // ダウングレード時: downgraded_at を記録
-          if (currentProvider?.plan === "standard" && newPlan === "basic") {
+          if (currentProvider.plan === "standard" && newPlan === "basic") {
             updates.downgraded_at = new Date().toISOString();
           }
           // アップグレード時: downgraded_at をクリア（3ヶ月以内のデータ復活）
-          if (currentProvider?.plan === "basic" && newPlan === "standard") {
+          if (currentProvider.plan === "basic" && newPlan === "standard") {
             updates.downgraded_at = null;
           }
         }
@@ -340,6 +361,7 @@ export async function POST(request: NextRequest) {
           }
           log("stripe/webhook", "subscription.updated - cancel scheduled", {
             customerId,
+            providerId: currentProvider.id,
             cancelAt: updates.cancel_at,
           });
         } else {
@@ -348,17 +370,27 @@ export async function POST(request: NextRequest) {
         }
 
         if (Object.keys(updates).length > 0) {
-          await supabase
+          const { error: updateErr } = await supabase
             .from("providers")
             .update(updates)
             .eq("stripe_customer_id", customerId);
 
-          log("stripe/webhook", "subscription.updated", {
-            customerId,
-            newPlan,
-            cancelAtPeriodEnd: subscription.cancel_at_period_end,
-            updates: Object.keys(updates),
-          });
+          if (updateErr) {
+            logError("stripe/webhook", "subscription.updated - DB update failed", {
+              customerId,
+              providerId: currentProvider.id,
+              updates,
+              error: updateErr,
+            });
+          } else {
+            log("stripe/webhook", "subscription.updated - DB updated", {
+              customerId,
+              providerId: currentProvider.id,
+              newPlan,
+              cancelAtPeriodEnd: subscription.cancel_at_period_end,
+              updates: Object.keys(updates),
+            });
+          }
         }
         break;
       }

@@ -150,12 +150,11 @@ export default async function BillingPage() {
         } else if (!stripeCancelAt && p.cancel_at) {
           syncUpdates.cancel_at = null;
         }
-        // Fire and forget - don't block page render
-        supabase
+        // DB sync を確実に実行する（Webhook 未到達時のフォールバック）
+        await supabase
           .from("providers")
           .update(syncUpdates)
-          .eq("id", p.id)
-          .then(() => {});
+          .eq("id", p.id);
       }
     } catch {
       // If Stripe API fetch fails, use DB cancel_at as fallback
