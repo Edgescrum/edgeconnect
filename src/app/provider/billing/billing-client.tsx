@@ -338,11 +338,6 @@ function StatusNotice({
                 ? `${trialEndLabel}までスタンダードプランの全機能を無料でお試しいただけます。`
                 : "スタンダードプランの全機能を無料でお試しいただけます。"}
             </p>
-            <p className="mt-1 text-xs text-blue-500">
-              トライアル終了後、自動的に
-              {planPrice.toLocaleString()}
-              円/月の課金が開始されます
-            </p>
           </div>
         </div>
       </div>
@@ -396,7 +391,7 @@ function StatusNotice({
                 プラン変更が予約されています
               </p>
               <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-700 ring-1 ring-amber-200">
-                ダウングレード予定
+                変更予定
               </span>
             </div>
             <div className="mt-2 rounded-lg bg-white/60 px-3 py-2 ring-1 ring-amber-100">
@@ -435,7 +430,7 @@ function StatusNotice({
                 プランのアップグレードが予約されています
               </p>
               <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-semibold text-green-700 ring-1 ring-green-200">
-                アップグレード予定
+                変更予定
               </span>
             </div>
             {effectiveDate && (
