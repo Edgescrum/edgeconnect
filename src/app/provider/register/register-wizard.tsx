@@ -495,25 +495,23 @@ export function RegisterWizard({ categories: PROVIDER_CATEGORIES }: { categories
             </p>
 
             <div className="mt-6">
-              <div className="rounded-xl border border-border bg-card p-4">
-                <label className="flex items-start gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={termsAgreed}
-                    onChange={(e) => setTermsAgreed(e.target.checked)}
-                    className="mt-0.5 h-4 w-4 shrink-0 rounded border-border accent-accent"
-                  />
-                  <span className="text-xs leading-relaxed">
-                    <Link href="/legal/terms" target="_blank" className="text-accent underline">利用規約</Link>
-                    {" "}および{" "}
-                    <Link href="/legal/privacy" target="_blank" className="text-accent underline">プライバシーポリシー</Link>
-                    {" "}に同意します
-                  </span>
-                </label>
-                <p className="mt-2 pl-7 text-[10px] text-muted">
-                  <Link href="/legal/commercial" target="_blank" className="text-accent underline">特定商取引法に基づく表記</Link>もご確認ください。
-                </p>
-              </div>
+              <label className={`flex items-center gap-4 rounded-xl border-2 p-5 cursor-pointer transition-colors ${termsAgreed ? "border-accent bg-accent/5" : "border-border bg-card"}`}>
+                <input
+                  type="checkbox"
+                  checked={termsAgreed}
+                  onChange={(e) => setTermsAgreed(e.target.checked)}
+                  className="h-6 w-6 shrink-0 rounded border-border accent-accent"
+                />
+                <span className="text-sm leading-relaxed">
+                  <Link href="/legal/terms" target="_blank" className="text-accent underline">利用規約</Link>
+                  {" "}および{" "}
+                  <Link href="/legal/privacy" target="_blank" className="text-accent underline">プライバシーポリシー</Link>
+                  {" "}に同意します
+                </span>
+              </label>
+              <p className="mt-3 text-xs text-muted">
+                <Link href="/legal/commercial" target="_blank" className="text-accent underline">特定商取引法に基づく表記</Link>もご確認ください。
+              </p>
             </div>
 
             {error && (
