@@ -8,7 +8,16 @@ export async function proxy(request: NextRequest) {
   ) {
     return NextResponse.next();
   }
-  return await updateSession(request);
+
+  const response = await updateSession(request);
+
+  // Staging環境: Deployment Protection をバイパス
+  const bypassSecret = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
+  if (bypassSecret) {
+    response.headers.set("x-vercel-protection-bypass", bypassSecret);
+  }
+
+  return response;
 }
 
 export const config = {
