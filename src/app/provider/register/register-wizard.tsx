@@ -50,17 +50,30 @@ export function RegisterWizard({ categories: PROVIDER_CATEGORIES }: { categories
             sessionStorage.removeItem("peco_register_form");
             sessionStorage.removeItem("peco_user");
 
-            // Stripe サブスクリプションを provider に紐づけ
-            try {
-              await fetch("/api/stripe/link-subscription", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ sessionId }),
-              });
-            } catch {
-              // リンク失敗は致命的ではない（webhook が後から処理する）
-              console.warn("Failed to link subscription, webhook will handle it");
-            }
+            // Stripe サブスクリプションを provider に紐づけ（リトライ付き）
+            const linkSubscription = async (retries = 2) => {
+              for (let i = 0; i <= retries; i++) {
+                try {
+                  const res = await fetch("/api/stripe/link-subscription", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ sessionId }),
+                  });
+                  if (res.ok) {
+                    const data = await res.json();
+                    console.log("link-subscription result:", data);
+                    return;
+                  }
+                  console.warn(`link-subscription failed (attempt ${i + 1}): ${res.status}`);
+                  if (i < retries) await new Promise(r => setTimeout(r, 1000 * (i + 1)));
+                } catch (err) {
+                  console.warn(`link-subscription error (attempt ${i + 1}):`, err);
+                  if (i < retries) await new Promise(r => setTimeout(r, 1000 * (i + 1)));
+                }
+              }
+              console.warn("link-subscription: all retries exhausted, webhook will handle it");
+            };
+            await linkSubscription();
           }
           setStep(3);
         } catch (e) {

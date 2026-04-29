@@ -167,18 +167,102 @@ export async function POST(request: NextRequest) {
 
         if (customerId) {
           const periodEnd = invoice.lines?.data?.[0]?.period?.end;
-          if (periodEnd) {
-            await supabase
-              .from("providers")
-              .update({
-                plan_period_end: new Date(periodEnd * 1000).toISOString(),
-              })
-              .eq("stripe_customer_id", customerId);
+          // Stripe v22+ では invoice.parent.subscription_details.subscription から取得
+          const subscriptionId = (
+            invoice.parent?.subscription_details?.subscription
+              ? (typeof invoice.parent.subscription_details.subscription === "string"
+                  ? invoice.parent.subscription_details.subscription
+                  : invoice.parent.subscription_details.subscription.id)
+              : null
+          );
 
-            log("stripe/webhook", "invoice.paid", {
-              customerId,
-              periodEnd: new Date(periodEnd * 1000).toISOString(),
-            });
+          // subscription から trial_ends_at も取得
+          let invoiceTrialEnd: number | null = null;
+          let invoicePeriodEnd: number | undefined;
+          if (subscriptionId) {
+            try {
+              const stripe3 = getStripe();
+              const sub = await stripe3.subscriptions.retrieve(subscriptionId);
+              invoiceTrialEnd = sub.trial_end;
+              invoicePeriodEnd = sub.items?.data?.[0]?.current_period_end;
+            } catch {
+              // 取得失敗は無視
+            }
+          }
+
+          const invoiceUpdates: Record<string, unknown> = {};
+          if (invoicePeriodEnd) {
+            invoiceUpdates.plan_period_end = new Date(invoicePeriodEnd * 1000).toISOString();
+          } else if (periodEnd) {
+            invoiceUpdates.plan_period_end = new Date(periodEnd * 1000).toISOString();
+          }
+          if (invoiceTrialEnd) {
+            invoiceUpdates.trial_ends_at = new Date(invoiceTrialEnd * 1000).toISOString();
+          }
+          if (subscriptionId) {
+            invoiceUpdates.stripe_subscription_id = subscriptionId;
+          }
+
+          if (Object.keys(invoiceUpdates).length > 0) {
+            // まず stripe_customer_id で検索
+            const { data: providerByCustomer } = await supabase
+              .from("providers")
+              .select("id")
+              .eq("stripe_customer_id", customerId)
+              .single();
+
+            if (providerByCustomer) {
+              await supabase
+                .from("providers")
+                .update(invoiceUpdates)
+                .eq("id", providerByCustomer.id);
+
+              log("stripe/webhook", "invoice.paid - updated by customer_id", {
+                providerId: providerByCustomer.id,
+                customerId,
+                updates: invoiceUpdates,
+              });
+            } else {
+              // stripe_customer_id がまだ provider に紐づいていない場合
+              // Stripe Customer の metadata から user_id を取得して検索
+              try {
+                const stripe3 = getStripe();
+                const customer = await stripe3.customers.retrieve(customerId);
+                if (!("deleted" in customer && customer.deleted)) {
+                  const metaUserId = customer.metadata?.user_id;
+                  if (metaUserId) {
+                    const { data: providerByUser } = await supabase
+                      .from("providers")
+                      .select("id")
+                      .eq("user_id", Number(metaUserId))
+                      .single();
+
+                    if (providerByUser) {
+                      // stripe_customer_id も同時に紐づける
+                      invoiceUpdates.stripe_customer_id = customerId;
+                      await supabase
+                        .from("providers")
+                        .update(invoiceUpdates)
+                        .eq("id", providerByUser.id);
+
+                      log("stripe/webhook", "invoice.paid - updated by user_id fallback", {
+                        providerId: providerByUser.id,
+                        userId: metaUserId,
+                        customerId,
+                        updates: invoiceUpdates,
+                      });
+                    } else {
+                      log("stripe/webhook", "invoice.paid - provider not found by user_id", {
+                        userId: metaUserId,
+                        customerId,
+                      });
+                    }
+                  }
+                }
+              } catch (customerErr) {
+                logError("stripe/webhook", "invoice.paid - customer lookup failed", customerErr);
+              }
+            }
           }
         }
         break;
