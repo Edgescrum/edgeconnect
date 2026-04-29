@@ -104,18 +104,20 @@ export function RegisterWizard({ categories: PROVIDER_CATEGORIES }: { categories
 
   // キーボードの開閉検知（フォーカスベース）
   useEffect(() => {
-    function onFocus() { setKeyboardOpen(true); }
-    function onBlur() { setKeyboardOpen(false); }
-    document.addEventListener("focusin", (e) => {
+    function onFocusIn(e: Event) {
       const el = e.target as HTMLInputElement;
       const tag = el?.tagName;
       // チェックボックス・ラジオはキーボードを開かないので除外
-      if ((tag === "INPUT" && el.type !== "checkbox" && el.type !== "radio") || tag === "TEXTAREA" || tag === "SELECT") onFocus();
-    });
-    document.addEventListener("focusout", onBlur);
+      if ((tag === "INPUT" && el.type !== "checkbox" && el.type !== "radio") || tag === "TEXTAREA" || tag === "SELECT") {
+        setKeyboardOpen(true);
+      }
+    }
+    function onFocusOut() { setKeyboardOpen(false); }
+    document.addEventListener("focusin", onFocusIn);
+    document.addEventListener("focusout", onFocusOut);
     return () => {
-      document.removeEventListener("focusin", onFocus);
-      document.removeEventListener("focusout", onBlur);
+      document.removeEventListener("focusin", onFocusIn);
+      document.removeEventListener("focusout", onFocusOut);
     };
   }, []);
 
@@ -290,12 +292,12 @@ export function RegisterWizard({ categories: PROVIDER_CATEGORIES }: { categories
                 <div className="flex h-8 w-8 items-center justify-center rounded-full bg-accent text-sm font-bold text-white">3</div>
                 <h2 className="text-lg font-bold">利用規約への同意</h2>
               </div>
-              <label className="flex items-start gap-3 cursor-pointer">
+              <label className={`flex items-center gap-3 rounded-xl border-2 p-4 cursor-pointer transition-colors ${termsAgreed ? "border-accent bg-accent/5" : "border-border bg-card"}`}>
                 <input
                   type="checkbox"
                   checked={termsAgreed}
                   onChange={(e) => setTermsAgreed(e.target.checked)}
-                  className="mt-1 h-4 w-4 shrink-0 rounded border-border accent-accent"
+                  className="h-5 w-5 shrink-0 rounded border-border accent-accent"
                 />
                 <span className="text-sm leading-relaxed">
                   <Link href="/legal/terms" target="_blank" className="text-accent underline">利用規約</Link>
