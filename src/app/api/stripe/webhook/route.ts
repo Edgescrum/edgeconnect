@@ -280,6 +280,8 @@ export async function POST(request: NextRequest) {
         const subscription = event.data.object as Stripe.Subscription;
         const customerId = subscription.customer as string;
 
+        if (!customerId) break;
+
         // プラン変更を検出
         const priceId = subscription.items?.data?.[0]?.price?.id;
         let newPlan: string | null = null;
@@ -290,28 +292,18 @@ export async function POST(request: NextRequest) {
           newPlan = "standard";
         }
 
-        if (customerId && newPlan) {
-          // 現在のプランを取得してダウングレード/アップグレードを判定
-          const { data: currentProvider } = await supabase
-            .from("providers")
-            .select("plan")
-            .eq("stripe_customer_id", customerId)
-            .single();
+        // 現在のプランを取得してダウングレード/アップグレードを判定
+        const { data: currentProvider } = await supabase
+          .from("providers")
+          .select("plan")
+          .eq("stripe_customer_id", customerId)
+          .single();
 
-          const updates: Record<string, unknown> = { plan: newPlan };
+        const updates: Record<string, unknown> = {};
 
-          const currentPeriodEnd = subscription.items?.data?.[0]?.current_period_end;
-          if (currentPeriodEnd) {
-            updates.plan_period_end = new Date(
-              currentPeriodEnd * 1000
-            ).toISOString();
-          }
-
-          if (subscription.trial_end) {
-            updates.trial_ends_at = new Date(
-              subscription.trial_end * 1000
-            ).toISOString();
-          }
+        // プラン変更がある場合
+        if (newPlan) {
+          updates.plan = newPlan;
 
           // ダウングレード時: downgraded_at を記録
           if (currentProvider?.plan === "standard" && newPlan === "basic") {
@@ -321,7 +313,41 @@ export async function POST(request: NextRequest) {
           if (currentProvider?.plan === "basic" && newPlan === "standard") {
             updates.downgraded_at = null;
           }
+        }
 
+        // 期間情報を更新
+        const currentPeriodEnd = subscription.items?.data?.[0]?.current_period_end;
+        if (currentPeriodEnd) {
+          updates.plan_period_end = new Date(
+            currentPeriodEnd * 1000
+          ).toISOString();
+        }
+
+        if (subscription.trial_end) {
+          updates.trial_ends_at = new Date(
+            subscription.trial_end * 1000
+          ).toISOString();
+        }
+
+        // cancel_at_period_end の検知: 解約予約状態を DB に反映
+        if (subscription.cancel_at_period_end) {
+          // 解約予約あり: cancel_at を記録
+          if (subscription.cancel_at) {
+            updates.cancel_at = new Date(subscription.cancel_at * 1000).toISOString();
+          } else if (currentPeriodEnd) {
+            // cancel_at がない場合は期間終了日をフォールバックとして使用
+            updates.cancel_at = new Date(currentPeriodEnd * 1000).toISOString();
+          }
+          log("stripe/webhook", "subscription.updated - cancel scheduled", {
+            customerId,
+            cancelAt: updates.cancel_at,
+          });
+        } else {
+          // 解約予約なし（キャンセルされた or 最初からなし）: cancel_at をクリア
+          updates.cancel_at = null;
+        }
+
+        if (Object.keys(updates).length > 0) {
           await supabase
             .from("providers")
             .update(updates)
@@ -330,6 +356,8 @@ export async function POST(request: NextRequest) {
           log("stripe/webhook", "subscription.updated", {
             customerId,
             newPlan,
+            cancelAtPeriodEnd: subscription.cancel_at_period_end,
+            updates: Object.keys(updates),
           });
         }
         break;
@@ -349,6 +377,7 @@ export async function POST(request: NextRequest) {
               stripe_subscription_id: null,
               plan_period_end: null,
               trial_ends_at: null,
+              cancel_at: null,
               downgraded_at: new Date().toISOString(),
             })
             .eq("stripe_customer_id", customerId);

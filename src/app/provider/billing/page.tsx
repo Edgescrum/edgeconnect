@@ -12,6 +12,7 @@ interface ProviderBilling {
   plan_period_end: string | null;
   trial_ends_at: string | null;
   had_trial: boolean;
+  cancel_at: string | null;
 }
 
 export default async function BillingPage() {
@@ -22,7 +23,7 @@ export default async function BillingPage() {
   const { data: provider } = await supabase
     .from("providers")
     .select(
-      "id, plan, stripe_customer_id, stripe_subscription_id, plan_period_end, trial_ends_at, had_trial"
+      "id, plan, stripe_customer_id, stripe_subscription_id, plan_period_end, trial_ends_at, had_trial, cancel_at"
     )
     .eq("user_id", user.id)
     .single();
@@ -128,15 +129,26 @@ export default async function BillingPage() {
         }
       }
 
-      // DB sync: if trial/period not in DB but available from Stripe, update DB
-      const needsSync = (!p.trial_ends_at && stripeTrialEnd) || (!p.plan_period_end && stripePeriodEnd);
+      // DB sync: if trial/period/cancel_at not in DB but available from Stripe, update DB
+      const stripeCancelAt = cancelAtPeriodEnd && cancelAt ? cancelAt : null;
+      const needsSync =
+        (!p.trial_ends_at && stripeTrialEnd) ||
+        (!p.plan_period_end && stripePeriodEnd) ||
+        (stripeCancelAt && p.cancel_at !== stripeCancelAt) ||
+        (!stripeCancelAt && p.cancel_at);
       if (needsSync) {
-        const syncUpdates: Record<string, string> = {};
+        const syncUpdates: Record<string, string | null> = {};
         if (!p.trial_ends_at && stripeTrialEnd) {
           syncUpdates.trial_ends_at = stripeTrialEnd.toISOString();
         }
         if (!p.plan_period_end && stripePeriodEnd) {
           syncUpdates.plan_period_end = stripePeriodEnd.toISOString();
+        }
+        // cancel_at の同期: Stripe の状態を正とする
+        if (stripeCancelAt && p.cancel_at !== stripeCancelAt) {
+          syncUpdates.cancel_at = stripeCancelAt;
+        } else if (!stripeCancelAt && p.cancel_at) {
+          syncUpdates.cancel_at = null;
         }
         // Fire and forget - don't block page render
         supabase
@@ -146,8 +158,18 @@ export default async function BillingPage() {
           .then(() => {});
       }
     } catch {
-      // If fetch fails, continue without subscription details
+      // If Stripe API fetch fails, use DB cancel_at as fallback
+      if (p.cancel_at) {
+        cancelAtPeriodEnd = true;
+        cancelAt = p.cancel_at;
+      }
     }
+  }
+
+  // Stripe API が cancelAtPeriodEnd を返さなかった場合、DB の cancel_at をフォールバック
+  if (!cancelAtPeriodEnd && p.cancel_at) {
+    cancelAtPeriodEnd = true;
+    cancelAt = p.cancel_at;
   }
 
   // DB の trial_ends_at がなくても Stripe から取得した値を使う（フォールバック）
