@@ -367,13 +367,13 @@ function StatusNotice({
             {cancelAtLabel && (
               <div className="mt-2 rounded-lg bg-white/60 px-3 py-2 ring-1 ring-red-100">
                 <p className="text-sm text-red-700">
-                  <span className="font-medium">プラン終了日:</span>{" "}
                   <span className="font-bold">{cancelAtLabel}</span>
+                  <span className="font-medium"> に解約予定です</span>
                 </p>
               </div>
             )}
             <p className="mt-2 text-sm text-red-600">
-              終了日まではすべての機能を引き続きご利用いただけます。解約をキャンセルする場合は「プラン管理」から操作できます。
+              解約予定日まではすべての機能を引き続きご利用いただけます。解約をキャンセルする場合は「プラン管理」から操作できます。
             </p>
           </div>
         </div>
@@ -677,7 +677,7 @@ export function BillingClient({
                   <div className="flex items-center gap-2.5 text-sm">
                     <CalendarIcon className="shrink-0 text-red-500" />
                     <div className="min-w-0">
-                      <span className="text-red-600">プラン終了日</span>
+                      <span className="text-red-600">解約予定日</span>
                       <p className="font-semibold text-red-700">
                         {cancelAtLabel}
                       </p>
