@@ -68,10 +68,11 @@ async function generateDefaultIcon(
   lineUserId: string,
   _name: string
 ): Promise<string | null> {
-  // フォント依存のSVGテキストはサーバー環境で日本語がレンダリングできないため、
-  // テキストなしの単色アイコンを生成し、イニシャル表示はクライアント側のフォールバックに任せる
+  // 人型シルエットのデフォルトアイコンを生成（クライアント側のProviderAvatarフォールバックと同じデザイン）
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256">
-    <rect width="256" height="256" rx="48" fill="${brand.primary}"/>
+    <rect width="256" height="256" rx="48" fill="#D1D5DB"/>
+    <circle cx="128" cy="96" r="44" fill="white"/>
+    <path d="M128 156c-64 0-84 32-84 52v8h168v-8c0-20-52-52-84-52z" fill="white"/>
   </svg>`;
   const pngBuffer = await sharp(Buffer.from(svg)).png().toBuffer();
   const path = `${lineUserId}/icon-default.png`;
