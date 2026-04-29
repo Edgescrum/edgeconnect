@@ -155,13 +155,27 @@ export async function POST(request: NextRequest) {
 
       if (subscriptions.data.length > 0) {
         const subscription = subscriptions.data[0];
+        const fallbackUpdates: Record<string, unknown> = {
+          stripe_customer_id: customer.id,
+          stripe_subscription_id: subscription.id,
+          plan: "standard",
+        };
+
+        // trial/period 情報も取得
+        if (subscription.trial_end) {
+          fallbackUpdates.trial_ends_at = new Date(subscription.trial_end * 1000).toISOString();
+        }
+        if (subscription.trial_start !== null) {
+          fallbackUpdates.had_trial = true;
+        }
+        const fallbackPeriodEnd = subscription.items?.data?.[0]?.current_period_end;
+        if (fallbackPeriodEnd) {
+          fallbackUpdates.plan_period_end = new Date(fallbackPeriodEnd * 1000).toISOString();
+        }
+
         await supabase
           .from("providers")
-          .update({
-            stripe_customer_id: customer.id,
-            stripe_subscription_id: subscription.id,
-            plan: "standard",
-          })
+          .update(fallbackUpdates)
           .eq("id", provider.id);
 
         // Stripe Customer の metadata に provider_id を追加
@@ -175,6 +189,7 @@ export async function POST(request: NextRequest) {
         log("stripe/link-subscription", "Linked via customer search", {
           providerId: provider.id,
           customerId: customer.id,
+          updates: fallbackUpdates,
         });
 
         return NextResponse.json({ success: true });
