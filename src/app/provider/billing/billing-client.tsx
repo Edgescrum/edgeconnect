@@ -32,6 +32,11 @@ interface BillingClientProps {
   pendingPlanEffectiveDate: string | null;
 }
 
+const PLAN_PRICES: Record<string, number> = {
+  basic: 500,
+  standard: 980,
+};
+
 const PLAN_FEATURES: Record<string, string[]> = {
   basic: [
     "予約受付・管理",
@@ -381,6 +386,7 @@ function StatusNotice({
     const effectiveDate = pendingPlanEffectiveDate
       ? formatDateLong(pendingPlanEffectiveDate)
       : periodEndLabel;
+    const pendingPrice = PLAN_PRICES[pendingPlan];
     notices.push(
       <div key="downgrade" className="rounded-2xl bg-amber-50 p-4 sm:p-5 ring-1 ring-amber-200">
         <div className="flex items-start gap-3">
@@ -398,6 +404,9 @@ function StatusNotice({
               <p className="text-sm text-amber-700">
                 <span className="font-medium">変更後プラン:</span>{" "}
                 <span className="font-bold">{pendingPlanName}プラン</span>
+                {pendingPrice != null && (
+                  <span className="font-bold">（{pendingPrice.toLocaleString()}円/月）</span>
+                )}
               </p>
               {effectiveDate && (
                 <p className="mt-1 text-sm text-amber-700">
@@ -420,6 +429,7 @@ function StatusNotice({
     const effectiveDate = pendingPlanEffectiveDate
       ? formatDateLong(pendingPlanEffectiveDate)
       : periodEndLabel;
+    const pendingPrice = PLAN_PRICES[pendingPlan];
     notices.push(
       <div key="upgrade" className="rounded-2xl bg-green-50 p-4 sm:p-5 ring-1 ring-green-200">
         <div className="flex items-start gap-3">
@@ -428,6 +438,7 @@ function StatusNotice({
             <div className="flex flex-wrap items-center gap-2">
               <p className="font-semibold text-green-700">
                 プランのアップグレードが予約されています
+                {pendingPrice != null && `（${pendingPrice.toLocaleString()}円/月）`}
               </p>
               <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-semibold text-green-700 ring-1 ring-green-200">
                 変更予定
@@ -608,6 +619,9 @@ export function BillingClient({
         />
 
         {/* ========== Plan Info + Features Grid ========== */}
+        <h2 className="text-base font-bold text-foreground">
+          現在ご利用中のプラン
+        </h2>
         <div className="grid gap-4 sm:gap-6 sm:grid-cols-2">
           {/* Left: Plan Info */}
           <div className="rounded-2xl bg-card p-4 sm:p-6 ring-1 ring-border">
