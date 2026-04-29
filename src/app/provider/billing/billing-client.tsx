@@ -27,6 +27,9 @@ interface BillingClientProps {
   cancelAt: string | null;
   paymentMethodBrand: string | null;
   paymentMethodLast4: string | null;
+  pendingPlan: string | null;
+  pendingPlanName: string | null;
+  pendingPlanEffectiveDate: string | null;
 }
 
 const PLAN_FEATURES: Record<string, string[]> = {
@@ -46,19 +49,19 @@ const PLAN_FEATURES: Record<string, string[]> = {
   ],
 };
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("ja-JP", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  });
-}
-
 function formatDateLong(iso: string): string {
   return new Date(iso).toLocaleDateString("ja-JP", {
     year: "numeric",
     month: "long",
     day: "numeric",
+  });
+}
+
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString("ja-JP", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
   });
 }
 
@@ -220,6 +223,240 @@ function AlertTriangleIcon({ className }: { className?: string }) {
   );
 }
 
+function ArrowDownIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+    >
+      <line x1="12" y1="5" x2="12" y2="19" />
+      <polyline points="19 12 12 19 5 12" />
+    </svg>
+  );
+}
+
+function ArrowUpIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+    >
+      <line x1="12" y1="19" x2="12" y2="5" />
+      <polyline points="5 12 12 5 19 12" />
+    </svg>
+  );
+}
+
+function InfoIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+    >
+      <circle cx="12" cy="12" r="10" />
+      <line x1="12" y1="16" x2="12" y2="12" />
+      <line x1="12" y1="8" x2="12.01" y2="8" />
+    </svg>
+  );
+}
+
+/* ============================================================
+ * Status Notice Component
+ * ========================================================== */
+
+/**
+ * State patterns for the notice box:
+ * 1. Trial active (no pending changes) - blue info
+ * 2. Trial active + downgrade pending - blue info + amber warning
+ * 3. Cancel scheduled - red warning
+ * 4. Downgrade pending (post-trial) - amber warning
+ * 5. Upgrade pending - green info (unlikely but handled)
+ */
+function StatusNotice({
+  isTrialing,
+  trialDaysLeft,
+  trialEndLabel,
+  planPrice,
+  cancelAtPeriodEnd,
+  cancelAtLabel,
+  pendingPlan,
+  pendingPlanName,
+  pendingPlanEffectiveDate,
+  periodEndLabel,
+}: {
+  isTrialing: boolean;
+  trialDaysLeft: number;
+  trialEndLabel: string | null;
+  planPrice: number;
+  cancelAtPeriodEnd: boolean;
+  cancelAtLabel: string | null;
+  pendingPlan: string | null;
+  pendingPlanName: string | null;
+  pendingPlanEffectiveDate: string | null;
+  periodEndLabel: string | null;
+}) {
+  const notices: React.ReactNode[] = [];
+
+  // Trial notice
+  if (isTrialing) {
+    notices.push(
+      <div key="trial" className="rounded-2xl bg-blue-50 p-4 sm:p-5 ring-1 ring-blue-200">
+        <div className="flex items-start gap-3">
+          <InfoIcon className="mt-0.5 shrink-0 text-blue-600" />
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="font-semibold text-blue-700">
+                トライアル期間中
+              </p>
+              <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-semibold text-blue-700">
+                残り{trialDaysLeft}日
+              </span>
+            </div>
+            <p className="mt-1.5 text-sm text-blue-600">
+              {trialEndLabel
+                ? `${trialEndLabel}までスタンダードプランの全機能を無料でお試しいただけます。`
+                : "スタンダードプランの全機能を無料でお試しいただけます。"}
+            </p>
+            <p className="mt-1 text-xs text-blue-500">
+              トライアル終了後、自動的に
+              {planPrice.toLocaleString()}
+              円/月の課金が開始されます
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Cancel scheduled notice
+  if (cancelAtPeriodEnd) {
+    notices.push(
+      <div key="cancel" className="rounded-2xl bg-red-50 p-4 sm:p-5 ring-1 ring-red-200">
+        <div className="flex items-start gap-3">
+          <AlertTriangleIcon className="mt-0.5 shrink-0 text-red-500" />
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="font-semibold text-red-700">
+                解約が予約されています
+              </p>
+              <span className="inline-flex items-center rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-semibold text-red-700 ring-1 ring-red-200">
+                解約予約済み
+              </span>
+            </div>
+            {cancelAtLabel && (
+              <div className="mt-2 rounded-lg bg-white/60 px-3 py-2 ring-1 ring-red-100">
+                <p className="text-sm text-red-700">
+                  <span className="font-medium">プラン終了日:</span>{" "}
+                  <span className="font-bold">{cancelAtLabel}</span>
+                </p>
+              </div>
+            )}
+            <p className="mt-2 text-sm text-red-600">
+              終了日まではすべての機能を引き続きご利用いただけます。解約をキャンセルする場合は「プラン管理」から操作できます。
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Pending downgrade notice
+  if (pendingPlan && pendingPlan !== "standard" && !cancelAtPeriodEnd) {
+    const effectiveDate = pendingPlanEffectiveDate
+      ? formatDateLong(pendingPlanEffectiveDate)
+      : periodEndLabel;
+    notices.push(
+      <div key="downgrade" className="rounded-2xl bg-amber-50 p-4 sm:p-5 ring-1 ring-amber-200">
+        <div className="flex items-start gap-3">
+          <ArrowDownIcon className="mt-0.5 shrink-0 text-amber-600" />
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="font-semibold text-amber-700">
+                プラン変更が予約されています
+              </p>
+              <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-700 ring-1 ring-amber-200">
+                ダウングレード予定
+              </span>
+            </div>
+            <div className="mt-2 rounded-lg bg-white/60 px-3 py-2 ring-1 ring-amber-100">
+              <p className="text-sm text-amber-700">
+                <span className="font-medium">変更後プラン:</span>{" "}
+                <span className="font-bold">{pendingPlanName}プラン</span>
+              </p>
+              {effectiveDate && (
+                <p className="mt-1 text-sm text-amber-700">
+                  <span className="font-medium">変更日:</span>{" "}
+                  <span className="font-bold">{effectiveDate}</span>
+                </p>
+              )}
+            </div>
+            <p className="mt-2 text-sm text-amber-600">
+              変更日までは現在のプランの全機能をご利用いただけます。変更をキャンセルする場合は「プラン管理」から操作できます。
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Pending upgrade notice
+  if (pendingPlan && pendingPlan === "standard" && !cancelAtPeriodEnd) {
+    const effectiveDate = pendingPlanEffectiveDate
+      ? formatDateLong(pendingPlanEffectiveDate)
+      : periodEndLabel;
+    notices.push(
+      <div key="upgrade" className="rounded-2xl bg-green-50 p-4 sm:p-5 ring-1 ring-green-200">
+        <div className="flex items-start gap-3">
+          <ArrowUpIcon className="mt-0.5 shrink-0 text-green-600" />
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="font-semibold text-green-700">
+                プランのアップグレードが予約されています
+              </p>
+              <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-semibold text-green-700 ring-1 ring-green-200">
+                アップグレード予定
+              </span>
+            </div>
+            {effectiveDate && (
+              <div className="mt-2 rounded-lg bg-white/60 px-3 py-2 ring-1 ring-green-100">
+                <p className="text-sm text-green-700">
+                  <span className="font-medium">変更日:</span>{" "}
+                  <span className="font-bold">{effectiveDate}</span>
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (notices.length === 0) return null;
+
+  return <div className="space-y-4">{notices}</div>;
+}
+
 /* ============================================================
  * Main Component
  * ========================================================== */
@@ -238,6 +475,9 @@ export function BillingClient({
   cancelAt,
   paymentMethodBrand,
   paymentMethodLast4,
+  pendingPlan,
+  pendingPlanName,
+  pendingPlanEffectiveDate,
 }: BillingClientProps) {
   const [loading, setLoading] = useState<string | null>(null);
   const [message, setMessage] = useState<{
@@ -254,8 +494,8 @@ export function BillingClient({
 
   const planDescription =
     plan === "standard"
-      ? "顧客管理・分析・アンケートなど全機能が使えるプラン"
-      : "基本的な予約管理機能を備えたプラン";
+      ? "全機能が使えるプラン"
+      : "基本的な予約管理機能";
 
   const fetchInvoices = useCallback(async () => {
     if (!hasCustomer) return;
@@ -305,7 +545,7 @@ export function BillingClient({
 
   return (
     <main className="min-h-screen bg-background px-4 py-6 sm:px-8 sm:py-8">
-      <div className="mx-auto max-w-4xl space-y-6">
+      <div className="mx-auto max-w-4xl space-y-4 sm:space-y-6">
         {/* Error / Success message */}
         {message && (
           <div
@@ -320,108 +560,68 @@ export function BillingClient({
         )}
 
         {/* ========== Header Section ========== */}
-        <div className="rounded-2xl bg-card p-5 sm:p-6 ring-1 ring-border">
-          <div className="flex items-start justify-between gap-4">
+        <div className="rounded-2xl bg-card p-4 sm:p-6 ring-1 ring-border">
+          <div className="flex items-start justify-between gap-3">
             <div className="flex items-start gap-3">
               <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent-bg">
                 <StarIcon className="text-accent" />
               </div>
               <div>
                 <h1 className="text-lg font-bold sm:text-xl">
-                  現在のプラン
+                  プラン・お支払い
                 </h1>
                 <p className="mt-0.5 text-sm text-muted">
-                  あなたのサブスクリプション情報
+                  サブスクリプション情報
                 </p>
               </div>
             </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center rounded-full bg-accent/10 px-3 py-1 text-xs font-semibold text-accent">
-                {planName}プラン
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+              <span className="inline-flex items-center rounded-full bg-accent/10 px-2.5 py-1 text-xs font-semibold text-accent sm:px-3">
+                {planName}
               </span>
               {isTrialing && (
-                <span className="inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-600 ring-1 ring-blue-200">
-                  トライアル中
+                <span className="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-600 ring-1 ring-blue-200 sm:px-3">
+                  トライアル
                 </span>
               )}
               {cancelAtPeriodEnd && (
-                <span className="inline-flex items-center rounded-full bg-red-50 px-3 py-1 text-xs font-semibold text-red-600 ring-1 ring-red-200">
+                <span className="inline-flex items-center rounded-full bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-600 ring-1 ring-red-200 sm:px-3">
                   解約予約済み
+                </span>
+              )}
+              {pendingPlan && !cancelAtPeriodEnd && (
+                <span className="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-600 ring-1 ring-amber-200 sm:px-3">
+                  変更予定
                 </span>
               )}
             </div>
           </div>
         </div>
 
-        {/* ========== Trial Banner ========== */}
-        {isTrialing && (
-          <div className="rounded-2xl bg-blue-50 p-5 ring-1 ring-blue-200">
-            <div className="flex items-start gap-3">
-              <CalendarIcon className="mt-1 shrink-0 text-blue-600" />
-              <div>
-                <div className="flex items-center gap-2">
-                  <p className="font-semibold text-blue-700">
-                    トライアル期間中
-                  </p>
-                  <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-semibold text-blue-700">
-                    残り{trialDaysLeft}日
-                  </span>
-                </div>
-                <p className="mt-1 text-sm text-blue-600">
-                  {trialEndLabel
-                    ? `${trialEndLabel}までスタンダードプランの全機能を無料でお試しいただけます。`
-                    : "スタンダードプランの全機能を無料でお試しいただけます。"}
-                </p>
-                <p className="mt-1 text-xs text-blue-500">
-                  トライアル終了後、自動的に
-                  {planPrice.toLocaleString()}
-                  円/月の課金が開始されます
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ========== Cancel Scheduled Banner ========== */}
-        {cancelAtPeriodEnd && (
-          <div className="rounded-2xl bg-red-50 p-5 ring-1 ring-red-200">
-            <div className="flex items-start gap-3">
-              <AlertTriangleIcon className="mt-0.5 shrink-0 text-red-500" />
-              <div className="flex-1">
-                <div className="flex items-center gap-2">
-                  <p className="font-semibold text-red-700">
-                    解約が予約されています
-                  </p>
-                  <span className="inline-flex items-center rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-semibold text-red-700 ring-1 ring-red-200">
-                    解約予約済み
-                  </span>
-                </div>
-                {cancelAtLabel && (
-                  <div className="mt-2 rounded-lg bg-white/60 px-3 py-2 ring-1 ring-red-100">
-                    <p className="text-sm text-red-700">
-                      <span className="font-medium">プラン終了日:</span>{" "}
-                      <span className="font-bold">{cancelAtLabel}</span>
-                    </p>
-                  </div>
-                )}
-                <p className="mt-2 text-sm text-red-600">
-                  終了日まではすべての機能を引き続きご利用いただけます。解約をキャンセルする場合は「プラン管理」から操作できます。
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* ========== Status Notices ========== */}
+        <StatusNotice
+          isTrialing={isTrialing}
+          trialDaysLeft={trialDaysLeft}
+          trialEndLabel={trialEndLabel}
+          planPrice={planPrice}
+          cancelAtPeriodEnd={cancelAtPeriodEnd}
+          cancelAtLabel={cancelAtLabel}
+          pendingPlan={pendingPlan}
+          pendingPlanName={pendingPlanName}
+          pendingPlanEffectiveDate={pendingPlanEffectiveDate}
+          periodEndLabel={periodEndLabel}
+        />
 
         {/* ========== Plan Info + Features Grid ========== */}
-        <div className="grid gap-6 sm:grid-cols-2">
+        <div className="grid gap-4 sm:gap-6 sm:grid-cols-2">
           {/* Left: Plan Info */}
-          <div className="rounded-2xl bg-card p-5 sm:p-6 ring-1 ring-border">
+          <div className="rounded-2xl bg-card p-4 sm:p-6 ring-1 ring-border">
             <div className="space-y-4">
               <div>
                 <h2 className="text-base font-bold text-foreground">
                   {planName}プラン
                 </h2>
-                <p className="mt-1 text-sm text-muted">{planDescription}</p>
+                <p className="mt-0.5 text-sm text-muted">{planDescription}</p>
               </div>
 
               <div className="flex items-baseline gap-1">
@@ -431,12 +631,12 @@ export function BillingClient({
                 <span className="text-base text-muted">円/月</span>
               </div>
 
-              <div className="space-y-3 border-t border-border pt-4">
+              <div className="space-y-2.5 border-t border-border pt-3">
                 {/* Next billing date */}
                 {periodEndLabel && hasSubscription && !cancelAtPeriodEnd && (
                   <div className="flex items-center gap-2.5 text-sm">
                     <CalendarIcon className="shrink-0 text-muted" />
-                    <div>
+                    <div className="min-w-0">
                       <span className="text-muted">次回請求日</span>
                       <p className="font-medium text-foreground">
                         {periodEndLabel}
@@ -449,7 +649,7 @@ export function BillingClient({
                 {paymentMethodBrand && paymentMethodLast4 && (
                   <div className="flex items-center gap-2.5 text-sm">
                     <CreditCardIcon className="shrink-0 text-muted" />
-                    <div>
+                    <div className="min-w-0">
                       <span className="text-muted">お支払い方法</span>
                       <p className="font-medium text-foreground">
                         {capitalizeFirst(paymentMethodBrand)} ****
@@ -459,14 +659,14 @@ export function BillingClient({
                   </div>
                 )}
 
-                {/* Trial info */}
-                {isTrialing && (
+                {/* Trial end date */}
+                {isTrialing && trialEndLabel && (
                   <div className="flex items-center gap-2.5 text-sm">
-                    <CalendarIcon className="shrink-0 text-muted" />
-                    <div>
-                      <span className="text-muted">トライアル終了日</span>
-                      <p className="font-medium text-foreground">
-                        {trialEndLabel || `残り${trialDaysLeft}日`}
+                    <CalendarIcon className="shrink-0 text-blue-500" />
+                    <div className="min-w-0">
+                      <span className="text-blue-600">トライアル終了日</span>
+                      <p className="font-medium text-blue-700">
+                        {trialEndLabel}
                       </p>
                     </div>
                   </div>
@@ -476,10 +676,25 @@ export function BillingClient({
                 {cancelAtPeriodEnd && cancelAtLabel && (
                   <div className="flex items-center gap-2.5 text-sm">
                     <CalendarIcon className="shrink-0 text-red-500" />
-                    <div>
+                    <div className="min-w-0">
                       <span className="text-red-600">プラン終了日</span>
                       <p className="font-semibold text-red-700">
                         {cancelAtLabel}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Pending plan change date */}
+                {pendingPlan && !cancelAtPeriodEnd && (
+                  <div className="flex items-center gap-2.5 text-sm">
+                    <CalendarIcon className="shrink-0 text-amber-500" />
+                    <div className="min-w-0">
+                      <span className="text-amber-600">プラン変更日</span>
+                      <p className="font-medium text-amber-700">
+                        {pendingPlanEffectiveDate
+                          ? formatDateLong(pendingPlanEffectiveDate)
+                          : periodEndLabel || "次回請求日"}
                       </p>
                     </div>
                   </div>
@@ -489,12 +704,12 @@ export function BillingClient({
           </div>
 
           {/* Right: Plan Features + Manage Button */}
-          <div className="rounded-2xl bg-card p-5 sm:p-6 ring-1 ring-border">
+          <div className="rounded-2xl bg-card p-4 sm:p-6 ring-1 ring-border">
             <div className="flex h-full flex-col">
               <h2 className="text-base font-bold text-foreground">
                 プラン特典
               </h2>
-              <ul className="mt-4 flex-1 space-y-3">
+              <ul className="mt-3 flex-1 space-y-2.5 sm:mt-4 sm:space-y-3">
                 {features.map((f) => (
                   <li key={f} className="flex items-start gap-2.5 text-sm">
                     <CheckIcon className="mt-0.5 shrink-0 text-accent" />
@@ -504,7 +719,7 @@ export function BillingClient({
               </ul>
 
               {hasCustomer && (
-                <div className="mt-6 border-t border-border pt-4">
+                <div className="mt-4 border-t border-border pt-4 sm:mt-6">
                   <button
                     onClick={() => handlePortal()}
                     disabled={!!loading}
@@ -527,7 +742,7 @@ export function BillingClient({
 
         {/* ========== Payment History ========== */}
         {hasCustomer && (
-          <div className="rounded-2xl bg-card p-5 sm:p-6 ring-1 ring-border">
+          <div className="rounded-2xl bg-card p-4 sm:p-6 ring-1 ring-border">
             <div className="flex items-center justify-between">
               <h2 className="text-base font-bold text-foreground">
                 支払い履歴

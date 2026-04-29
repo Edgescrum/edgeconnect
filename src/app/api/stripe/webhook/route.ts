@@ -38,115 +38,115 @@ export async function POST(request: NextRequest) {
         const plan = session.metadata?.plan;
         const context = session.metadata?.context;
 
-        // トライアルが適用されたかチェック（had_trial フラグ更新用）
-        let hadTrialInSession = false;
+        // subscription 情報を1回だけ取得して使い回す
+        let subData: {
+          hadTrial: boolean;
+          trialEnd: number | null;
+          periodEnd: number | undefined;
+        } = { hadTrial: false, trialEnd: null, periodEnd: undefined };
+
         if (session.subscription) {
           try {
             const stripe = getStripe();
             const sub = await stripe.subscriptions.retrieve(
               session.subscription as string
             );
-            hadTrialInSession = sub.trial_start !== null;
-          } catch {
-            // 取得失敗は無視
+            subData = {
+              hadTrial: sub.trial_start !== null,
+              trialEnd: sub.trial_end,
+              periodEnd: sub.items?.data?.[0]?.current_period_end,
+            };
+            log("stripe/webhook", "checkout.session.completed - subscription details", {
+              subscriptionId: sub.id,
+              status: sub.status,
+              trialStart: sub.trial_start,
+              trialEnd: sub.trial_end,
+              periodEnd: subData.periodEnd,
+              itemsCount: sub.items?.data?.length,
+            });
+          } catch (subErr) {
+            logError("stripe/webhook", "checkout.session.completed - failed to retrieve subscription", subErr);
           }
         }
 
-        if (providerId && plan) {
-          // provider_id が分かっている場合は直接更新
+        // 共通の更新データを構築するヘルパー
+        const buildUpdates = (): Record<string, unknown> => {
           const updates: Record<string, unknown> = {
             plan,
             stripe_customer_id: session.customer as string,
             stripe_subscription_id: session.subscription as string,
           };
-          if (hadTrialInSession) {
+          if (subData.hadTrial) {
             updates.had_trial = true;
           }
-
-          // トライアル期間・請求期間を subscription から取得して保存
-          if (session.subscription) {
-            try {
-              const stripe2 = getStripe();
-              const sub = await stripe2.subscriptions.retrieve(
-                session.subscription as string
-              );
-              if (sub.trial_end) {
-                updates.trial_ends_at = new Date(
-                  sub.trial_end * 1000
-                ).toISOString();
-              }
-              const currentPeriodEnd = sub.items?.data?.[0]?.current_period_end;
-              if (currentPeriodEnd) {
-                updates.plan_period_end = new Date(
-                  currentPeriodEnd * 1000
-                ).toISOString();
-              }
-            } catch {
-              // 取得失敗は無視
-            }
+          if (subData.trialEnd) {
+            updates.trial_ends_at = new Date(subData.trialEnd * 1000).toISOString();
           }
+          if (subData.periodEnd) {
+            updates.plan_period_end = new Date(subData.periodEnd * 1000).toISOString();
+          }
+          return updates;
+        };
 
-          await supabase
+        if (providerId && plan) {
+          // provider_id が分かっている場合は直接更新
+          const updates = buildUpdates();
+
+          const { error: updateErr } = await supabase
             .from("providers")
             .update(updates)
             .eq("id", Number(providerId));
+
+          if (updateErr) {
+            logError("stripe/webhook", "checkout.session.completed - failed to update provider", updateErr);
+          }
 
           log("stripe/webhook", "checkout.session.completed", {
             providerId,
             plan,
             customerId: session.customer,
+            trialEndsAt: updates.trial_ends_at,
+            planPeriodEnd: updates.plan_period_end,
           });
         } else if (context === "register" && userId && plan) {
           // 登録フロー: provider がまだ作成されていない可能性がある
           // user_id から provider を探す（既に作成済みの場合のみ更新）
-          const { data: provider } = await supabase
-            .from("providers")
-            .select("id")
-            .eq("user_id", Number(userId))
-            .single();
+          // リトライ: provider 作成のタイミングと競合する可能性があるため最大2回試行
+          let provider: { id: number } | null = null;
+          for (let attempt = 0; attempt < 2; attempt++) {
+            const { data } = await supabase
+              .from("providers")
+              .select("id")
+              .eq("user_id", Number(userId))
+              .single();
+            if (data) {
+              provider = data;
+              break;
+            }
+            if (attempt === 0) {
+              // 1秒待ってリトライ（provider 作成を待つ）
+              await new Promise(r => setTimeout(r, 1000));
+            }
+          }
 
           if (provider) {
-            const registerUpdates: Record<string, unknown> = {
-              plan,
-              stripe_customer_id: session.customer as string,
-              stripe_subscription_id: session.subscription as string,
-            };
-            if (hadTrialInSession) {
-              registerUpdates.had_trial = true;
-            }
+            const updates = buildUpdates();
 
-            // トライアル期間・請求期間を subscription から取得して保存
-            if (session.subscription) {
-              try {
-                const stripe2 = getStripe();
-                const sub = await stripe2.subscriptions.retrieve(
-                  session.subscription as string
-                );
-                if (sub.trial_end) {
-                  registerUpdates.trial_ends_at = new Date(
-                    sub.trial_end * 1000
-                  ).toISOString();
-                }
-                const currentPeriodEnd = sub.items?.data?.[0]?.current_period_end;
-                if (currentPeriodEnd) {
-                  registerUpdates.plan_period_end = new Date(
-                    currentPeriodEnd * 1000
-                  ).toISOString();
-                }
-              } catch {
-                // 取得失敗は無視
-              }
-            }
-
-            await supabase
+            const { error: updateErr } = await supabase
               .from("providers")
-              .update(registerUpdates)
+              .update(updates)
               .eq("id", provider.id);
+
+            if (updateErr) {
+              logError("stripe/webhook", "checkout.session.completed (register) - failed to update", updateErr);
+            }
 
             log("stripe/webhook", "checkout.session.completed (register)", {
               providerId: provider.id,
               userId,
               plan,
+              trialEndsAt: updates.trial_ends_at,
+              planPeriodEnd: updates.plan_period_end,
             });
           } else {
             // provider がまだ作成されていない場合はログだけ

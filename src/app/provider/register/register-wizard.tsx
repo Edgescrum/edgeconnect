@@ -29,7 +29,7 @@ export function RegisterWizard({ categories: PROVIDER_CATEGORIES }: { categories
 
   const [checkoutProcessing, setCheckoutProcessing] = useState(false);
 
-  // Stripe Checkout完了後のリダイレクト処理: provider を作成して完了画面へ
+  // Stripe Checkout完了後のリダイレクト処理: provider を作成して /provider へ遷移
   useEffect(() => {
     const checkoutStatus = searchParams.get("checkout");
     const sessionId = searchParams.get("session_id");
@@ -51,7 +51,7 @@ export function RegisterWizard({ categories: PROVIDER_CATEGORIES }: { categories
             sessionStorage.removeItem("peco_user");
 
             // Stripe サブスクリプションを provider に紐づけ（リトライ付き）
-            const linkSubscription = async (retries = 2) => {
+            const linkSubscription = async (retries = 3) => {
               for (let i = 0; i <= retries; i++) {
                 try {
                   const res = await fetch("/api/stripe/link-subscription", {
@@ -65,21 +65,22 @@ export function RegisterWizard({ categories: PROVIDER_CATEGORIES }: { categories
                     return;
                   }
                   console.warn(`link-subscription failed (attempt ${i + 1}): ${res.status}`);
-                  if (i < retries) await new Promise(r => setTimeout(r, 1000 * (i + 1)));
+                  if (i < retries) await new Promise(r => setTimeout(r, 1500 * (i + 1)));
                 } catch (err) {
                   console.warn(`link-subscription error (attempt ${i + 1}):`, err);
-                  if (i < retries) await new Promise(r => setTimeout(r, 1000 * (i + 1)));
+                  if (i < retries) await new Promise(r => setTimeout(r, 1500 * (i + 1)));
                 }
               }
               console.warn("link-subscription: all retries exhausted, webhook will handle it");
             };
             await linkSubscription();
           }
-          setStep(3);
+          // 完了画面を表示せず、/provider に直接遷移（モーダルで完了を通知）
+          sessionStorage.setItem("peco_register_complete", "1");
+          router.push("/provider");
         } catch (e) {
           setError(e instanceof Error ? e.message : "登録に失敗しました");
           setStep(2); // フォームに戻す
-        } finally {
           setCheckoutProcessing(false);
         }
       })();
@@ -237,6 +238,19 @@ export function RegisterWizard({ categories: PROVIDER_CATEGORIES }: { categories
       default: return true;
     }
   };
+
+  // チェックアウト処理中はローディング画面を表示
+  if (checkoutProcessing) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-4 text-center">
+          <Spinner size="lg" />
+          <p className="text-lg font-semibold">登録を完了しています...</p>
+          <p className="text-sm text-muted">しばらくお待ちください</p>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <>

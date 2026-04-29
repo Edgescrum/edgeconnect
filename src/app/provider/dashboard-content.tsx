@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import type { ProviderBase } from "@/lib/types/provider";
+import { RegisterCompleteModal } from "@/components/RegisterCompleteModal";
 
 interface Onboarding {
   hasService: boolean;
@@ -93,6 +94,7 @@ export function ProviderDashboard({
 
   return (
     <main className="min-h-screen bg-background px-4 py-6 sm:px-8 sm:py-8">
+      <RegisterCompleteModal />
       {/* --- モバイル版 --- */}
       <div className="mx-auto max-w-lg sm:hidden">
         {/* Header */}
