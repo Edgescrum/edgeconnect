@@ -349,8 +349,8 @@ function StatusNotice({
     );
   }
 
-  // Cancel scheduled notice
-  if (cancelAtPeriodEnd) {
+  // Cancel scheduled notice (cancel_at_period_end=true の通常解約、または cancel_at 設定済みのトライアル中解約)
+  if (cancelAtPeriodEnd || cancelAtLabel) {
     notices.push(
       <div key="cancel" className="rounded-2xl bg-red-50 p-4 sm:p-5 ring-1 ring-red-200">
         <div className="flex items-start gap-3">
@@ -590,12 +590,12 @@ export function BillingClient({
                   トライアル
                 </span>
               )}
-              {cancelAtPeriodEnd && (
+              {(cancelAtPeriodEnd || cancelAt) && (
                 <span className="inline-flex items-center rounded-full bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-600 ring-1 ring-red-200 sm:px-3">
                   解約予約済み
                 </span>
               )}
-              {pendingPlan && !cancelAtPeriodEnd && (
+              {pendingPlan && !cancelAtPeriodEnd && !cancelAt && (
                 <span className="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-600 ring-1 ring-amber-200 sm:px-3">
                   変更予定
                 </span>
@@ -642,7 +642,7 @@ export function BillingClient({
 
               <div className="space-y-2.5 border-t border-border pt-3">
                 {/* Next billing date */}
-                {periodEndLabel && hasSubscription && !cancelAtPeriodEnd && (
+                {periodEndLabel && hasSubscription && !cancelAtPeriodEnd && !cancelAt && (
                   <div className="flex items-center gap-2.5 text-sm">
                     <CalendarIcon className="shrink-0 text-muted" />
                     <div className="min-w-0">
@@ -669,7 +669,7 @@ export function BillingClient({
                 )}
 
                 {/* Cancel end date */}
-                {cancelAtPeriodEnd && cancelAtLabel && (
+                {(cancelAtPeriodEnd || cancelAt) && cancelAtLabel && (
                   <div className="flex items-center gap-2.5 text-sm">
                     <CalendarIcon className="shrink-0 text-red-500" />
                     <div className="min-w-0">
