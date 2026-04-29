@@ -18,10 +18,8 @@ async function cleanOldIcons(adminSupabase: SupabaseClient, lineUserId: string) 
     .from("avatars")
     .list(lineUserId);
   if (!files) return;
-  // icon-default.png以外の古いファイルを削除
-  const toDelete = files
-    .filter((f) => f.name !== "icon-default.png")
-    .map((f) => `${lineUserId}/${f.name}`);
+  // 古いファイルを削除
+  const toDelete = files.map((f) => `${lineUserId}/${f.name}`);
   if (toDelete.length > 0) {
     await adminSupabase.storage.from("avatars").remove(toDelete);
   }
@@ -63,32 +61,6 @@ async function uploadIcon(
   return publicUrl;
 }
 
-async function generateDefaultIcon(
-  adminSupabase: SupabaseClient,
-  lineUserId: string,
-  _name: string
-): Promise<string | null> {
-  // 人型シルエットのデフォルトアイコンを生成（クライアント側のProviderAvatarフォールバックと同じデザイン）
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256">
-    <rect width="256" height="256" rx="48" fill="#D1D5DB"/>
-    <circle cx="128" cy="96" r="44" fill="white"/>
-    <path d="M128 156c-64 0-84 32-84 52v8h168v-8c0-20-52-52-84-52z" fill="white"/>
-  </svg>`;
-  const pngBuffer = await sharp(Buffer.from(svg)).png().toBuffer();
-  const path = `${lineUserId}/icon-default.png`;
-  const { error } = await adminSupabase.storage
-    .from("avatars")
-    .upload(path, pngBuffer, {
-      upsert: true,
-      contentType: "image/png",
-    });
-  if (error) {
-    logError("generateDefaultIcon", "upload failed", error);
-    return null;
-  }
-  const { data: { publicUrl } } = adminSupabase.storage.from("avatars").getPublicUrl(path);
-  return publicUrl;
-}
 
 export async function registerProvider(formData: FormData) {
   // cookieからのみ認証（formDataのlineUserIdは受け付けない）
@@ -133,8 +105,8 @@ export async function registerProvider(formData: FormData) {
       validateImageFile(iconFile);
       iconUrl = await uploadIcon(adminSupabase, user.lineUserId, iconFile);
     } else {
-      // 未設定時: デフォルトアイコンを生成
-      iconUrl = await generateDefaultIcon(adminSupabase, user.lineUserId, name);
+      // 未設定時: icon_url を null のまま（ProviderAvatar のフォールバックで人型アイコンを表示）
+      iconUrl = null;
     }
   } catch (err) {
     // アップロードエラーは日本語メッセージを持つ Error をそのまま投げる
