@@ -667,20 +667,6 @@ export function BillingClient({
                   </div>
                 )}
 
-                {/* Pending plan change date */}
-                {pendingPlan && !cancelAtPeriodEnd && (
-                  <div className="flex items-center gap-2.5 text-sm">
-                    <CalendarIcon className="shrink-0 text-amber-500" />
-                    <div className="min-w-0">
-                      <span className="text-amber-600">プラン変更日</span>
-                      <p className="font-medium text-amber-700">
-                        {pendingPlanEffectiveDate
-                          ? formatDateLong(pendingPlanEffectiveDate)
-                          : periodEndLabel || "次回請求日"}
-                      </p>
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
           </div>
