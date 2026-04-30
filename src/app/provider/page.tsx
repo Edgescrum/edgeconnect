@@ -20,18 +20,6 @@ export default async function ProviderPage() {
 
   if (!provider) redirect("/provider/register");
 
-  // icon_url が未設定の場合、LINE プロフィール画像をフォールバック表示
-  if (!provider.icon_url) {
-    const { data: userData } = await supabase
-      .from("users")
-      .select("picture_url")
-      .eq("id", user.id)
-      .single();
-    if (userData?.picture_url) {
-      provider.icon_url = userData.picture_url;
-    }
-  }
-
   // 予約統計を並列取得（日本時間基準）
   const jstNow = new Date(Date.now() + 9 * 60 * 60 * 1000);
   const jstYear = jstNow.getUTCFullYear();

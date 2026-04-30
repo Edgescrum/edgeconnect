@@ -105,13 +105,8 @@ export async function registerProvider(formData: FormData) {
       validateImageFile(iconFile);
       iconUrl = await uploadIcon(adminSupabase, user.lineUserId, iconFile);
     } else {
-      // 未設定時: LINE プロフィール画像をフォールバックとして使用
-      const { data: userData } = await supabase
-        .from("users")
-        .select("picture_url")
-        .eq("id", user.id)
-        .single();
-      iconUrl = userData?.picture_url || null;
+      // 未設定時: icon_url を null のまま（ProviderAvatar のフォールバックでデフォルトアイコンを表示）
+      iconUrl = null;
     }
   } catch (err) {
     // アップロードエラーは日本語メッセージを持つ Error をそのまま投げる
