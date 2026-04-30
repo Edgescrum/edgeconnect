@@ -280,14 +280,8 @@ export function AnalyticsClient({
   const formatTickLabel = (v: string, index: number) => {
     const fullMonth = getFullMonth(v);
     if (period === "year") {
-      // 年表示: 最初のデータポイントにのみ年を表示（同年）、年跨ぎ時は各年の最初に表示
-      if (fullMonth) {
-        const year = fullMonth.slice(0, 4);
-        if (index === 0) return `${year}年`;
-        const prevEntry = chartMonthly[index - 1];
-        if (prevEntry && prevEntry.fullMonth.slice(0, 4) !== year) return `${year}年`;
-        return `${year}年`;
-      }
+      // 年表示: 常に年を表示（各データポイントが1年単位のため）
+      if (fullMonth) return `${fullMonth.slice(0, 4)}年`;
       return v;
     }
     if (period === "quarter") {
