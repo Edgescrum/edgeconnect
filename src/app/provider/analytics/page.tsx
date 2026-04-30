@@ -47,31 +47,47 @@ export default async function AnalyticsPage() {
     );
   }
 
-  // 全データを並列取得
-  const [monthlyResult, menusResult, heatmapResult, repeatResult, ltvResult, benchmarkResult] =
-    await Promise.all([
-      supabase.rpc("get_monthly_stats", {
-        p_provider_id: provider.id,
-        p_months: 6,
-      }),
-      supabase.rpc("get_popular_menus", {
-        p_provider_id: provider.id,
-      }),
-      supabase.rpc("get_booking_heatmap", {
-        p_provider_id: provider.id,
-      }),
-      supabase.rpc("get_repeat_rate", {
-        p_provider_id: provider.id,
-      }),
-      supabase.rpc("get_ltv_stats", {
-        p_provider_id: provider.id,
-      }),
-      provider.category
-        ? supabase.rpc("get_category_benchmark", {
-            p_category: provider.category,
-          })
-        : Promise.resolve({ data: { available: false, provider_count: 0 } }),
-    ]);
+  // 全データを並列取得（期間切り替え用に6/12/24ヶ月分も取得）
+  const [
+    monthlyResult,
+    monthly12Result,
+    monthly24Result,
+    menusResult,
+    heatmapResult,
+    repeatResult,
+    ltvResult,
+    benchmarkResult,
+  ] = await Promise.all([
+    supabase.rpc("get_monthly_stats", {
+      p_provider_id: provider.id,
+      p_months: 6,
+    }),
+    supabase.rpc("get_monthly_stats", {
+      p_provider_id: provider.id,
+      p_months: 12,
+    }),
+    supabase.rpc("get_monthly_stats", {
+      p_provider_id: provider.id,
+      p_months: 24,
+    }),
+    supabase.rpc("get_popular_menus", {
+      p_provider_id: provider.id,
+    }),
+    supabase.rpc("get_booking_heatmap", {
+      p_provider_id: provider.id,
+    }),
+    supabase.rpc("get_repeat_rate", {
+      p_provider_id: provider.id,
+    }),
+    supabase.rpc("get_ltv_stats", {
+      p_provider_id: provider.id,
+    }),
+    provider.category
+      ? supabase.rpc("get_category_benchmark", {
+          p_category: provider.category,
+        })
+      : Promise.resolve({ data: { available: false, provider_count: 0 } }),
+  ]);
 
   return (
     <main className="min-h-screen bg-background px-4 py-6 sm:px-8 sm:py-8">
@@ -87,6 +103,11 @@ export default async function AnalyticsPage() {
           repeatRate={repeatResult.data || { total_customers: 0, repeat_customers: 0, repeat_rate: 0 }}
           ltvStats={ltvResult.data || { avg_ltv: 0, segments: { excellent: 0, normal: 0, dormant: 0, at_risk: 0 } }}
           benchmark={benchmarkResult.data || { available: false, provider_count: 0 }}
+          allMonthlyStats={{
+            month6: monthlyResult.data || [],
+            month12: monthly12Result.data || [],
+            month24: monthly24Result.data || [],
+          }}
         />
       </div>
     </main>
