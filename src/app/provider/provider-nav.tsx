@@ -14,7 +14,7 @@ const PAGE_TITLES: Record<string, string> = {
   "/provider/calendar": "カレンダー連携",
   "/provider/billing": "プラン管理",
   "/provider/customers": "顧客管理",
-  "/provider/analytics": "予約分析",
+  "/provider/analytics": "実績分析",
 };
 
 export function ProviderNav() {
