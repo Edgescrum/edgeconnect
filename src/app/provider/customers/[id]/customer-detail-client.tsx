@@ -143,13 +143,22 @@ export function CustomerDetailClient({
 
   const churnStatus = getChurnStatus();
 
-  // ページネーション
-  const totalPages = Math.ceil(bookings.length / ITEMS_PER_PAGE);
-  const paginatedBookings = bookings.slice(
+  // 予約を過去と未来に分割
+  const now = new Date();
+  const futureBookings = bookings
+    .filter((b) => new Date(b.start_at) > now && b.status === "confirmed")
+    .sort((a, b) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime());
+  const pastBookings = bookings
+    .filter((b) => new Date(b.start_at) <= now)
+    .sort((a, b) => new Date(b.start_at).getTime() - new Date(a.start_at).getTime());
+
+  // ページネーション（過去の予約のみ）
+  const totalPages = Math.ceil(pastBookings.length / ITEMS_PER_PAGE);
+  const paginatedBookings = pastBookings.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
     currentPage * ITEMS_PER_PAGE
   );
-  const showPagination = bookings.length > ITEMS_PER_PAGE;
+  const showPagination = pastBookings.length > ITEMS_PER_PAGE;
 
   // メニュー内訳の合計
   const totalMenuBookings = menuBreakdown.reduce((s, m) => s + m.booking_count, 0);
@@ -219,11 +228,11 @@ export function CustomerDetailClient({
         </div>
 
         {/* 離脱リスクの詳細説明 */}
-        {detail.days_since_last_visit !== null && (
+        {detail.days_since_last_visit !== null && detail.days_since_last_visit >= 0 && (
           <div className={`mt-4 rounded-xl p-3 text-sm ${churnStatus.bgColor}`}>
             <div className="flex items-center justify-between">
               <span className="text-muted">前回来店からの経過</span>
-              <span className="font-bold text-foreground">{detail.days_since_last_visit}日前</span>
+              <span className="font-bold text-foreground">{Math.max(0, detail.days_since_last_visit)}日前</span>
             </div>
             {detail.avg_interval_days !== null && detail.avg_interval_days > 0 && (
               <div className="mt-2">
@@ -419,6 +428,58 @@ export function CustomerDetailClient({
         <MonthlyVisitsChart data={monthlyVisits} />
       </section>
 
+      {/* 今後の予約 */}
+      {futureBookings.length > 0 && (
+        <section className="rounded-2xl bg-card p-5 ring-1 ring-accent/30 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                <line x1="16" y1="2" x2="16" y2="6" />
+                <line x1="8" y1="2" x2="8" y2="6" />
+                <line x1="3" y1="10" x2="21" y2="10" />
+              </svg>
+              <h3 className="text-sm font-semibold text-foreground">今後の予約</h3>
+            </div>
+            <span className="text-xs text-muted">{futureBookings.length}件</span>
+          </div>
+          <div className="space-y-2">
+            {futureBookings.map((b) => {
+              const svc = Array.isArray(b.services) ? b.services[0] : b.services;
+              return (
+                <div
+                  key={b.id}
+                  className="flex items-center justify-between rounded-xl bg-accent/5 p-3.5 text-sm ring-1 ring-accent/10"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-accent/10 text-accent">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                        <line x1="16" y1="2" x2="16" y2="6" />
+                        <line x1="8" y1="2" x2="8" y2="6" />
+                        <line x1="3" y1="10" x2="21" y2="10" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="font-medium">{formatDateTime(b.start_at)}</p>
+                      <p className="text-xs text-muted mt-0.5">
+                        {svc?.name || "不明"}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-semibold">
+                      {svc?.price ? `${svc.price.toLocaleString()}円` : "-"}
+                    </p>
+                    <span className="text-xs font-medium text-accent">予約済み</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
       {/* 予約履歴（ページネーション付き） */}
       <section className="rounded-2xl bg-card p-5 ring-1 ring-border/60 shadow-sm">
         <div className="flex items-center justify-between mb-4">
@@ -431,12 +492,12 @@ export function CustomerDetailClient({
             </svg>
             <h3 className="text-sm font-semibold text-foreground">予約履歴</h3>
           </div>
-          {bookings.length > 0 && (
-            <span className="text-xs text-muted">{bookings.length}件</span>
+          {pastBookings.length > 0 && (
+            <span className="text-xs text-muted">{pastBookings.length}件</span>
           )}
         </div>
 
-        {bookings.length === 0 ? (
+        {pastBookings.length === 0 ? (
           <p className="text-sm text-muted py-4 text-center">予約履歴がありません</p>
         ) : (
           <>
