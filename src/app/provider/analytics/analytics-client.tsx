@@ -32,6 +32,11 @@ interface HeatmapCell {
   booking_count: number;
 }
 
+interface MonthlyAvgInterval {
+  month: string;
+  avg_interval_days: number;
+}
+
 interface AvgBookingInterval {
   avg_interval_days: number;
   total_customers: number;
@@ -74,6 +79,7 @@ const PERIOD_OPTIONS: { key: PeriodKey; label: string; months: number }[] = [
 
 export function AnalyticsClient({
   allMonthlyData,
+  monthlyAvgInterval,
   popularMenus,
   heatmapData,
   avgBookingInterval,
@@ -81,6 +87,7 @@ export function AnalyticsClient({
   benchmark,
 }: {
   allMonthlyData: MonthlyStat[];
+  monthlyAvgInterval: MonthlyAvgInterval[];
   popularMenus: PopularMenu[];
   heatmapData: HeatmapCell[];
   avgBookingInterval: AvgBookingInterval;
@@ -126,7 +133,81 @@ export function AnalyticsClient({
     return quarters;
   };
 
-  const displayStats = period === "quarter" ? aggregateQuarterly(currentStats) : currentStats;
+  // 年表示の場合はデータを年ごとに集計
+  const aggregateYearly = (data: MonthlyStat[]): MonthlyStat[] => {
+    if (period !== "year" || data.length === 0) return data;
+    const yearMap = new Map<string, MonthlyStat[]>();
+    for (const stat of data) {
+      const year = stat.month.slice(0, 4);
+      if (!yearMap.has(year)) yearMap.set(year, []);
+      yearMap.get(year)!.push(stat);
+    }
+    const years: MonthlyStat[] = [];
+    for (const [year, chunks] of yearMap) {
+      const totalBookings = chunks.reduce((s, c) => s + c.booking_count, 0);
+      const totalRevenue = chunks.reduce((s, c) => s + c.revenue, 0);
+      const totalCancels = chunks.reduce((s, c) => s + c.cancel_count, 0);
+      const totalAll = totalBookings + totalCancels;
+      const totalUniqueCustomers = chunks.reduce((s, c) => s + (c.unique_customers || 0), 0);
+      years.push({
+        month: `${year}-01`,
+        booking_count: totalBookings,
+        revenue: totalRevenue,
+        cancel_count: totalCancels,
+        cancel_rate: totalAll > 0 ? Math.round((totalCancels / totalAll) * 1000) / 10 : 0,
+        unique_customers: totalUniqueCustomers,
+      });
+    }
+    return years;
+  };
+
+  const displayStats = period === "quarter" ? aggregateQuarterly(currentStats) : period === "year" ? aggregateYearly(currentStats) : currentStats;
+
+  // 月別平均予約間隔データを期間に応じてスライス・集約
+  const getIntervalForPeriod = (): MonthlyAvgInterval[] => {
+    const months = PERIOD_OPTIONS.find((o) => o.key === period)?.months ?? 6;
+    const sliced = monthlyAvgInterval.slice(-months);
+    if (period === "quarter") {
+      const quarters: MonthlyAvgInterval[] = [];
+      for (let i = 0; i < sliced.length; i += 3) {
+        const chunk = sliced.slice(i, i + 3);
+        if (chunk.length === 0) continue;
+        const nonZero = chunk.filter((c) => c.avg_interval_days > 0);
+        quarters.push({
+          month: chunk[0].month,
+          avg_interval_days: nonZero.length > 0
+            ? Math.round(nonZero.reduce((s, c) => s + c.avg_interval_days, 0) / nonZero.length * 10) / 10
+            : 0,
+        });
+      }
+      return quarters;
+    }
+    if (period === "year") {
+      const yearMap = new Map<string, MonthlyAvgInterval[]>();
+      for (const item of sliced) {
+        const year = item.month.slice(0, 4);
+        if (!yearMap.has(year)) yearMap.set(year, []);
+        yearMap.get(year)!.push(item);
+      }
+      const years: MonthlyAvgInterval[] = [];
+      for (const [year, chunks] of yearMap) {
+        const nonZero = chunks.filter((c) => c.avg_interval_days > 0);
+        years.push({
+          month: `${year}-01`,
+          avg_interval_days: nonZero.length > 0
+            ? Math.round(nonZero.reduce((s, c) => s + c.avg_interval_days, 0) / nonZero.length * 10) / 10
+            : 0,
+        });
+      }
+      return years;
+    }
+    return sliced;
+  };
+
+  const intervalForPeriod = getIntervalForPeriod();
+
+  // intervalForPeriod を month でインデックス化
+  const intervalMap = new Map(intervalForPeriod.map((d) => [d.month, d.avg_interval_days]));
 
   const chartMonthly = displayStats.map((s) => {
     const uniqueCustomers = s.unique_customers || 0;
@@ -137,6 +218,7 @@ export function AnalyticsClient({
       revenue: s.revenue,
       cancelRate: s.cancel_rate,
       unitPrice: uniqueCustomers > 0 ? Math.round(s.revenue / uniqueCustomers) : 0,
+      interval: intervalMap.get(s.month) ?? 0,
     };
   });
 
@@ -182,21 +264,63 @@ export function AnalyticsClient({
     ltvStats.segments.dormant +
     ltvStats.segments.at_risk;
 
+  // fullMonth (YYYY-MM) を取得するヘルパー
+  const getFullMonth = (monthPart: string): string | undefined => {
+    const entry = chartMonthly.find((d) => d.month === monthPart);
+    return entry?.fullMonth;
+  };
+
+  // 年を跨ぐかどうか判定
+  const hasMultipleYears = (() => {
+    const years = new Set(chartMonthly.map((d) => d.fullMonth.slice(0, 4)));
+    return years.size > 1;
+  })();
+
   const formatTickLabel = (v: string) => {
+    const fullMonth = getFullMonth(v);
+    if (period === "year") {
+      // 年表示: fullMonth から年を取得
+      if (fullMonth) return `${fullMonth.slice(0, 4)}年`;
+      return v;
+    }
     if (period === "quarter") {
       const m = parseInt(v);
       const q = Math.ceil(m / 3);
+      if (fullMonth) {
+        const year = fullMonth.slice(0, 4);
+        return `Q${q} ${year}`;
+      }
       return `Q${q}`;
+    }
+    // 月表示: 年を跨ぐ場合は年も表示
+    if (hasMultipleYears && fullMonth) {
+      const year = fullMonth.slice(0, 4);
+      const month = parseInt(v);
+      return `${year}年${month}月`;
     }
     return `${parseInt(v)}月`;
   };
 
   const formatTooltipLabel = (label: unknown) => {
     const str = String(label);
+    const fullMonth = getFullMonth(str);
+    if (period === "year") {
+      if (fullMonth) return `${fullMonth.slice(0, 4)}年`;
+      return str;
+    }
     if (period === "quarter") {
       const m = parseInt(str);
       const q = Math.ceil(m / 3);
+      if (fullMonth) {
+        const year = fullMonth.slice(0, 4);
+        return `${year}年 第${q}四半期`;
+      }
       return `第${q}四半期`;
+    }
+    if (fullMonth) {
+      const year = fullMonth.slice(0, 4);
+      const month = parseInt(str);
+      return `${year}年${month}月`;
     }
     return `${parseInt(str)}月`;
   };
@@ -318,103 +442,81 @@ export function AnalyticsClient({
           ))}
         </div>
 
-        {chartTab === "interval" ? (
-          /* 平均予約間隔は月別推移データがないため、サマリーを表示 */
-          <div className="flex flex-col items-center justify-center py-8 text-center">
-            <div className="mb-3 flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50">
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="10" />
-                <polyline points="12 6 12 12 16 14" />
-              </svg>
-            </div>
-            <p className="text-2xl font-bold text-foreground">
-              {avgBookingInterval.avg_interval_days > 0 ? `${avgBookingInterval.avg_interval_days}日` : "-"}
-            </p>
-            <p className="mt-1 text-sm text-muted">全期間の平均予約間隔</p>
-            {avgBookingInterval.customers_with_interval > 0 && (
-              <p className="mt-1 text-xs text-muted">
-                リピーター {avgBookingInterval.customers_with_interval}人 / 全 {avgBookingInterval.total_customers}人のデータ
-              </p>
-            )}
-            <p className="mt-3 text-xs text-muted opacity-70">
-              月別の推移は今後のアップデートで対応予定です
-            </p>
-          </div>
-        ) : chartMonthly.length > 0 ? (
-          <ResponsiveContainer width="100%" height={220}>
-            <AreaChart data={chartMonthly}>
-              <defs>
-                <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={
-                    chartTab === "bookings" ? "var(--accent)" :
-                    chartTab === "revenue" ? "#6366f1" :
-                    "#f59e0b"
-                  } stopOpacity={0.3} />
-                  <stop offset="95%" stopColor={
-                    chartTab === "bookings" ? "var(--accent)" :
-                    chartTab === "revenue" ? "#6366f1" :
-                    "#f59e0b"
-                  } stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" opacity={0.5} />
-              <XAxis
-                dataKey="month"
-                tickFormatter={formatTickLabel}
-                fontSize={12}
-                stroke="var(--color-muted)"
-                axisLine={false}
-                tickLine={false}
-              />
-              <YAxis
-                allowDecimals={false}
-                fontSize={12}
-                stroke="var(--color-muted)"
-                axisLine={false}
-                tickLine={false}
-              />
-              <Tooltip
-                formatter={(value) => {
-                  if (chartTab === "bookings") return [`${value}件`, "予約数"];
-                  if (chartTab === "revenue") return [`${Number(value).toLocaleString()}円`, "売上"];
-                  return [`${Number(value).toLocaleString()}円`, "顧客単価"];
-                }}
-                labelFormatter={formatTooltipLabel}
-                contentStyle={{
-                  borderRadius: "12px",
-                  border: "1px solid var(--border)",
-                  boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
-                  fontSize: "13px",
-                }}
-              />
-              <Area
-                type="monotone"
-                dataKey={
-                  chartTab === "bookings" ? "bookings" :
-                  chartTab === "revenue" ? "revenue" :
-                  "unitPrice"
-                }
-                stroke={
-                  chartTab === "bookings" ? "var(--color-accent)" :
-                  chartTab === "revenue" ? "#6366f1" :
-                  "#f59e0b"
-                }
-                strokeWidth={2.5}
-                fill="url(#chartGradient)"
-                dot={{ r: 4, fill: "var(--card)", stroke:
-                  chartTab === "bookings" ? "var(--accent)" :
-                  chartTab === "revenue" ? "#6366f1" :
-                  "#f59e0b"
-                , strokeWidth: 2 }}
-                activeDot={{ r: 6, fill:
-                  chartTab === "bookings" ? "var(--accent)" :
-                  chartTab === "revenue" ? "#6366f1" :
-                  "#f59e0b"
-                , stroke: "var(--card)", strokeWidth: 2 }}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        ) : (
+        {chartMonthly.length > 0 ? (() => {
+          const chartColor =
+            chartTab === "bookings" ? "var(--accent)" :
+            chartTab === "revenue" ? "#6366f1" :
+            chartTab === "interval" ? "#3b82f6" :
+            "#f59e0b";
+          const chartColorVar =
+            chartTab === "bookings" ? "var(--color-accent)" :
+            chartTab === "revenue" ? "#6366f1" :
+            chartTab === "interval" ? "#3b82f6" :
+            "#f59e0b";
+          const chartDataKey =
+            chartTab === "bookings" ? "bookings" :
+            chartTab === "revenue" ? "revenue" :
+            chartTab === "interval" ? "interval" :
+            "unitPrice";
+          const isCurrencyAxis = chartTab === "revenue" || chartTab === "unitPrice";
+          const yTickFormatter = isCurrencyAxis
+            ? (v: number) => v.toLocaleString()
+            : undefined;
+
+          return (
+            <ResponsiveContainer width="100%" height={220}>
+              <AreaChart data={chartMonthly}>
+                <defs>
+                  <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor={chartColor} stopOpacity={0.3} />
+                    <stop offset="95%" stopColor={chartColor} stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" opacity={0.5} />
+                <XAxis
+                  dataKey="month"
+                  tickFormatter={formatTickLabel}
+                  fontSize={period === "month" && hasMultipleYears ? 10 : 12}
+                  stroke="var(--color-muted)"
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <YAxis
+                  allowDecimals={chartTab === "interval"}
+                  fontSize={12}
+                  stroke="var(--color-muted)"
+                  axisLine={false}
+                  tickLine={false}
+                  tickFormatter={yTickFormatter}
+                />
+                <Tooltip
+                  formatter={(value) => {
+                    if (chartTab === "bookings") return [`${value}件`, "予約数"];
+                    if (chartTab === "revenue") return [`${Number(value).toLocaleString()}円`, "売上"];
+                    if (chartTab === "interval") return [`${value}日`, "平均予約間隔"];
+                    return [`${Number(value).toLocaleString()}円`, "顧客単価"];
+                  }}
+                  labelFormatter={formatTooltipLabel}
+                  contentStyle={{
+                    borderRadius: "12px",
+                    border: "1px solid var(--border)",
+                    boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
+                    fontSize: "13px",
+                  }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey={chartDataKey}
+                  stroke={chartColorVar}
+                  strokeWidth={2.5}
+                  fill="url(#chartGradient)"
+                  dot={{ r: 4, fill: "var(--card)", stroke: chartColor, strokeWidth: 2 }}
+                  activeDot={{ r: 6, fill: chartColor, stroke: "var(--card)", strokeWidth: 2 }}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          );
+        })() : (
           <EmptyState />
         )}
       </section>
