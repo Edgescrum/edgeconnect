@@ -31,10 +31,10 @@ interface HeatmapCell {
   booking_count: number;
 }
 
-interface RepeatRate {
+interface AvgBookingInterval {
+  avg_interval_days: number;
   total_customers: number;
-  repeat_customers: number;
-  repeat_rate: number;
+  customers_with_interval: number;
 }
 
 interface LtvStats {
@@ -52,7 +52,7 @@ interface Benchmark {
   provider_count: number;
   avg_monthly_bookings?: number;
   avg_monthly_revenue?: number;
-  avg_repeat_rate?: number;
+  avg_booking_interval?: number;
 }
 
 type PeriodKey = "month" | "quarter" | "year";
@@ -67,14 +67,14 @@ export function AnalyticsClient({
   allMonthlyData,
   popularMenus,
   heatmapData,
-  repeatRate,
+  avgBookingInterval,
   ltvStats,
   benchmark,
 }: {
   allMonthlyData: MonthlyStat[];
   popularMenus: PopularMenu[];
   heatmapData: HeatmapCell[];
-  repeatRate: RepeatRate;
+  avgBookingInterval: AvgBookingInterval;
   ltvStats: LtvStats;
   benchmark: Benchmark;
 }) {
@@ -177,6 +177,17 @@ export function AnalyticsClient({
     return `${parseInt(str)}月`;
   };
 
+  // 平均予約間隔の評価
+  const getIntervalQuality = (days: number): { label: string; color: string; bgColor: string } => {
+    if (days === 0) return { label: "-", color: "text-muted", bgColor: "bg-background" };
+    if (days <= 14) return { label: "とても良い", color: "text-emerald-600", bgColor: "bg-emerald-50" };
+    if (days <= 30) return { label: "良い", color: "text-blue-600", bgColor: "bg-blue-50" };
+    if (days <= 60) return { label: "普通", color: "text-amber-600", bgColor: "bg-amber-50" };
+    return { label: "要改善", color: "text-red-600", bgColor: "bg-red-50" };
+  };
+
+  const intervalQuality = getIntervalQuality(avgBookingInterval.avg_interval_days);
+
   return (
     <div className="space-y-6">
       {/* KPI サマリーカード */}
@@ -211,15 +222,20 @@ export function AnalyticsClient({
         <KpiSummaryCard
           icon={
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-              <circle cx="9" cy="7" r="4" />
-              <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-              <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+              <circle cx="12" cy="12" r="10" />
+              <polyline points="12 6 12 12 16 14" />
             </svg>
           }
-          label="リピート率"
-          value={`${repeatRate.repeat_rate}%`}
-          subText={`${repeatRate.repeat_customers} / ${repeatRate.total_customers}人`}
+          label="平均予約間隔"
+          value={avgBookingInterval.avg_interval_days > 0 ? `${avgBookingInterval.avg_interval_days}日` : "-"}
+          subText={avgBookingInterval.customers_with_interval > 0
+            ? `${avgBookingInterval.customers_with_interval}人のリピーター`
+            : "データなし"
+          }
+          badge={avgBookingInterval.avg_interval_days > 0
+            ? { label: intervalQuality.label, color: intervalQuality.color, bgColor: intervalQuality.bgColor }
+            : undefined
+          }
         />
         <KpiSummaryCard
           icon={
@@ -532,19 +548,20 @@ export function AnalyticsClient({
         </div>
       </ChartCard>
 
-      {/* 6+7. リピート率 + 平均LTV */}
+      {/* 6+7. 平均予約間隔 + 平均LTV */}
       <div className="grid gap-4 sm:grid-cols-2">
         <ChartCard
-          title="リピート率"
+          title="平均予約間隔"
           icon={
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="23 4 23 10 17 10" />
-              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+              <circle cx="12" cy="12" r="10" />
+              <polyline points="12 6 12 12 16 14" />
             </svg>
           }
         >
           <div className="flex items-center gap-6">
             <div className="relative flex h-24 w-24 shrink-0 items-center justify-center">
+              {/* 間隔を視覚的に表現するリングゲージ */}
               <svg className="h-24 w-24 -rotate-90" viewBox="0 0 100 100">
                 <circle
                   cx="50" cy="50" r="42"
@@ -552,28 +569,55 @@ export function AnalyticsClient({
                   stroke="var(--border)"
                   strokeWidth="8"
                 />
-                <circle
-                  cx="50" cy="50" r="42"
-                  fill="none"
-                  stroke="var(--accent)"
-                  strokeWidth="8"
-                  strokeLinecap="round"
-                  strokeDasharray={`${repeatRate.repeat_rate * 2.64} ${264 - repeatRate.repeat_rate * 2.64}`}
-                  className="transition-all duration-700"
-                />
+                {avgBookingInterval.avg_interval_days > 0 && (
+                  <circle
+                    cx="50" cy="50" r="42"
+                    fill="none"
+                    stroke={
+                      avgBookingInterval.avg_interval_days <= 14 ? "#10b981" :
+                      avgBookingInterval.avg_interval_days <= 30 ? "#3b82f6" :
+                      avgBookingInterval.avg_interval_days <= 60 ? "#f59e0b" :
+                      "#ef4444"
+                    }
+                    strokeWidth="8"
+                    strokeLinecap="round"
+                    strokeDasharray={`${Math.min(100, (1 - Math.min(avgBookingInterval.avg_interval_days, 90) / 90)) * 2.64 * 100 / 100 * 264 / 264 * 264} ${264}`}
+                    className="transition-all duration-700"
+                    style={{
+                      strokeDasharray: `${Math.max(30, 264 - (avgBookingInterval.avg_interval_days / 90) * 264)} ${264}`,
+                    }}
+                  />
+                )}
               </svg>
-              <span className="absolute text-xl font-bold text-accent">
-                {repeatRate.repeat_rate}%
-              </span>
+              <div className="absolute text-center">
+                <span className="text-xl font-bold text-foreground">
+                  {avgBookingInterval.avg_interval_days > 0 ? avgBookingInterval.avg_interval_days : "-"}
+                </span>
+                {avgBookingInterval.avg_interval_days > 0 && (
+                  <span className="block text-[10px] font-medium text-muted">日</span>
+                )}
+              </div>
             </div>
-            <div className="text-sm text-muted space-y-1.5">
-              <p>
-                全顧客数: <span className="font-semibold text-foreground">{repeatRate.total_customers}人</span>
-              </p>
-              <p>
-                リピーター: <span className="font-semibold text-foreground">{repeatRate.repeat_customers}人</span>
-              </p>
-              <p className="text-xs opacity-70">2回以上来店した顧客の割合</p>
+            <div className="text-sm text-muted space-y-2">
+              {avgBookingInterval.avg_interval_days > 0 ? (
+                <>
+                  <div className="flex items-center gap-2">
+                    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${intervalQuality.bgColor} ${intervalQuality.color}`}>
+                      {intervalQuality.label}
+                    </span>
+                  </div>
+                  <p className="text-xs">
+                    平均 <span className="font-semibold text-foreground">{avgBookingInterval.avg_interval_days}日</span> ごとに来店
+                  </p>
+                  <p className="text-xs opacity-70">
+                    リピーター: {avgBookingInterval.customers_with_interval}人 / 全{avgBookingInterval.total_customers}人
+                  </p>
+                </>
+              ) : (
+                <p className="text-xs opacity-70">
+                  2回以上来店した顧客がいるとデータが表示されます
+                </p>
+              )}
             </div>
           </div>
         </ChartCard>
@@ -720,12 +764,12 @@ export function AnalyticsClient({
                 }
               />
               <BenchmarkCard
-                label="リピート率"
-                value={`${benchmark.avg_repeat_rate}%`}
+                label="平均予約間隔"
+                value={benchmark.avg_booking_interval ? `${benchmark.avg_booking_interval}日` : "-"}
                 icon={
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <polyline points="23 4 23 10 17 10" />
-                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+                    <circle cx="12" cy="12" r="10" />
+                    <polyline points="12 6 12 12 16 14" />
                   </svg>
                 }
               />
@@ -791,6 +835,7 @@ function KpiSummaryCard({
   subText,
   invertColor,
   formatDiff,
+  badge,
 }: {
   icon: React.ReactNode;
   label: string;
@@ -800,15 +845,11 @@ function KpiSummaryCard({
   subText?: string;
   invertColor?: boolean;
   formatDiff?: (v: number) => string;
+  badge?: { label: string; color: string; bgColor: string };
 }) {
   const getDiffColor = (v: number) => {
     if (invertColor) return v > 0 ? "text-red-500" : v < 0 ? "text-emerald-600" : "text-muted";
     return v > 0 ? "text-emerald-600" : v < 0 ? "text-red-500" : "text-muted";
-  };
-
-  const getDiffArrow = (v: number) => {
-    if (invertColor) return v > 0 ? "^" : v < 0 ? "v" : "";
-    return v > 0 ? "^" : v < 0 ? "v" : "";
   };
 
   return (
@@ -818,6 +859,11 @@ function KpiSummaryCard({
         <span className="text-xs font-medium">{label}</span>
       </div>
       <p className="mt-2 text-xl font-bold text-foreground">{value}</p>
+      {badge && (
+        <span className={`mt-1.5 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${badge.bgColor} ${badge.color}`}>
+          {badge.label}
+        </span>
+      )}
       {diff !== null && diff !== undefined && (
         <p className={`mt-1 text-xs font-medium ${getDiffColor(diff)}`}>
           <span className="inline-flex items-center gap-0.5">
