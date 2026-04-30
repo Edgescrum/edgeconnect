@@ -254,7 +254,7 @@ export function AnalyticsClient({
     if (cell.booking_count > maxHeat) maxHeat = cell.booking_count;
   }
 
-  // 人気メニューの最大値と合計（割合計算用）
+  // 人気メニューの最大値（バー幅計算用）
   const maxMenuCount = Math.max(1, ...popularMenus.map((m) => m.booking_count));
   const totalSegments =
     ltvStats.segments.excellent +
