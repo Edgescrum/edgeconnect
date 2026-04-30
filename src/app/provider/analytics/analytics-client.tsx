@@ -318,7 +318,7 @@ export function AnalyticsClient({
               <line x1="3" y1="10" x2="21" y2="10" />
             </svg>
           }
-          label="今月の予約数"
+          label="予約実績"
           value={currentMonth ? `${currentMonth.booking_count}件` : "-"}
           diff={bookingDiff}
           diffLabel="前月比"
@@ -394,7 +394,7 @@ export function AnalyticsClient({
         {/* KPI対応タブ */}
         <div className="mb-4 flex gap-1 overflow-x-auto rounded-xl bg-background p-1 ring-1 ring-border">
           {([
-            { key: "bookings", label: "予約数" },
+            { key: "bookings", label: "予約実績" },
             { key: "revenue", label: "売上" },
             { key: "interval", label: "平均予約間隔" },
             { key: "unitPrice", label: "顧客単価" },
@@ -462,7 +462,7 @@ export function AnalyticsClient({
                 />
                 <Tooltip
                   formatter={(value) => {
-                    if (chartTab === "bookings") return [`${value}件`, "予約数"];
+                    if (chartTab === "bookings") return [`${value}件`, "予約実績"];
                     if (chartTab === "revenue") return [`${Number(value).toLocaleString()}円`, "売上"];
                     if (chartTab === "interval") return [`${value}日`, "平均予約間隔"];
                     return [`${Number(value).toLocaleString()}円`, "顧客単価"];
@@ -791,7 +791,7 @@ export function AnalyticsClient({
             </p>
             <div className="grid gap-3 sm:grid-cols-3">
               <BenchmarkCard
-                label="月間予約数"
+                label="月間予約実績"
                 value={`${benchmark.avg_monthly_bookings}件`}
                 icon={
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

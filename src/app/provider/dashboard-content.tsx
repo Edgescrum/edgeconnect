@@ -66,8 +66,8 @@ const menuItems = [
   {
     href: "/provider/analytics",
     icon: "📊",
-    title: "予約分析",
-    desc: "予約数・売上・顧客分析",
+    title: "実績分析",
+    desc: "予約実績・売上・顧客分析",
   },
   {
     href: "/provider/profile",

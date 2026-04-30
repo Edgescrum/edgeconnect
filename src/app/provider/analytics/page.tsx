@@ -27,13 +27,13 @@ export default async function AnalyticsPage() {
       <main className="min-h-screen bg-background px-4 py-6 sm:px-8 sm:py-8">
         <div className="mx-auto max-w-lg sm:max-w-none">
           <div className="hidden sm:mb-6 sm:block">
-            <h1 className="text-xl font-bold">予約分析</h1>
+            <h1 className="text-xl font-bold">実績分析</h1>
           </div>
           <div className="mt-8 rounded-2xl bg-card p-8 text-center ring-1 ring-border">
             <p className="text-4xl">&#x1F4CA;</p>
-            <h2 className="mt-4 text-lg font-bold">予約分析はスタンダードプランの機能です</h2>
+            <h2 className="mt-4 text-lg font-bold">実績分析はスタンダードプランの機能です</h2>
             <p className="mt-2 text-sm text-muted">
-              予約数・売上・顧客分析などのデータを確認できます
+              予約実績・売上・顧客分析などのデータを確認できます
             </p>
             <a
               href="/provider/billing"
@@ -104,8 +104,8 @@ export default async function AnalyticsPage() {
     <main className="min-h-screen bg-background px-4 py-6 sm:px-8 sm:py-8">
       <div className="mx-auto max-w-lg sm:max-w-5xl">
         <div className="hidden sm:mb-6 sm:block">
-          <h1 className="text-xl font-bold">予約分析</h1>
-          <p className="mt-1 text-sm text-muted">予約データから傾向を把握できます</p>
+          <h1 className="text-xl font-bold">実績分析</h1>
+          <p className="mt-1 text-sm text-muted">実績データから傾向を把握できます</p>
         </div>
         <AnalyticsClient
           allMonthlyData={allMonthlyData}
