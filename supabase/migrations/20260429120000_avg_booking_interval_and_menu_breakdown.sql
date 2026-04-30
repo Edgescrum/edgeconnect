@@ -116,30 +116,28 @@ BEGIN
   )
   SELECT COALESCE(AVG(monthly_rev), 0) INTO v_avg_revenue FROM provider_revenue;
 
-  -- 平均予約間隔
-  WITH provider_intervals AS (
+  -- 平均予約間隔（事業者ごとの顧客平均間隔の全体平均）
+  WITH customer_intervals AS (
     SELECT
       b.provider_id,
-      AVG(
-        CASE WHEN sub.avg_interval IS NOT NULL THEN sub.avg_interval ELSE NULL END
-      ) AS avg_interval
-    FROM providers p
-    JOIN bookings b ON b.provider_id = p.id AND b.status = 'confirmed'
-    LEFT JOIN LATERAL (
-      SELECT
-        CASE WHEN COUNT(*) > 1
-          THEN EXTRACT(DAY FROM MAX(b2.start_at) - MIN(b2.start_at)) / (COUNT(*) - 1)
-          ELSE NULL
-        END AS avg_interval
-      FROM bookings b2
-      WHERE b2.provider_id = p.id
-        AND b2.customer_user_id = b.customer_user_id
-        AND b2.status = 'confirmed'
-    ) sub ON true
+      b.customer_user_id,
+      CASE WHEN COUNT(*) > 1
+        THEN EXTRACT(DAY FROM MAX(b.start_at) - MIN(b.start_at)) / (COUNT(*) - 1)
+        ELSE NULL
+      END AS avg_interval
+    FROM bookings b
+    JOIN providers p ON p.id = b.provider_id
     WHERE p.category = p_category AND p.is_active = true
-    GROUP BY b.provider_id
+      AND b.status = 'confirmed'
+    GROUP BY b.provider_id, b.customer_user_id
+  ),
+  provider_avg AS (
+    SELECT provider_id, AVG(avg_interval) AS avg_interval
+    FROM customer_intervals
+    WHERE avg_interval IS NOT NULL
+    GROUP BY provider_id
   )
-  SELECT COALESCE(AVG(avg_interval), 0) INTO v_avg_interval FROM provider_intervals;
+  SELECT COALESCE(AVG(avg_interval), 0) INTO v_avg_interval FROM provider_avg;
 
   RETURN json_build_object(
     'available', true,
