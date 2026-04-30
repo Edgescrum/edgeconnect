@@ -64,40 +64,32 @@ const PERIOD_OPTIONS: { key: PeriodKey; label: string; months: number }[] = [
 ];
 
 export function AnalyticsClient({
-  monthlyStats,
+  allMonthlyData,
   popularMenus,
   heatmapData,
   repeatRate,
   ltvStats,
   benchmark,
-  allMonthlyStats,
 }: {
-  monthlyStats: MonthlyStat[];
+  allMonthlyData: MonthlyStat[];
   popularMenus: PopularMenu[];
   heatmapData: HeatmapCell[];
   repeatRate: RepeatRate;
   ltvStats: LtvStats;
   benchmark: Benchmark;
-  allMonthlyStats?: { month6: MonthlyStat[]; month12: MonthlyStat[]; month24: MonthlyStat[] };
 }) {
   const [period, setPeriod] = useState<PeriodKey>("month");
 
-  // 期間に応じたデータを取得
+  // 24ヶ月分のデータから期間に応じてスライス（末尾N件を取得）
   const getStatsForPeriod = (): MonthlyStat[] => {
-    if (!allMonthlyStats) return monthlyStats;
-    switch (period) {
-      case "month":
-        return allMonthlyStats.month6;
-      case "quarter":
-        return allMonthlyStats.month12;
-      case "year":
-        return allMonthlyStats.month24;
-      default:
-        return monthlyStats;
-    }
+    const months = PERIOD_OPTIONS.find((o) => o.key === period)?.months ?? 6;
+    return allMonthlyData.slice(-months);
   };
 
   const currentStats = getStatsForPeriod();
+
+  // KPI用：直近6ヶ月分（月表示のデフォルト）
+  const monthlyStats = allMonthlyData.slice(-6);
 
   // 四半期表示の場合はデータを3ヶ月ごとに集計
   const aggregateQuarterly = (data: MonthlyStat[]): MonthlyStat[] => {

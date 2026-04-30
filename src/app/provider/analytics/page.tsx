@@ -47,10 +47,8 @@ export default async function AnalyticsPage() {
     );
   }
 
-  // 全データを並列取得（期間切り替え用に6/12/24ヶ月分も取得）
+  // 全データを並列取得（get_monthly_stats は24ヶ月分を1回だけ取得し、クライアントでスライス）
   const [
-    monthlyResult,
-    monthly12Result,
     monthly24Result,
     menusResult,
     heatmapResult,
@@ -58,14 +56,6 @@ export default async function AnalyticsPage() {
     ltvResult,
     benchmarkResult,
   ] = await Promise.all([
-    supabase.rpc("get_monthly_stats", {
-      p_provider_id: provider.id,
-      p_months: 6,
-    }),
-    supabase.rpc("get_monthly_stats", {
-      p_provider_id: provider.id,
-      p_months: 12,
-    }),
     supabase.rpc("get_monthly_stats", {
       p_provider_id: provider.id,
       p_months: 24,
@@ -89,6 +79,8 @@ export default async function AnalyticsPage() {
       : Promise.resolve({ data: { available: false, provider_count: 0 } }),
   ]);
 
+  const allMonthlyData = monthly24Result.data || [];
+
   return (
     <main className="min-h-screen bg-background px-4 py-6 sm:px-8 sm:py-8">
       <div className="mx-auto max-w-lg sm:max-w-5xl">
@@ -97,17 +89,12 @@ export default async function AnalyticsPage() {
           <p className="mt-1 text-sm text-muted">予約データから傾向を把握できます</p>
         </div>
         <AnalyticsClient
-          monthlyStats={monthlyResult.data || []}
+          allMonthlyData={allMonthlyData}
           popularMenus={menusResult.data || []}
           heatmapData={heatmapResult.data || []}
           repeatRate={repeatResult.data || { total_customers: 0, repeat_customers: 0, repeat_rate: 0 }}
           ltvStats={ltvResult.data || { avg_ltv: 0, segments: { excellent: 0, normal: 0, dormant: 0, at_risk: 0 } }}
           benchmark={benchmarkResult.data || { available: false, provider_count: 0 }}
-          allMonthlyStats={{
-            month6: monthlyResult.data || [],
-            month12: monthly12Result.data || [],
-            month24: monthly24Result.data || [],
-          }}
         />
       </div>
     </main>
