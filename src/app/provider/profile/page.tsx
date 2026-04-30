@@ -21,6 +21,18 @@ export default async function ProfileEditPage() {
 
   if (!provider) redirect("/provider/register");
 
+  // icon_url が未設定の場合、LINE プロフィール画像をフォールバック表示
+  if (!provider.icon_url) {
+    const { data: userData } = await supabase
+      .from("users")
+      .select("picture_url")
+      .eq("id", user.id)
+      .single();
+    if (userData?.picture_url) {
+      provider.icon_url = userData.picture_url;
+    }
+  }
+
   return (
     <main className="min-h-screen bg-background px-4 py-8 sm:px-8 sm:py-8">
       <div>

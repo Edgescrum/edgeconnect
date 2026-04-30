@@ -73,6 +73,7 @@ export async function POST(request: Request) {
       p_display_name: lineProfile.displayName,
       p_role: "customer",
       p_auth_uid: authUid,
+      p_picture_url: lineProfile.pictureUrl || null,
     });
     if (upsertError) logError("login", "upsert failed", upsertError);
 
