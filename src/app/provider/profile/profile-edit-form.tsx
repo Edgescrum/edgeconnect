@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback } from "react";
 import { updateProfile } from "@/lib/actions/provider";
 import Image from "next/image";
+import { ProviderAvatar } from "@/components/ProviderAvatar";
 import { ImageCropper } from "@/components/ImageCropper";
 import type { Category } from "@/lib/constants/categories";
 import { CategorySelector } from "@/components/CategorySelector";
@@ -132,9 +133,12 @@ export function ProfileEditForm({ provider, categories: PROVIDER_CATEGORIES }: {
               className="h-20 w-20 rounded-2xl object-cover shadow-md"
             />
           ) : (
-            <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-accent text-2xl font-bold text-white shadow-md">
-              {(provider.name || "?")[0]}
-            </div>
+            <ProviderAvatar
+              iconUrl={null}
+              name={provider.name}
+              size={80}
+              className="rounded-2xl shadow-md"
+            />
           )}
           <div className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full bg-accent text-white shadow">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

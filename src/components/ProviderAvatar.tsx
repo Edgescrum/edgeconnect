@@ -34,18 +34,13 @@ export function ProviderAvatar({ iconUrl, name, size, className = "" }: Provider
   }
 
   return (
-    <div
-      className={`flex items-center justify-center bg-gray-300 ${className}`}
+    <Image
+      src="/images/default-avatar.svg"
+      alt={name || ""}
+      width={size}
+      height={size}
+      className={`object-cover ${className}`}
       style={{ width: size, height: size }}
-    >
-      <svg
-        viewBox="0 0 24 24"
-        fill="white"
-        style={{ width: size * 0.6, height: size * 0.6 }}
-      >
-        <circle cx="12" cy="8" r="4" />
-        <path d="M12 14c-6 0-8 3-8 5v1h16v-1c0-2-2-5-8-5z" />
-      </svg>
-    </div>
+    />
   );
 }

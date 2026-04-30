@@ -105,7 +105,7 @@ export async function registerProvider(formData: FormData) {
       validateImageFile(iconFile);
       iconUrl = await uploadIcon(adminSupabase, user.lineUserId, iconFile);
     } else {
-      // 未設定時: icon_url を null のまま（ProviderAvatar のフォールバックで人型アイコンを表示）
+      // 未設定時: icon_url を null のまま（ProviderAvatar のフォールバックでデフォルトアイコンを表示）
       iconUrl = null;
     }
   } catch (err) {
