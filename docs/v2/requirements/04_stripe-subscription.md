@@ -152,3 +152,81 @@ STRIPE_STANDARD_PRICE_ID=price_...
 - [ ] ダウングレード後3ヶ月経過したスタンダード機能データを削除するcronジョブ
 - [ ] 対象: 顧客メモ、通知テンプレート、分析設定
 - [ ] 削除前にLINE通知で警告
+
+---
+
+## 解約後アクセス制御ポリシー
+
+### 無料プランの不在
+
+事業者には無料プランが存在しない。サブスクリプション未登録または解約済みの場合は `inactive` として扱い、管理画面の大部分をブロックする。
+
+### subscription_status カラム
+
+providers テーブルに `subscription_status` カラムを追加し、事業主のサブスクリプション状態を DB レベルで管理する。
+
+| ステータス | 意味 | 遷移元イベント |
+|-----------|------|-------------|
+| `active` | 有効なサブスクリプション | `checkout.session.completed`, `customer.subscription.updated` (status=active) |
+| `trialing` | トライアル中 | `checkout.session.completed` (trial), `customer.subscription.updated` (status=trialing) |
+| `past_due` | 支払い失敗（Stripe がリトライ中） | `customer.subscription.updated` (status=past_due) |
+| `inactive` | 解約済み / サブスク未登録 | `customer.subscription.deleted`, デフォルト値 |
+
+- カラム定義: `text NOT NULL DEFAULT 'inactive'`
+- CHECK 制約: `subscription_status IN ('active', 'trialing', 'past_due', 'inactive')`
+- Stripe Webhook で同期: `customer.subscription.updated` / `deleted` / `checkout.session.completed`
+- `link-subscription` API でも同期
+
+### 管理画面のアクセス制御
+
+| subscription_status | `/provider/billing` | `/provider/*`（その他） |
+|---|---|---|
+| `active` | アクセス可 | アクセス可 |
+| `trialing` | アクセス可 | アクセス可 |
+| `past_due` | アクセス可 | アクセス可 |
+| `inactive` | アクセス可 | `/provider/billing` にリダイレクト |
+
+- 各 `/provider/*` の page.tsx で `requireActiveSubscription()` を呼び出してチェック
+- `/provider/billing` と `/provider/register` はチェックをスキップ
+- `past_due` はリトライ期間中のためフルアクセスを許可
+
+### Server Actions のアクセス制御
+
+| subscription_status | Server Actions 実行 |
+|---|---|
+| `active` | 許可 |
+| `trialing` | 許可 |
+| `past_due` | 許可 |
+| `inactive` | エラー（`subscription_inactive`） |
+
+- `getProviderId()` 内で `subscription_status` をチェック
+- billing 関連の Server Actions（Checkout セッション作成等）はチェックをスキップ（`skipSubscriptionCheck: true`）
+- API Route 経由の直接呼び出しでもガードされる
+
+### 公開ページの受付停止表示
+
+`subscription_status` が `inactive` の場合の公開ページ（`/p/[slug]`）の表示:
+
+- プロフィール情報: 表示する（屋号、プロフィール文、アイコン画像）
+- サービスメニュー一覧: 非表示
+- 予約ボタン: 非表示
+- 受付停止メッセージ: 「現在予約の受付を停止しています」を表示
+- 事業主の連絡先: 表示する（LINE 連絡先リンク）
+- 404 にしない理由: 既存顧客が困惑するため。連絡先を残すことで配慮する
+
+予約フローページ（`/p/[slug]/book/*`）:
+- 予約不可ページを表示（「現在予約の受付を停止しています」メッセージ + プロフィールへの戻りリンク）
+
+`active` / `trialing` / `past_due` 時は既存の表示のまま。`past_due` でも予約は可能。
+
+### cancel_at 以降の予約
+
+`cancel_at`（解約予約日）が設定されていても、その日以降の予約はブロックしない。解約予約中は `subscription_status` が `active` または `trialing` のまま維持され、`customer.subscription.deleted` が発火して初めて `inactive` になるため。
+
+### billing ページの状態別表示
+
+| subscription_status | 表示内容 |
+|---|---|
+| `inactive` | 再登録促進 UI（データ保持の案内 + 予約ページ非公開の案内 + Stripe Checkout ボタン） |
+| `past_due` | 警告バナー「お支払いに問題があります」 + Customer Portal へのリンク（カード情報更新） |
+| `active` / `trialing` | 既存の billing ページ（プラン情報、支払い履歴等） |

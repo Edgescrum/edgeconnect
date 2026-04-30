@@ -1,12 +1,15 @@
 import { resolveUser } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { requireActiveSubscription } from "@/lib/auth/provider-session";
 import { ScheduleEditor } from "./schedule-editor";
 
 export default async function SchedulePage() {
   const user = await resolveUser();
   if (!user) redirect("/");
   if (user.role !== "provider") redirect("/");
+
+  await requireActiveSubscription(user.id);
 
   const supabase = await createClient();
 
