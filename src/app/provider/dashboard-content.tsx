@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ProviderBase } from "@/lib/types/provider";
 import { RegisterCompleteModal } from "@/components/RegisterCompleteModal";
 import { ProviderAvatar } from "@/components/ProviderAvatar";
+import { DashboardSummary } from "./dashboard-summary";
 
 interface Onboarding {
   hasService: boolean;
@@ -57,6 +58,18 @@ const menuItems = [
     desc: "営業時間・定休日・インターバル",
   },
   {
+    href: "/provider/customers",
+    icon: "👥",
+    title: "顧客管理",
+    desc: "お客さまの来店履歴・メモ",
+  },
+  {
+    href: "/provider/analytics",
+    icon: "📊",
+    title: "予約分析",
+    desc: "予約数・売上・顧客分析",
+  },
+  {
     href: "/provider/profile",
     icon: "✏️",
     title: "プロフィール編集",
@@ -82,16 +95,25 @@ const menuItems = [
   },
 ];
 
+interface DashboardSummaryData {
+  bookingCount: number;
+  revenue: number;
+  bookingCountDiff: number | null;
+  revenueDiff: number | null;
+}
+
 export function ProviderDashboard({
   provider,
   todayCount = 0,
   weekCount = 0,
   onboarding,
+  dashboardSummary,
 }: {
   provider: ProviderBase;
   todayCount?: number;
   weekCount?: number;
   onboarding?: Onboarding;
+  dashboardSummary?: DashboardSummaryData | null;
 }) {
   const completedCount = onboarding
     ? onboardingSteps.filter((s) => onboarding[s.key]).length
@@ -125,6 +147,18 @@ export function ProviderDashboard({
           <StatCard href="/provider/bookings?filter=today" value={todayCount} label="今日の予約" />
           <StatCard href="/provider/bookings?filter=week" value={weekCount} label="今週の予約" />
         </div>
+
+        {/* AN-2: ダッシュボードサマリー（スタンダード以上） */}
+        {dashboardSummary && (
+          <div className="mt-4">
+            <DashboardSummary
+              bookingCount={dashboardSummary.bookingCount}
+              revenue={dashboardSummary.revenue}
+              bookingCountDiff={dashboardSummary.bookingCountDiff}
+              revenueDiff={dashboardSummary.revenueDiff}
+            />
+          </div>
+        )}
 
         {/* Menu */}
         <div className="mt-6">
@@ -188,6 +222,18 @@ export function ProviderDashboard({
                 <p className="mt-1 text-xs text-accent">詳細を見る →</p>
               </Link>
             </div>
+
+            {/* AN-2: ダッシュボードサマリー（スタンダード以上、PC版） */}
+            {dashboardSummary && (
+              <div className="mt-4">
+                <DashboardSummary
+                  bookingCount={dashboardSummary.bookingCount}
+                  revenue={dashboardSummary.revenue}
+                  bookingCountDiff={dashboardSummary.bookingCountDiff}
+                  revenueDiff={dashboardSummary.revenueDiff}
+                />
+              </div>
+            )}
 
             {/* Quick actions */}
             <div className="mt-6">

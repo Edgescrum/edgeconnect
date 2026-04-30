@@ -8,6 +8,8 @@ const NAV_ITEMS = [
   { href: "/provider/bookings", icon: "📅", label: "予約管理" },
   { href: "/provider/services", icon: "📋", label: "サービスメニュー" },
   { href: "/provider/schedule", icon: "🕐", label: "スケジュール" },
+  { href: "/provider/customers", icon: "👥", label: "顧客管理" },
+  { href: "/provider/analytics", icon: "📊", label: "分析" },
   { href: "/provider/profile", icon: "✏️", label: "プロフィール" },
   { href: "/provider/calendar", icon: "📆", label: "カレンダー連携" },
   { href: "/provider/qrcode", icon: "📱", label: "QRコード" },
