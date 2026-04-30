@@ -2,6 +2,7 @@ import Link from "next/link";
 import { PublicFooter } from "@/components/PublicFooter";
 import { PlanCarousel } from "@/components/PlanCarousel";
 import { LineIcon } from "@/components/icons";
+import { buildLiffUrl } from "@/lib/device";
 
 /**
  * LandingPage V2
@@ -10,7 +11,9 @@ import { LineIcon } from "@/components/icons";
  * - その下でタブ的に「予約したい方」「予約を受けたい方」で分かれる
  * - 料金は事業主セクション内に自然に組み込む
  */
-export function LandingPage({ isLoggedIn = false, role }: { isLoggedIn?: boolean; role?: "customer" | "provider" }) {
+export function LandingPage({ isLoggedIn = false, role, isMobile = false }: { isLoggedIn?: boolean; role?: "customer" | "provider"; isMobile?: boolean }) {
+  const loginUrl = buildLiffUrl("/?action=login", isMobile);
+  const registerUrl = buildLiffUrl("/provider/register", isMobile);
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -26,8 +29,9 @@ export function LandingPage({ isLoggedIn = false, role }: { isLoggedIn?: boolean
                 マイページ
               </Link>
             ) : (
-              <a href="/?action=login" className="rounded-lg bg-accent px-3.5 py-1.5 text-xs font-semibold text-white active:scale-[0.98]">
-                ログイン
+              <a href={loginUrl} className="flex items-center gap-1.5 rounded-lg bg-accent px-3.5 py-1.5 text-xs font-semibold text-white active:scale-[0.98]">
+                {isMobile && <LineIcon size={14} />}
+                {isMobile ? "LINEでログイン" : "ログイン"}
               </a>
             )}
           </div>
@@ -264,14 +268,15 @@ export function LandingPage({ isLoggedIn = false, role }: { isLoggedIn?: boolean
               };
 
               const ctaButton = !isLoggedIn ? (
-                <a href="/?action=login" className="flex w-full max-w-sm items-center justify-center gap-2 rounded-xl bg-accent py-3.5 text-base font-semibold text-white shadow-lg shadow-accent/25 active:scale-[0.98]">
+                <a href={loginUrl} className="flex w-full max-w-sm items-center justify-center gap-2 rounded-xl bg-accent py-3.5 text-base font-semibold text-white shadow-lg shadow-accent/25 active:scale-[0.98]">
                   <LineIcon />
-                  まずは無料で始める
+                  {isMobile ? "LINEで無料登録" : "まずは無料で始める"}
                 </a>
               ) : isLoggedIn && role !== "provider" ? (
-                <Link href="/provider/register" className="flex w-full max-w-sm items-center justify-center rounded-xl bg-accent py-3.5 text-base font-semibold text-white shadow-lg shadow-accent/25 active:scale-[0.98]">
-                  事業主登録を始める
-                </Link>
+                <a href={registerUrl} className="flex w-full max-w-sm items-center justify-center gap-2 rounded-xl bg-accent py-3.5 text-base font-semibold text-white shadow-lg shadow-accent/25 active:scale-[0.98]">
+                  {isMobile && <LineIcon />}
+                  {isMobile ? "LINEで事業主登録" : "事業主登録を始める"}
+                </a>
               ) : role === "provider" ? (
                 <Link href="/provider" className="flex w-full max-w-sm items-center justify-center rounded-xl border border-accent py-3.5 text-base font-semibold text-accent active:scale-[0.98]">
                   管理画面へ
@@ -317,9 +322,9 @@ export function LandingPage({ isLoggedIn = false, role }: { isLoggedIn?: boolean
               予約する方も、受ける方も、LINEアカウントだけでOK
             </p>
             <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center sm:gap-4">
-              <a href="/?action=login" className="flex w-full max-w-xs items-center justify-center gap-2 rounded-xl bg-success py-3.5 text-base font-semibold text-white shadow-lg shadow-success/25 active:scale-[0.98] sm:w-auto sm:px-8">
+              <a href={loginUrl} className="flex w-full max-w-xs items-center justify-center gap-2 rounded-xl bg-success py-3.5 text-base font-semibold text-white shadow-lg shadow-success/25 active:scale-[0.98] sm:w-auto sm:px-8">
                 <LineIcon />
-                LINEではじめる
+                {isMobile ? "LINEアプリではじめる" : "LINEではじめる"}
               </a>
               <Link
                 href="/explore"

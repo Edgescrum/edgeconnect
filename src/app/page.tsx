@@ -1,7 +1,9 @@
+import { headers } from "next/headers";
 import { LandingPage } from "@/components/LandingPage";
 import { FullScreenLoading } from "@/components/FullScreenLoading";
 import { LiffGate } from "./liff-gate";
 import { resolveUser } from "@/lib/auth/session";
+import { isMobileUserAgent } from "@/lib/device";
 
 export default async function Home({
   searchParams,
@@ -16,10 +18,12 @@ export default async function Home({
   }
 
   const user = await resolveUser();
+  const headersList = await headers();
+  const isMobile = isMobileUserAgent(headersList.get("user-agent"));
 
   return (
     <LiffGate fallback={<FullScreenLoading />}>
-      <LandingPage isLoggedIn={!!user} role={user?.role} />
+      <LandingPage isLoggedIn={!!user} role={user?.role} isMobile={isMobile} />
     </LiffGate>
   );
 }
