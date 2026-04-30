@@ -13,6 +13,8 @@ const PAGE_TITLES: Record<string, string> = {
   "/provider/bookings": "予約管理",
   "/provider/calendar": "カレンダー連携",
   "/provider/billing": "プラン管理",
+  "/provider/customers": "顧客管理",
+  "/provider/analytics": "予約分析",
 };
 
 export function ProviderNav() {
@@ -25,11 +27,14 @@ export function ProviderNav() {
 
   const isServiceEditPage = /\/provider\/services\/\d+\/edit/.test(pathname);
   const isBookingDetailPage = /\/provider\/bookings\/[a-f0-9-]+/.test(pathname);
+  const isCustomerDetailPage = /\/provider\/customers\/\d+/.test(pathname);
   const title = isServiceEditPage
     ? "メニューを編集"
     : isBookingDetailPage
       ? "予約詳細"
-      : PAGE_TITLES[pathname] || "";
+      : isCustomerDetailPage
+        ? "顧客詳細"
+        : PAGE_TITLES[pathname] || "";
 
   if (!title) return null;
 
@@ -38,7 +43,9 @@ export function ProviderNav() {
       ? "/provider/services"
       : isBookingDetailPage
         ? "/provider/bookings"
-        : "/provider";
+        : isCustomerDetailPage
+          ? "/provider/customers"
+          : "/provider";
 
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-card/80 backdrop-blur-lg sm:hidden">

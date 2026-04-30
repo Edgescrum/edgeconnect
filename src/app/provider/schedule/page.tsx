@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { requireActiveSubscription } from "@/lib/auth/provider-session";
 import { ScheduleEditor } from "./schedule-editor";
+import { CustomLabelsEditor } from "./custom-labels-editor";
 
 export default async function SchedulePage() {
   const user = await resolveUser();
@@ -15,7 +16,7 @@ export default async function SchedulePage() {
 
   const { data: provider } = await supabase
     .from("providers")
-    .select("id")
+    .select("id, plan")
     .eq("user_id", user.id)
     .single();
 
@@ -35,6 +36,9 @@ export default async function SchedulePage() {
       .order("start_at", { ascending: true }),
   ]);
 
+  const customLabels = (settings?.customer_custom_labels as string[]) || [];
+  const isStandardPlan = provider.plan !== "basic";
+
   return (
     <main className="min-h-screen bg-background px-4 py-6 sm:px-8 sm:py-8">
       <div>
@@ -49,6 +53,14 @@ export default async function SchedulePage() {
           settings={settings}
           blockedSlots={blockedSlots || []}
         />
+
+        {/* CU-3: カスタム項目ラベル設定 */}
+        <div className="mt-8">
+          <CustomLabelsEditor
+            initialLabels={customLabels}
+            isStandardPlan={isStandardPlan}
+          />
+        </div>
       </div>
     </main>
   );
