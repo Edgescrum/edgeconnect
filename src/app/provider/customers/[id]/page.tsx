@@ -30,8 +30,8 @@ export default async function CustomerDetailPage({
   if (!provider) redirect("/provider/register");
   if (provider.plan === "basic") redirect("/provider/customers");
 
-  // 並列でデータ取得
-  const [detailResult, monthlyResult, bookingsResult, notesResult, settingsResult] = await Promise.all([
+  // 並列でデータ取得（平均値も追加取得）
+  const [detailResult, monthlyResult, bookingsResult, notesResult, settingsResult, avgResult] = await Promise.all([
     supabase.rpc("get_customer_detail", {
       p_provider_id: provider.id,
       p_customer_user_id: customerUserId,
@@ -58,6 +58,10 @@ export default async function CustomerDetailPage({
       .select("customer_custom_labels")
       .eq("provider_id", provider.id)
       .single(),
+    // 全顧客の平均値を算出するRPC
+    supabase.rpc("get_customer_averages", {
+      p_provider_id: provider.id,
+    }),
   ]);
 
   if (!detailResult.data) redirect("/provider/customers");
@@ -72,6 +76,7 @@ export default async function CustomerDetailPage({
           notes={notesResult.data || { memo: null, custom_fields: {} }}
           customLabels={(settingsResult.data?.customer_custom_labels as string[]) || []}
           customerUserId={customerUserId}
+          customerAverages={avgResult.data || null}
         />
       </div>
     </main>

@@ -34,6 +34,14 @@ interface MonthlyVisit {
   visit_count: number;
 }
 
+interface CustomerAverages {
+  avg_total_bookings: number;
+  avg_total_revenue: number;
+  avg_avg_price: number;
+  avg_interval_days: number;
+  customer_count: number;
+}
+
 export function CustomerDetailClient({
   detail,
   monthlyVisits,
@@ -41,6 +49,7 @@ export function CustomerDetailClient({
   notes,
   customLabels,
   customerUserId,
+  customerAverages,
 }: {
   detail: CustomerDetail;
   monthlyVisits: MonthlyVisit[];
@@ -48,6 +57,7 @@ export function CustomerDetailClient({
   notes: { memo: string | null; custom_fields: Record<string, string> };
   customLabels: string[];
   customerUserId: number;
+  customerAverages?: CustomerAverages | null;
 }) {
   const [memo, setMemo] = useState(notes.memo || "");
   const [customFields, setCustomFields] = useState<Record<string, string>>(
@@ -129,7 +139,14 @@ export function CustomerDetailClient({
 
       {/* KPI指標 */}
       <section className="rounded-2xl bg-card p-5 ring-1 ring-border">
-        <h3 className="text-sm font-semibold text-muted">KPI指標</h3>
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-muted">KPI指標</h3>
+          {customerAverages && customerAverages.customer_count > 1 && (
+            <span className="rounded-full bg-accent/10 px-2.5 py-0.5 text-xs font-medium text-accent">
+              全{customerAverages.customer_count}名の平均と比較
+            </span>
+          )}
+        </div>
         {isChurnRisk && (
           <div className="mt-3 flex items-center gap-2 rounded-xl bg-red-50 p-3 text-sm text-red-700">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -143,15 +160,37 @@ export function CustomerDetailClient({
           </div>
         )}
         <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <KpiCard label="累計予約数" value={`${detail.total_bookings}回`} />
-          <KpiCard label="累計売上（LTV）" value={`${detail.total_revenue.toLocaleString()}円`} />
-          <KpiCard label="平均単価" value={`${Math.round(detail.avg_price).toLocaleString()}円`} />
+          <KpiCard
+            label="累計予約数"
+            value={`${detail.total_bookings}回`}
+            avg={customerAverages ? `${customerAverages.avg_total_bookings}回` : undefined}
+            isAboveAvg={customerAverages ? detail.total_bookings >= customerAverages.avg_total_bookings : undefined}
+          />
+          <KpiCard
+            label="累計売上（LTV）"
+            value={`${detail.total_revenue.toLocaleString()}円`}
+            avg={customerAverages ? `${customerAverages.avg_total_revenue.toLocaleString()}円` : undefined}
+            isAboveAvg={customerAverages ? detail.total_revenue >= customerAverages.avg_total_revenue : undefined}
+          />
+          <KpiCard
+            label="平均単価"
+            value={`${Math.round(detail.avg_price).toLocaleString()}円`}
+            avg={customerAverages ? `${customerAverages.avg_avg_price.toLocaleString()}円` : undefined}
+            isAboveAvg={customerAverages ? detail.avg_price >= customerAverages.avg_avg_price : undefined}
+          />
           <KpiCard label="初回来店日" value={formatDate(detail.first_visit)} />
           <KpiCard label="最終来店日" value={formatDate(detail.last_visit)} />
           <KpiCard label="利用期間" value={usagePeriod} />
           <KpiCard
             label="平均来店間隔"
             value={detail.avg_interval_days ? `${detail.avg_interval_days}日` : "-"}
+            avg={customerAverages && customerAverages.avg_interval_days > 0 ? `${customerAverages.avg_interval_days}日` : undefined}
+            isAboveAvg={
+              customerAverages && detail.avg_interval_days !== null && customerAverages.avg_interval_days > 0
+                ? detail.avg_interval_days <= customerAverages.avg_interval_days
+                : undefined
+            }
+            invertComparison
           />
           <KpiCard
             label="離脱リスク"
@@ -279,10 +318,16 @@ function KpiCard({
   label,
   value,
   alert,
+  avg,
+  isAboveAvg,
+  invertComparison,
 }: {
   label: string;
   value: string;
   alert?: boolean;
+  avg?: string;
+  isAboveAvg?: boolean;
+  invertComparison?: boolean;
 }) {
   return (
     <div className="rounded-xl bg-background p-3">
@@ -290,6 +335,48 @@ function KpiCard({
       <p className={`mt-1 text-lg font-bold ${alert ? "text-red-500" : ""}`}>
         {value}
       </p>
+      {avg !== undefined && (
+        <div className="mt-1.5 flex items-center gap-1">
+          {isAboveAvg !== undefined && (
+            <span
+              className={`inline-flex h-4 items-center rounded-sm px-1 text-[10px] font-bold ${
+                isAboveAvg
+                  ? invertComparison
+                    ? "bg-emerald-100 text-emerald-700"
+                    : "bg-emerald-100 text-emerald-700"
+                  : invertComparison
+                    ? "bg-red-100 text-red-600"
+                    : "bg-amber-100 text-amber-700"
+              }`}
+            >
+              {isAboveAvg ? (
+                invertComparison ? (
+                  <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                ) : (
+                  <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                    <polyline points="18 15 12 9 6 15" />
+                  </svg>
+                )
+              ) : (
+                invertComparison ? (
+                  <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                    <polyline points="6 9 12 15 18 9" />
+                  </svg>
+                ) : (
+                  <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                    <polyline points="6 9 12 15 18 9" />
+                  </svg>
+                )
+              )}
+            </span>
+          )}
+          <span className="text-[10px] text-muted">
+            平均: {avg}
+          </span>
+        </div>
+      )}
     </div>
   );
 }
