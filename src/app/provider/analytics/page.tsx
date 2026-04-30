@@ -79,7 +79,15 @@ export default async function AnalyticsPage() {
       : Promise.resolve({ data: { available: false, provider_count: 0 } }),
   ]);
 
-  const allMonthlyData = monthly24Result.data || [];
+  // unique_customers が RPC から返されない場合（マイグレーション未適用時）のフォールバック
+  const allMonthlyData = (monthly24Result.data || []).map((row: Record<string, unknown>) => ({
+    month: row.month as string,
+    booking_count: Number(row.booking_count ?? 0),
+    revenue: Number(row.revenue ?? 0),
+    cancel_count: Number(row.cancel_count ?? 0),
+    cancel_rate: Number(row.cancel_rate ?? 0),
+    unique_customers: Number(row.unique_customers ?? 0),
+  }));
 
   return (
     <main className="min-h-screen bg-background px-4 py-6 sm:px-8 sm:py-8">

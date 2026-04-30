@@ -88,6 +88,7 @@ export function AnalyticsClient({
   benchmark: Benchmark;
 }) {
   const [period, setPeriod] = useState<PeriodKey>("month");
+  const [chartTab, setChartTab] = useState<"bookings" | "revenue" | "interval" | "unitPrice">("bookings");
 
   // 24ヶ月分のデータから期間に応じてスライス（末尾N件を取得）
   const getStatsForPeriod = (): MonthlyStat[] => {
@@ -127,13 +128,17 @@ export function AnalyticsClient({
 
   const displayStats = period === "quarter" ? aggregateQuarterly(currentStats) : currentStats;
 
-  const chartMonthly = displayStats.map((s) => ({
-    month: s.month.slice(5),
-    fullMonth: s.month,
-    bookings: s.booking_count,
-    revenue: s.revenue,
-    cancelRate: s.cancel_rate,
-  }));
+  const chartMonthly = displayStats.map((s) => {
+    const uniqueCustomers = s.unique_customers || 0;
+    return {
+      month: s.month.slice(5),
+      fullMonth: s.month,
+      bookings: s.booking_count,
+      revenue: s.revenue,
+      cancelRate: s.cancel_rate,
+      unitPrice: uniqueCustomers > 0 ? Math.round(s.revenue / uniqueCustomers) : 0,
+    };
+  });
 
   // 前月比の計算
   const currentMonth = monthlyStats.length > 0 ? monthlyStats[monthlyStats.length - 1] : null;
@@ -196,16 +201,14 @@ export function AnalyticsClient({
     return `${parseInt(str)}月`;
   };
 
-  // 平均予約間隔の評価
-  const getIntervalQuality = (days: number): { label: string; color: string; bgColor: string } => {
-    if (days === 0) return { label: "-", color: "text-muted", bgColor: "bg-background" };
-    if (days <= 14) return { label: "とても良い", color: "text-emerald-600", bgColor: "bg-emerald-50" };
-    if (days <= 30) return { label: "良い", color: "text-blue-600", bgColor: "bg-blue-50" };
-    if (days <= 60) return { label: "普通", color: "text-amber-600", bgColor: "bg-amber-50" };
-    return { label: "要改善", color: "text-red-600", bgColor: "bg-red-50" };
+  // 平均予約間隔の色（判定ラベルは比較対象がないため表示しない）
+  const getIntervalColor = (days: number): string => {
+    if (days === 0) return "var(--color-muted)";
+    if (days <= 14) return "#10b981";
+    if (days <= 30) return "#3b82f6";
+    if (days <= 60) return "#f59e0b";
+    return "#ef4444";
   };
-
-  const intervalQuality = getIntervalQuality(avgBookingInterval.avg_interval_days);
 
   return (
     <div className="space-y-6">
@@ -251,10 +254,6 @@ export function AnalyticsClient({
             ? `${avgBookingInterval.customers_with_interval}人のリピーター`
             : "データなし"
           }
-          badge={avgBookingInterval.avg_interval_days > 0
-            ? { label: intervalQuality.label, color: intervalQuality.color, bgColor: intervalQuality.bgColor }
-            : undefined
-          }
         />
         <KpiSummaryCard
           icon={
@@ -271,42 +270,91 @@ export function AnalyticsClient({
         />
       </div>
 
-      {/* 期間切り替えボタン */}
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-foreground">推移グラフ</h3>
-        <div className="flex rounded-xl bg-background p-1 ring-1 ring-border">
-          {PERIOD_OPTIONS.map((opt) => (
+      {/* 推移グラフ（KPIカード対応タブ切り替え） */}
+      <section className="rounded-2xl bg-card p-5 shadow-sm ring-1 ring-border/60">
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-2">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+            </svg>
+            <h3 className="text-sm font-semibold text-foreground">推移グラフ</h3>
+          </div>
+          <div className="flex rounded-xl bg-background p-1 ring-1 ring-border">
+            {PERIOD_OPTIONS.map((opt) => (
+              <button
+                key={opt.key}
+                onClick={() => setPeriod(opt.key)}
+                className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
+                  period === opt.key
+                    ? "bg-accent text-white shadow-sm"
+                    : "text-muted hover:text-foreground"
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* KPI対応タブ */}
+        <div className="mb-4 flex gap-1 overflow-x-auto rounded-xl bg-background p-1 ring-1 ring-border">
+          {([
+            { key: "bookings", label: "予約数" },
+            { key: "revenue", label: "売上" },
+            { key: "interval", label: "平均予約間隔" },
+            { key: "unitPrice", label: "顧客単価" },
+          ] as const).map((tab) => (
             <button
-              key={opt.key}
-              onClick={() => setPeriod(opt.key)}
-              className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
-                period === opt.key
+              key={tab.key}
+              onClick={() => setChartTab(tab.key)}
+              className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
+                chartTab === tab.key
                   ? "bg-accent text-white shadow-sm"
                   : "text-muted hover:text-foreground"
               }`}
             >
-              {opt.label}
+              {tab.label}
             </button>
           ))}
         </div>
-      </div>
 
-      {/* 1. 予約数推移 - グラデーション付きエリアチャート */}
-      <ChartCard
-        title="予約数推移"
-        icon={
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
-          </svg>
-        }
-      >
-        {chartMonthly.length > 0 ? (
+        {chartTab === "interval" ? (
+          /* 平均予約間隔は月別推移データがないため、サマリーを表示 */
+          <div className="flex flex-col items-center justify-center py-8 text-center">
+            <div className="mb-3 flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10" />
+                <polyline points="12 6 12 12 16 14" />
+              </svg>
+            </div>
+            <p className="text-2xl font-bold text-foreground">
+              {avgBookingInterval.avg_interval_days > 0 ? `${avgBookingInterval.avg_interval_days}日` : "-"}
+            </p>
+            <p className="mt-1 text-sm text-muted">全期間の平均予約間隔</p>
+            {avgBookingInterval.customers_with_interval > 0 && (
+              <p className="mt-1 text-xs text-muted">
+                リピーター {avgBookingInterval.customers_with_interval}人 / 全 {avgBookingInterval.total_customers}人のデータ
+              </p>
+            )}
+            <p className="mt-3 text-xs text-muted opacity-70">
+              月別の推移は今後のアップデートで対応予定です
+            </p>
+          </div>
+        ) : chartMonthly.length > 0 ? (
           <ResponsiveContainer width="100%" height={220}>
             <AreaChart data={chartMonthly}>
               <defs>
-                <linearGradient id="bookingGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="var(--accent)" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="var(--accent)" stopOpacity={0} />
+                <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor={
+                    chartTab === "bookings" ? "var(--accent)" :
+                    chartTab === "revenue" ? "#6366f1" :
+                    "#f59e0b"
+                  } stopOpacity={0.3} />
+                  <stop offset="95%" stopColor={
+                    chartTab === "bookings" ? "var(--accent)" :
+                    chartTab === "revenue" ? "#6366f1" :
+                    "#f59e0b"
+                  } stopOpacity={0} />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" opacity={0.5} />
@@ -318,9 +366,19 @@ export function AnalyticsClient({
                 axisLine={false}
                 tickLine={false}
               />
-              <YAxis allowDecimals={false} fontSize={12} stroke="var(--color-muted)" axisLine={false} tickLine={false} />
+              <YAxis
+                allowDecimals={false}
+                fontSize={12}
+                stroke="var(--color-muted)"
+                axisLine={false}
+                tickLine={false}
+              />
               <Tooltip
-                formatter={(value) => [`${value}件`, "予約数"]}
+                formatter={(value) => {
+                  if (chartTab === "bookings") return [`${value}件`, "予約数"];
+                  if (chartTab === "revenue") return [`${Number(value).toLocaleString()}円`, "売上"];
+                  return [`${Number(value).toLocaleString()}円`, "顧客単価"];
+                }}
                 labelFormatter={formatTooltipLabel}
                 contentStyle={{
                   borderRadius: "12px",
@@ -331,129 +389,35 @@ export function AnalyticsClient({
               />
               <Area
                 type="monotone"
-                dataKey="bookings"
-                stroke="var(--color-accent)"
+                dataKey={
+                  chartTab === "bookings" ? "bookings" :
+                  chartTab === "revenue" ? "revenue" :
+                  "unitPrice"
+                }
+                stroke={
+                  chartTab === "bookings" ? "var(--color-accent)" :
+                  chartTab === "revenue" ? "#6366f1" :
+                  "#f59e0b"
+                }
                 strokeWidth={2.5}
-                fill="url(#bookingGradient)"
-                dot={{ r: 4, fill: "var(--card)", stroke: "var(--accent)", strokeWidth: 2 }}
-                activeDot={{ r: 6, fill: "var(--accent)", stroke: "var(--card)", strokeWidth: 2 }}
+                fill="url(#chartGradient)"
+                dot={{ r: 4, fill: "var(--card)", stroke:
+                  chartTab === "bookings" ? "var(--accent)" :
+                  chartTab === "revenue" ? "#6366f1" :
+                  "#f59e0b"
+                , strokeWidth: 2 }}
+                activeDot={{ r: 6, fill:
+                  chartTab === "bookings" ? "var(--accent)" :
+                  chartTab === "revenue" ? "#6366f1" :
+                  "#f59e0b"
+                , stroke: "var(--card)", strokeWidth: 2 }}
               />
             </AreaChart>
           </ResponsiveContainer>
         ) : (
           <EmptyState />
         )}
-      </ChartCard>
-
-      {/* 2+3. 売上 + キャンセル率 */}
-      <div className="grid gap-4 sm:grid-cols-2">
-        <ChartCard
-          title="売上推移"
-          icon={
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="12" y1="1" x2="12" y2="23" />
-              <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-            </svg>
-          }
-        >
-          {chartMonthly.length > 0 ? (
-            <ResponsiveContainer width="100%" height={180}>
-              <AreaChart data={chartMonthly}>
-                <defs>
-                  <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#6366f1" stopOpacity={0.2} />
-                    <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" opacity={0.5} />
-                <XAxis
-                  dataKey="month"
-                  tickFormatter={formatTickLabel}
-                  fontSize={11}
-                  stroke="var(--color-muted)"
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <YAxis fontSize={11} stroke="var(--color-muted)" axisLine={false} tickLine={false} />
-                <Tooltip
-                  formatter={(value) => [`${Number(value).toLocaleString()}円`, "売上"]}
-                  labelFormatter={formatTooltipLabel}
-                  contentStyle={{
-                    borderRadius: "12px",
-                    border: "1px solid var(--border)",
-                    boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
-                    fontSize: "13px",
-                  }}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="revenue"
-                  stroke="#6366f1"
-                  strokeWidth={2}
-                  fill="url(#revenueGradient)"
-                  dot={{ r: 3, fill: "var(--card)", stroke: "#6366f1", strokeWidth: 2 }}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          ) : (
-            <EmptyState />
-          )}
-        </ChartCard>
-
-        <ChartCard
-          title="キャンセル率推移"
-          icon={
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="10" />
-              <line x1="15" y1="9" x2="9" y2="15" />
-              <line x1="9" y1="9" x2="15" y2="15" />
-            </svg>
-          }
-        >
-          {chartMonthly.length > 0 ? (
-            <ResponsiveContainer width="100%" height={180}>
-              <AreaChart data={chartMonthly}>
-                <defs>
-                  <linearGradient id="cancelGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#ef4444" stopOpacity={0.15} />
-                    <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" opacity={0.5} />
-                <XAxis
-                  dataKey="month"
-                  tickFormatter={formatTickLabel}
-                  fontSize={11}
-                  stroke="var(--color-muted)"
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <YAxis unit="%" fontSize={11} stroke="var(--color-muted)" axisLine={false} tickLine={false} />
-                <Tooltip
-                  formatter={(value) => [`${value}%`, "キャンセル率"]}
-                  labelFormatter={formatTooltipLabel}
-                  contentStyle={{
-                    borderRadius: "12px",
-                    border: "1px solid var(--border)",
-                    boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
-                    fontSize: "13px",
-                  }}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="cancelRate"
-                  stroke="#ef4444"
-                  strokeWidth={2}
-                  fill="url(#cancelGradient)"
-                  dot={{ r: 3, fill: "var(--card)", stroke: "#ef4444", strokeWidth: 2 }}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          ) : (
-            <EmptyState />
-          )}
-        </ChartCard>
-      </div>
+      </section>
 
       {/* 4. 人気メニューランキング */}
       <ChartCard
@@ -590,12 +554,7 @@ export function AnalyticsClient({
                   <circle
                     cx="50" cy="50" r="42"
                     fill="none"
-                    stroke={
-                      avgBookingInterval.avg_interval_days <= 14 ? "#10b981" :
-                      avgBookingInterval.avg_interval_days <= 30 ? "#3b82f6" :
-                      avgBookingInterval.avg_interval_days <= 60 ? "#f59e0b" :
-                      "#ef4444"
-                    }
+                    stroke={getIntervalColor(avgBookingInterval.avg_interval_days)}
                     strokeWidth="8"
                     strokeLinecap="round"
                     strokeDasharray={`${Math.min(100, (1 - Math.min(avgBookingInterval.avg_interval_days, 90) / 90)) * 2.64 * 100 / 100 * 264 / 264 * 264} ${264}`}
@@ -618,11 +577,6 @@ export function AnalyticsClient({
             <div className="text-sm text-muted space-y-2">
               {avgBookingInterval.avg_interval_days > 0 ? (
                 <>
-                  <div className="flex items-center gap-2">
-                    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${intervalQuality.bgColor} ${intervalQuality.color}`}>
-                      {intervalQuality.label}
-                    </span>
-                  </div>
                   <p className="text-xs">
                     平均 <span className="font-semibold text-foreground">{avgBookingInterval.avg_interval_days}日</span> ごとに来店
                   </p>
