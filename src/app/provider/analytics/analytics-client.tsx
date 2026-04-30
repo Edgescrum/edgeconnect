@@ -212,8 +212,7 @@ export function AnalyticsClient({
   const chartMonthly = displayStats.map((s) => {
     const uniqueCustomers = s.unique_customers || 0;
     return {
-      month: s.month.slice(5),
-      fullMonth: s.month,
+      month: s.month,
       bookings: s.booking_count,
       revenue: s.revenue,
       cancelRate: s.cancel_rate,
@@ -255,97 +254,55 @@ export function AnalyticsClient({
     if (cell.booking_count > maxHeat) maxHeat = cell.booking_count;
   }
 
-  // 人気メニューの最大値と合計（割合計算用）
+  // 人気メニューの最大値（バー幅計算用）
   const maxMenuCount = Math.max(1, ...popularMenus.map((m) => m.booking_count));
-  const totalMenuBookings = popularMenus.reduce((sum, m) => sum + m.booking_count, 0);
-
   const totalSegments =
     ltvStats.segments.excellent +
     ltvStats.segments.normal +
     ltvStats.segments.dormant +
     ltvStats.segments.at_risk;
 
-  // fullMonth (YYYY-MM) を取得するヘルパー
-  const getFullMonth = (monthPart: string): string | undefined => {
-    const entry = chartMonthly.find((d) => d.month === monthPart);
-    return entry?.fullMonth;
-  };
-
   // 年を跨ぐかどうか判定
   const hasMultipleYears = (() => {
-    const years = new Set(chartMonthly.map((d) => d.fullMonth.slice(0, 4)));
+    const years = new Set(chartMonthly.map((d) => d.month.slice(0, 4)));
     return years.size > 1;
   })();
 
+  // v は YYYY-MM 形式
   const formatTickLabel = (v: string, index: number) => {
-    const fullMonth = getFullMonth(v);
+    const year = v.slice(0, 4);
+    const m = parseInt(v.slice(5, 7));
     if (period === "year") {
-      // 年表示: 常に年を表示（各データポイントが1年単位のため）
-      if (fullMonth) return `${fullMonth.slice(0, 4)}年`;
-      return v;
+      return `${year}年`;
     }
     if (period === "quarter") {
-      const m = parseInt(v);
       const q = Math.ceil(m / 3);
-      if (fullMonth) {
-        const year = fullMonth.slice(0, 4);
-        // 最初のデータポイントまたは年が変わった場合に年を表示
-        if (index === 0) return `${year}年Q${q}`;
-        const prevEntry = chartMonthly[index - 1];
-        if (prevEntry && prevEntry.fullMonth.slice(0, 4) !== year) return `${year}年Q${q}`;
-        return `Q${q}`;
-      }
+      if (index === 0) return `${year}年Q${q}`;
+      const prevEntry = chartMonthly[index - 1];
+      if (prevEntry && prevEntry.month.slice(0, 4) !== year) return `${year}年Q${q}`;
       return `Q${q}`;
     }
     // 月表示
-    const month = parseInt(v);
-    if (hasMultipleYears && fullMonth) {
-      // 年跨ぎがある場合: 12月と1月にのみ年を表示
-      const year = fullMonth.slice(0, 4);
-      if (month === 12 || month === 1) {
-        return `${year}年${month}月`;
-      }
-      return `${month}月`;
+    if (hasMultipleYears) {
+      if (m === 12 || m === 1) return `${year}年${m}月`;
+      return `${m}月`;
     }
-    // 同年のみの場合: 最初のデータポイントにのみ年を表示
-    if (index === 0 && fullMonth) {
-      const year = fullMonth.slice(0, 4);
-      return `${year}年${month}月`;
-    }
-    return `${month}月`;
+    if (index === 0) return `${year}年${m}月`;
+    return `${m}月`;
   };
 
   const formatTooltipLabel = (label: unknown) => {
     const str = String(label);
-    const fullMonth = getFullMonth(str);
+    const year = str.slice(0, 4);
+    const m = parseInt(str.slice(5, 7));
     if (period === "year") {
-      if (fullMonth) return `${fullMonth.slice(0, 4)}年`;
-      return str;
+      return `${year}年`;
     }
     if (period === "quarter") {
-      const m = parseInt(str);
       const q = Math.ceil(m / 3);
-      if (fullMonth) {
-        const year = fullMonth.slice(0, 4);
-        return `${year}年 第${q}四半期`;
-      }
-      return `第${q}四半期`;
+      return `${year}年 第${q}四半期`;
     }
-    if (fullMonth) {
-      const year = fullMonth.slice(0, 4);
-      const month = parseInt(str);
-      return `${year}年${month}月`;
-    }
-    return `${parseInt(str)}月`;
-  };
-
-  // 平均予約間隔の色（判定ラベルは比較対象がないため表示しない）
-  const getIntervalColor = (days: number): string => {
-    if (days === 0) return "var(--color-muted)";
-    if (days <= 14) return "#10b981";
-    if (days <= 30) return "#3b82f6";
-    if (days <= 60) return "#f59e0b";
-    return "#ef4444";
+    return `${year}年${m}月`;
   };
 
   return (
@@ -547,8 +504,8 @@ export function AnalyticsClient({
         {popularMenus.length > 0 ? (
           <div className="space-y-3">
             {popularMenus.map((m, i) => {
-              const percentage = totalMenuBookings > 0
-                ? Math.round((m.booking_count / totalMenuBookings) * 100)
+              const barWidth = maxMenuCount > 0
+                ? Math.round((m.booking_count / maxMenuCount) * 100)
                 : 0;
               return (
                 <div key={m.service_id} className="flex items-center gap-3">
@@ -564,14 +521,14 @@ export function AnalyticsClient({
                     <div className="flex items-baseline justify-between">
                       <p className="text-sm font-medium truncate">{m.service_name}</p>
                       <span className="ml-2 shrink-0 rounded-full bg-accent/10 px-2 py-0.5 text-xs font-semibold text-accent">
-                        {m.booking_count}件（{percentage}%）
+                        {m.booking_count}件
                       </span>
                     </div>
                     <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-border/50">
                       <div
                         className="h-full rounded-full bg-gradient-to-r from-accent to-accent-light transition-all"
                         style={{
-                          width: `${percentage}%`,
+                          width: `${barWidth}%`,
                         }}
                       />
                     </div>
@@ -662,36 +619,13 @@ export function AnalyticsClient({
           }
         >
           <div className="flex items-center gap-6">
-            <div className="relative flex h-24 w-24 shrink-0 items-center justify-center">
-              {/* 間隔を視覚的に表現するリングゲージ */}
-              <svg className="h-24 w-24 -rotate-90" viewBox="0 0 100 100">
-                <circle
-                  cx="50" cy="50" r="42"
-                  fill="none"
-                  stroke="var(--border)"
-                  strokeWidth="8"
-                />
-                {avgBookingInterval.avg_interval_days > 0 && (
-                  <circle
-                    cx="50" cy="50" r="42"
-                    fill="none"
-                    stroke={getIntervalColor(avgBookingInterval.avg_interval_days)}
-                    strokeWidth="8"
-                    strokeLinecap="round"
-                    strokeDasharray={`${Math.min(100, (1 - Math.min(avgBookingInterval.avg_interval_days, 90) / 90)) * 2.64 * 100 / 100 * 264 / 264 * 264} ${264}`}
-                    className="transition-all duration-700"
-                    style={{
-                      strokeDasharray: `${Math.max(30, 264 - (avgBookingInterval.avg_interval_days / 90) * 264)} ${264}`,
-                    }}
-                  />
-                )}
-              </svg>
-              <div className="absolute text-center">
-                <span className="text-xl font-bold text-foreground">
+            <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-full bg-accent/10">
+              <div className="text-center">
+                <span className="text-2xl font-bold text-accent">
                   {avgBookingInterval.avg_interval_days > 0 ? avgBookingInterval.avg_interval_days : "-"}
                 </span>
                 {avgBookingInterval.avg_interval_days > 0 && (
-                  <span className="block text-[10px] font-medium text-muted">日</span>
+                  <span className="block text-xs font-medium text-accent/70">日</span>
                 )}
               </div>
             </div>
