@@ -53,6 +53,7 @@ export default async function AnalyticsPage() {
     menusResult,
     heatmapResult,
     avgIntervalResult,
+    monthlyAvgIntervalResult,
     ltvResult,
     benchmarkResult,
   ] = await Promise.all([
@@ -68,6 +69,10 @@ export default async function AnalyticsPage() {
     }),
     supabase.rpc("get_avg_booking_interval", {
       p_provider_id: provider.id,
+    }),
+    supabase.rpc("get_monthly_avg_interval", {
+      p_provider_id: provider.id,
+      p_months: 24,
     }),
     supabase.rpc("get_ltv_stats", {
       p_provider_id: provider.id,
@@ -89,6 +94,12 @@ export default async function AnalyticsPage() {
     unique_customers: Number(row.unique_customers ?? 0),
   }));
 
+  // 月別平均予約間隔データ
+  const monthlyAvgInterval = (monthlyAvgIntervalResult.data || []).map((row: Record<string, unknown>) => ({
+    month: row.month as string,
+    avg_interval_days: Number(row.avg_interval_days ?? 0),
+  }));
+
   return (
     <main className="min-h-screen bg-background px-4 py-6 sm:px-8 sm:py-8">
       <div className="mx-auto max-w-lg sm:max-w-5xl">
@@ -98,6 +109,7 @@ export default async function AnalyticsPage() {
         </div>
         <AnalyticsClient
           allMonthlyData={allMonthlyData}
+          monthlyAvgInterval={monthlyAvgInterval}
           popularMenus={menusResult.data || []}
           heatmapData={heatmapResult.data || []}
           avgBookingInterval={avgIntervalResult.data || { avg_interval_days: 0, total_customers: 0, customers_with_interval: 0 }}
