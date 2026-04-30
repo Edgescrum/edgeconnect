@@ -255,8 +255,9 @@ export function AnalyticsClient({
     if (cell.booking_count > maxHeat) maxHeat = cell.booking_count;
   }
 
-  // 人気メニューの最大値
+  // 人気メニューの最大値と合計（割合計算用）
   const maxMenuCount = Math.max(1, ...popularMenus.map((m) => m.booking_count));
+  const totalMenuBookings = popularMenus.reduce((sum, m) => sum + m.booking_count, 0);
 
   const totalSegments =
     ltvStats.segments.excellent +
@@ -276,10 +277,10 @@ export function AnalyticsClient({
     return years.size > 1;
   })();
 
-  const formatTickLabel = (v: string) => {
+  const formatTickLabel = (v: string, index: number) => {
     const fullMonth = getFullMonth(v);
     if (period === "year") {
-      // 年表示: fullMonth から年を取得
+      // 年表示: 常に年を表示（各データポイントが1年単位のため）
       if (fullMonth) return `${fullMonth.slice(0, 4)}年`;
       return v;
     }
@@ -288,17 +289,30 @@ export function AnalyticsClient({
       const q = Math.ceil(m / 3);
       if (fullMonth) {
         const year = fullMonth.slice(0, 4);
-        return `Q${q} ${year}`;
+        // 最初のデータポイントまたは年が変わった場合に年を表示
+        if (index === 0) return `${year}年Q${q}`;
+        const prevEntry = chartMonthly[index - 1];
+        if (prevEntry && prevEntry.fullMonth.slice(0, 4) !== year) return `${year}年Q${q}`;
+        return `Q${q}`;
       }
       return `Q${q}`;
     }
-    // 月表示: 年を跨ぐ場合は年も表示
+    // 月表示
+    const month = parseInt(v);
     if (hasMultipleYears && fullMonth) {
+      // 年跨ぎがある場合: 12月と1月にのみ年を表示
       const year = fullMonth.slice(0, 4);
-      const month = parseInt(v);
+      if (month === 12 || month === 1) {
+        return `${year}年${month}月`;
+      }
+      return `${month}月`;
+    }
+    // 同年のみの場合: 最初のデータポイントにのみ年を表示
+    if (index === 0 && fullMonth) {
+      const year = fullMonth.slice(0, 4);
       return `${year}年${month}月`;
     }
-    return `${parseInt(v)}月`;
+    return `${month}月`;
   };
 
   const formatTooltipLabel = (label: unknown) => {
@@ -532,34 +546,39 @@ export function AnalyticsClient({
       >
         {popularMenus.length > 0 ? (
           <div className="space-y-3">
-            {popularMenus.map((m, i) => (
-              <div key={m.service_id} className="flex items-center gap-3">
-                <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs font-bold ${
-                  i === 0 ? "bg-yellow-100 text-yellow-700" :
-                  i === 1 ? "bg-gray-100 text-gray-600" :
-                  i === 2 ? "bg-orange-100 text-orange-700" :
-                  "bg-background text-muted"
-                }`}>
-                  {i + 1}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-baseline justify-between">
-                    <p className="text-sm font-medium truncate">{m.service_name}</p>
-                    <span className="ml-2 shrink-0 rounded-full bg-accent/10 px-2 py-0.5 text-xs font-semibold text-accent">
-                      {m.booking_count}件
-                    </span>
+            {popularMenus.map((m, i) => {
+              const percentage = totalMenuBookings > 0
+                ? Math.round((m.booking_count / totalMenuBookings) * 100)
+                : 0;
+              return (
+                <div key={m.service_id} className="flex items-center gap-3">
+                  <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs font-bold ${
+                    i === 0 ? "bg-yellow-100 text-yellow-700" :
+                    i === 1 ? "bg-gray-100 text-gray-600" :
+                    i === 2 ? "bg-orange-100 text-orange-700" :
+                    "bg-background text-muted"
+                  }`}>
+                    {i + 1}
                   </div>
-                  <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-border/50">
-                    <div
-                      className="h-full rounded-full bg-gradient-to-r from-accent to-accent-light transition-all"
-                      style={{
-                        width: `${(m.booking_count / maxMenuCount) * 100}%`,
-                      }}
-                    />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-baseline justify-between">
+                      <p className="text-sm font-medium truncate">{m.service_name}</p>
+                      <span className="ml-2 shrink-0 rounded-full bg-accent/10 px-2 py-0.5 text-xs font-semibold text-accent">
+                        {m.booking_count}件（{percentage}%）
+                      </span>
+                    </div>
+                    <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-border/50">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-accent to-accent-light transition-all"
+                        style={{
+                          width: `${percentage}%`,
+                        }}
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <EmptyState />
