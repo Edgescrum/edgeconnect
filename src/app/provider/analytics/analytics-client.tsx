@@ -17,6 +17,7 @@ interface MonthlyStat {
   revenue: number;
   cancel_count: number;
   cancel_rate: number;
+  unique_customers: number;
 }
 
 interface PopularMenu {
@@ -54,6 +55,14 @@ interface Benchmark {
   avg_monthly_revenue?: number;
   avg_booking_interval?: number;
 }
+
+// 顧客セグメントの色パレット
+const SEGMENT_COLORS = [
+  { bg: "bg-emerald-500", hex: "#10b981" },
+  { bg: "bg-blue-500", hex: "#3b82f6" },
+  { bg: "bg-amber-400", hex: "#fbbf24" },
+  { bg: "bg-red-400", hex: "#f87171" },
+];
 
 type PeriodKey = "month" | "quarter" | "year";
 
@@ -102,12 +111,15 @@ export function AnalyticsClient({
       const totalRevenue = chunk.reduce((s, c) => s + c.revenue, 0);
       const totalCancels = chunk.reduce((s, c) => s + c.cancel_count, 0);
       const totalAll = totalBookings + totalCancels;
+      // 四半期のユニーク顧客数は各月の合計（近似値、正確にはRPC側で集計が必要）
+      const totalUniqueCustomers = chunk.reduce((s, c) => s + (c.unique_customers || 0), 0);
       quarters.push({
         month: chunk[0].month,
         booking_count: totalBookings,
         revenue: totalRevenue,
         cancel_count: totalCancels,
         cancel_rate: totalAll > 0 ? Math.round((totalCancels / totalAll) * 1000) / 10 : 0,
+        unique_customers: totalUniqueCustomers,
       });
     }
     return quarters;
@@ -133,8 +145,15 @@ export function AnalyticsClient({
   const revenueDiff = currentMonth && prevMonth
     ? currentMonth.revenue - prevMonth.revenue
     : null;
-  const cancelRateDiff = currentMonth && prevMonth
-    ? currentMonth.cancel_rate - prevMonth.cancel_rate
+  // 顧客単価の計算（総売上 / ユニーク顧客数）
+  const currentUnitPrice = currentMonth && currentMonth.unique_customers > 0
+    ? Math.round(currentMonth.revenue / currentMonth.unique_customers)
+    : null;
+  const prevUnitPrice = prevMonth && prevMonth.unique_customers > 0
+    ? Math.round(prevMonth.revenue / prevMonth.unique_customers)
+    : null;
+  const unitPriceDiff = currentUnitPrice !== null && prevUnitPrice !== null
+    ? currentUnitPrice - prevUnitPrice
     : null;
 
   const DAY_LABELS = ["日", "月", "火", "水", "木", "金", "土"];
@@ -240,17 +259,15 @@ export function AnalyticsClient({
         <KpiSummaryCard
           icon={
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="10" />
-              <line x1="15" y1="9" x2="9" y2="15" />
-              <line x1="9" y1="9" x2="15" y2="15" />
+              <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
+              <line x1="7" y1="7" x2="7.01" y2="7" />
             </svg>
           }
-          label="キャンセル率"
-          value={currentMonth ? `${currentMonth.cancel_rate}%` : "-"}
-          diff={cancelRateDiff}
+          label="顧客単価"
+          value={currentUnitPrice !== null ? `${currentUnitPrice.toLocaleString()}円` : "-"}
+          diff={unitPriceDiff}
           diffLabel="前月比"
-          invertColor
-          formatDiff={(v) => `${v > 0 ? "+" : ""}${v}%`}
+          formatDiff={(v) => `${v > 0 ? "+" : ""}${v.toLocaleString()}円`}
         />
       </div>
 
@@ -664,63 +681,85 @@ export function AnalyticsClient({
           </svg>
         }
       >
-        {totalSegments > 0 ? (
-          <div>
-            {/* 積み上げバー */}
-            <div className="mb-4 flex h-4 overflow-hidden rounded-full">
-              {[
-                { key: "excellent", count: ltvStats.segments.excellent, color: "bg-emerald-500" },
-                { key: "normal", count: ltvStats.segments.normal, color: "bg-blue-500" },
-                { key: "dormant", count: ltvStats.segments.dormant, color: "bg-amber-400" },
-                { key: "at_risk", count: ltvStats.segments.at_risk, color: "bg-red-400" },
-              ].map((seg) => {
-                const pct = (seg.count / totalSegments) * 100;
-                if (pct === 0) return null;
-                return (
-                  <div
-                    key={seg.key}
-                    className={`${seg.color} transition-all`}
-                    style={{ width: `${pct}%` }}
-                  />
-                );
-              })}
+        {totalSegments > 0 ? (() => {
+          const segmentData = [
+            { key: "excellent", label: "優良", count: ltvStats.segments.excellent, desc: "5回以上来店、定期的に来店" },
+            { key: "normal", label: "通常", count: ltvStats.segments.normal, desc: "2-4回来店、定期的に来店" },
+            { key: "dormant", label: "休眠", count: ltvStats.segments.dormant, desc: "来店間隔が空いている" },
+            { key: "at_risk", label: "離脱リスク", count: ltvStats.segments.at_risk, desc: "1回のみ or 長期間未来店" },
+          ];
+          return (
+            <div className="flex flex-col sm:flex-row items-center gap-6">
+              {/* ドーナツチャート */}
+              <div className="relative flex h-36 w-36 shrink-0 items-center justify-center">
+                <svg className="h-36 w-36 -rotate-90" viewBox="0 0 100 100">
+                  <circle cx="50" cy="50" r="40" fill="none" stroke="var(--border)" strokeWidth="12" opacity="0.3" />
+                  {segmentData.reduce<{ offset: number; elements: React.ReactNode[] }>((acc, seg, i) => {
+                    const pct = totalSegments > 0 ? (seg.count / totalSegments) * 100 : 0;
+                    const circumference = 2 * Math.PI * 40;
+                    const dashLength = (pct / 100) * circumference;
+                    const gap = segmentData.filter(s => s.count > 0).length > 1 ? 2 : 0;
+                    const color = SEGMENT_COLORS[i % SEGMENT_COLORS.length];
+                    if (seg.count > 0) {
+                      acc.elements.push(
+                        <circle
+                          key={seg.key}
+                          cx="50" cy="50" r="40"
+                          fill="none"
+                          stroke={color.hex}
+                          strokeWidth="12"
+                          strokeLinecap="round"
+                          strokeDasharray={`${Math.max(0, dashLength - gap)} ${circumference - Math.max(0, dashLength - gap)}`}
+                          strokeDashoffset={-acc.offset}
+                          className="transition-all duration-700"
+                        />
+                      );
+                    }
+                    acc.offset += dashLength;
+                    return acc;
+                  }, { offset: 0, elements: [] }).elements}
+                </svg>
+                <div className="absolute text-center">
+                  <span className="text-lg font-bold text-foreground">{totalSegments}</span>
+                  <span className="block text-[10px] text-muted">人</span>
+                </div>
+              </div>
+
+              {/* セグメント一覧 */}
+              <div className="flex-1 space-y-2 w-full">
+                {segmentData.map((seg, i) => {
+                  const color = SEGMENT_COLORS[i % SEGMENT_COLORS.length];
+                  const pct = totalSegments > 0 ? Math.round((seg.count / totalSegments) * 100) : 0;
+                  return (
+                    <div key={seg.key} className="flex items-center gap-3">
+                      <div className={`h-3 w-3 shrink-0 rounded-full ${color.bg}`} />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-baseline justify-between">
+                          <p className="text-sm font-medium truncate">{seg.label}</p>
+                          <div className="ml-2 shrink-0 flex items-center gap-2">
+                            <span className="text-xs text-muted">{seg.count}人</span>
+                            <span className="text-xs font-semibold text-foreground">{pct}%</span>
+                          </div>
+                        </div>
+                        <div className="mt-1 flex items-center justify-between">
+                          <div className="flex-1 h-1.5 overflow-hidden rounded-full bg-border/30 mr-2">
+                            <div
+                              className={`h-full rounded-full ${color.bg} transition-all duration-500`}
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
+                          <span className="text-[11px] text-muted shrink-0">
+                            {seg.desc}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-            <div className="space-y-2.5">
-              <SegmentRow
-                label="優良"
-                count={ltvStats.segments.excellent}
-                total={totalSegments}
-                color="bg-emerald-500"
-                dotColor="bg-emerald-500"
-                desc="5回以上来店、定期的に来店"
-              />
-              <SegmentRow
-                label="通常"
-                count={ltvStats.segments.normal}
-                total={totalSegments}
-                color="bg-blue-500"
-                dotColor="bg-blue-500"
-                desc="2-4回来店、定期的に来店"
-              />
-              <SegmentRow
-                label="休眠"
-                count={ltvStats.segments.dormant}
-                total={totalSegments}
-                color="bg-amber-400"
-                dotColor="bg-amber-400"
-                desc="来店間隔が空いている"
-              />
-              <SegmentRow
-                label="離脱リスク"
-                count={ltvStats.segments.at_risk}
-                total={totalSegments}
-                color="bg-red-400"
-                dotColor="bg-red-400"
-                desc="1回のみ or 長期間未来店"
-              />
-            </div>
-          </div>
-        ) : (
+          );
+        })() : (
           <EmptyState />
         )}
       </ChartCard>
@@ -882,38 +921,6 @@ function KpiSummaryCard({
         </p>
       )}
       {subText && <p className="mt-1 text-xs text-muted">{subText}</p>}
-    </div>
-  );
-}
-
-function SegmentRow({
-  label,
-  count,
-  total,
-  dotColor,
-  desc,
-}: {
-  label: string;
-  count: number;
-  total: number;
-  color: string;
-  dotColor: string;
-  desc: string;
-}) {
-  const pct = total > 0 ? Math.round((count / total) * 100) : 0;
-  return (
-    <div className="flex items-center justify-between rounded-xl bg-background/50 px-3 py-2">
-      <div className="flex items-center gap-2">
-        <div className={`h-2.5 w-2.5 rounded-full ${dotColor}`} />
-        <div>
-          <span className="text-sm font-medium">{label}</span>
-          <p className="text-xs text-muted">{desc}</p>
-        </div>
-      </div>
-      <div className="text-right">
-        <span className="text-sm font-bold">{count}人</span>
-        <span className="ml-1 text-xs text-muted">({pct}%)</span>
-      </div>
     </div>
   );
 }
