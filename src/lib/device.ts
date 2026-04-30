@@ -21,7 +21,11 @@ export function isMobileUserAgent(userAgent: string | null): boolean {
 
 /**
  * LIFF URL を生成するヘルパー
- * モバイルの場合は LIFF URL、PC の場合は通常パスを返す
+ * モバイルの場合は line://app カスタムURLスキーム、PC の場合は通常パスを返す
+ *
+ * line://app/{liffId}?liff.state={path} 形式は
+ * シークレットモードでも LINE アプリを直接起動でき、
+ * Universal Link が失敗する問題を回避できる
  */
 export function buildLiffUrl(path: string, isMobile: boolean): string {
   if (!isMobile) return path;
@@ -31,5 +35,5 @@ export function buildLiffUrl(path: string, isMobile: boolean): string {
 
   // パスが / で始まることを保証
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
-  return `https://liff.line.me/${liffId}${normalizedPath}`;
+  return `line://app/${liffId}?liff.state=${normalizedPath}`;
 }
