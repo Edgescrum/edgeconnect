@@ -52,7 +52,7 @@ export default async function AnalyticsPage() {
     monthly24Result,
     menusResult,
     heatmapResult,
-    repeatResult,
+    avgIntervalResult,
     ltvResult,
     benchmarkResult,
   ] = await Promise.all([
@@ -66,7 +66,7 @@ export default async function AnalyticsPage() {
     supabase.rpc("get_booking_heatmap", {
       p_provider_id: provider.id,
     }),
-    supabase.rpc("get_repeat_rate", {
+    supabase.rpc("get_avg_booking_interval", {
       p_provider_id: provider.id,
     }),
     supabase.rpc("get_ltv_stats", {
@@ -92,7 +92,7 @@ export default async function AnalyticsPage() {
           allMonthlyData={allMonthlyData}
           popularMenus={menusResult.data || []}
           heatmapData={heatmapResult.data || []}
-          repeatRate={repeatResult.data || { total_customers: 0, repeat_customers: 0, repeat_rate: 0 }}
+          avgBookingInterval={avgIntervalResult.data || { avg_interval_days: 0, total_customers: 0, customers_with_interval: 0 }}
           ltvStats={ltvResult.data || { avg_ltv: 0, segments: { excellent: 0, normal: 0, dormant: 0, at_risk: 0 } }}
           benchmark={benchmarkResult.data || { available: false, provider_count: 0 }}
         />
