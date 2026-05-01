@@ -1634,41 +1634,53 @@ function SurveyAnalyticsTab({
               </ChartCard>
             )}
 
-            {/* 9.5. 満足度と再来店率 */}
-            {advancedStats.csatRetentionRate && advancedStats.csatRetentionRate.length > 0 && (
-              <ChartCard title="満足度と再来店率" icon={<TrendIcon />}>
-                <p className="mb-4 text-xs text-muted">満足度スコア別に、その後再来店した顧客の割合を表示します</p>
-                <div className="space-y-3">
-                  {advancedStats.csatRetentionRate.map((item) => {
-                    const barColor = item.scoreLabel.startsWith("満足")
-                      ? "bg-emerald-500" : item.scoreLabel.startsWith("普通")
-                      ? "bg-amber-400" : "bg-red-400";
-                    return (
-                      <div key={item.scoreLabel} className="flex items-center gap-3">
-                        <span className="w-24 shrink-0 text-sm font-medium text-foreground">{item.scoreLabel}</span>
-                        <div className="flex-1 h-5 overflow-hidden rounded-md bg-border/20">
-                          <div
-                            className={`h-full rounded-md transition-all duration-700 ${barColor}`}
-                            style={{ width: `${item.retentionRate}%` }}
-                          />
-                        </div>
-                        <div className="w-28 shrink-0 text-right">
-                          <span className="text-sm font-bold text-foreground">{item.retentionRate}%</span>
-                          <span className="ml-1 text-[11px] text-muted">({item.returnedCount}/{item.totalCount}人)</span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+            {/* 9.5. 満足度と再来店間隔 */}
+            {advancedStats.csatReturnInterval && advancedStats.csatReturnInterval.length > 0 && (
+              <ChartCard title="満足度と再来店間隔" icon={<TrendIcon />}>
+                <p className="mb-4 text-xs text-muted">満足度スコア別の平均再来店間隔（回答日から次回来店までの日数）</p>
                 {(() => {
-                  const totalCount = advancedStats.csatRetentionRate.reduce((s, r) => s + r.totalCount, 0);
-                  if (totalCount === 0) return null;
-                  const best = advancedStats.csatRetentionRate.find((r) => r.retentionRate > 0);
-                  if (!best) return null;
+                  const items = advancedStats.csatReturnInterval;
+                  const maxInterval = Math.max(...items.map((i) => i.avgIntervalDays));
+
+                  // 短い方が良い = 短い間隔を緑、長い間隔を赤
+                  const minInterval = Math.min(...items.map((i) => i.avgIntervalDays));
+                  const getCardStyle = (avgDays: number) => {
+                    if (avgDays === minInterval) return { ring: "ring-emerald-200", bg: "bg-emerald-50", barColor: "bg-emerald-500", textColor: "text-emerald-700" };
+                    if (avgDays === maxInterval && items.length > 1) return { ring: "ring-red-200", bg: "bg-red-50", barColor: "bg-red-400", textColor: "text-red-700" };
+                    return { ring: "ring-amber-200", bg: "bg-amber-50", barColor: "bg-amber-400", textColor: "text-amber-700" };
+                  };
+
                   return (
-                    <p className="mt-4 rounded-xl bg-blue-50 p-3 text-xs leading-relaxed text-blue-700">
-                      {best.scoreLabel}のお客さんの{best.retentionRate}%が再来店しています。高い満足度がリピートにつながっています。
-                    </p>
+                    <>
+                      <div className="grid gap-3 sm:grid-cols-3">
+                        {items.map((item) => {
+                          const style = getCardStyle(item.avgIntervalDays);
+                          const barWidth = maxInterval > 0 ? (item.avgIntervalDays / maxInterval) * 100 : 0;
+                          return (
+                            <div key={item.scoreLabel} className={`relative rounded-xl p-4 ring-1 ${style.ring} ${style.bg}`}>
+                              <p className={`text-xs font-semibold ${style.textColor}`}>{item.scoreLabel}</p>
+                              <p className="mt-2 text-2xl font-bold text-foreground">{item.avgIntervalDays}<span className="text-sm font-normal">日</span></p>
+                              <p className="mt-1 text-[11px] text-muted">{item.count}人</p>
+                              <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/60">
+                                <div className={`h-full rounded-full ${style.barColor} transition-all duration-700`} style={{ width: `${barWidth}%` }} />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      {(() => {
+                        const satisfiedItem = items.find((i) => i.scoreLabel.startsWith("満足"));
+                        const dissatisfiedItem = items.find((i) => i.scoreLabel.startsWith("不満足"));
+                        if (!satisfiedItem || !dissatisfiedItem) return null;
+                        const diff = dissatisfiedItem.avgIntervalDays - satisfiedItem.avgIntervalDays;
+                        if (diff <= 0) return null;
+                        return (
+                          <p className="mt-4 rounded-xl bg-emerald-50 p-3 text-xs leading-relaxed text-emerald-700">
+                            満足のお客さんは不満足のお客さんより平均{diff}日早く再来店しています。
+                          </p>
+                        );
+                      })()}
+                    </>
                   );
                 })()}
               </ChartCard>

@@ -119,13 +119,12 @@ export interface RevenueCsatInsight {
   strength: "strong_positive" | "weak" | "strong_negative";
 }
 
-export interface CsatRetentionItem {
-  scoreLabel: string;  // e.g. "5" or "2以下"
+export interface CsatReturnInterval {
+  scoreLabel: string;  // "満足" / "普通" / "不満足"
   minScore: number;
   maxScore: number;
-  totalCount: number;
-  returnedCount: number;
-  retentionRate: number; // 0-100
+  avgIntervalDays: number;
+  count: number; // 再来店があった回答数
 }
 
 // 満足度 x 顧客単価
@@ -177,8 +176,8 @@ export interface SurveyAdvancedStats {
   menuCsatMatrix: MenuCsatMatrix[];
   // Driver regression analysis
   driverRegression: DriverRegressionResult[];
-  // 満足度x再来店率
-  csatRetentionRate: CsatRetentionItem[];
+  // 満足度x再来店間隔
+  csatReturnInterval: CsatReturnInterval[];
   // 満足度x顧客単価・LTV
   csatVsUnitPrice: CsatVsUnitPrice[];
   csatVsLtv: CsatVsLtv[];
@@ -893,9 +892,9 @@ export async function getSurveyAdvancedStats(
     };
   }
 
-  // -- g. CSAT x Retention Rate --
-  // 各回答者の CSAT スコア別に、回答日以降に再来店(confirmed予約)があるかチェック
-  const csatRetentionRate: CsatRetentionItem[] = [];
+  // -- g. CSAT x Return Interval (再来店間隔) --
+  // 各回答者の CSAT スコア別に、回答日から次回来店までの日数を計算
+  const csatReturnInterval: CsatReturnInterval[] = [];
   if (responses.length > 0) {
     // Get ALL confirmed bookings for this provider (no date filter) to check future bookings
     const { data: allProviderBookings } = await supabase
@@ -906,7 +905,7 @@ export async function getSurveyAdvancedStats(
 
     const providerBookings = allProviderBookings || [];
 
-    // O(n+m): Group bookings by customer_user_id with sorted dates
+    // Group bookings by customer_user_id with sorted dates
     const bookingsByCustomer = new Map<number, string[]>();
     for (const b of providerBookings) {
       const custId = b.customer_user_id as number;
@@ -917,12 +916,16 @@ export async function getSurveyAdvancedStats(
         bookingsByCustomer.set(custId, [b.start_at as string]);
       }
     }
+    // Sort each customer's bookings chronologically
+    for (const [, dates] of bookingsByCustomer) {
+      dates.sort();
+    }
 
-    // For each response, check if the customer has a confirmed booking AFTER the response date
-    const scoreBuckets: { label: string; min: number; max: number; total: number; returned: number }[] = [
-      { label: "満足（4, 5）", min: 4, max: 5, total: 0, returned: 0 },
-      { label: "普通（3）", min: 3, max: 3, total: 0, returned: 0 },
-      { label: "不満足（1, 2）", min: 1, max: 2, total: 0, returned: 0 },
+    // For each response, find the earliest booking AFTER the response date and compute interval
+    const scoreBuckets: { label: string; min: number; max: number; intervals: number[] }[] = [
+      { label: "満足（4, 5）", min: 4, max: 5, intervals: [] },
+      { label: "普通（3）", min: 3, max: 3, intervals: [] },
+      { label: "不満足（1, 2）", min: 1, max: 2, intervals: [] },
     ];
 
     for (const r of responses) {
@@ -933,25 +936,33 @@ export async function getSurveyAdvancedStats(
       const bucket = scoreBuckets.find((b) => csat >= b.min && csat <= b.max);
       if (!bucket) continue;
 
-      bucket.total++;
-
-      // O(1) lookup + O(k) check where k is bookings for this customer (much smaller than m)
+      // Find the first booking after the response date
       const customerBookings = bookingsByCustomer.get(custId);
-      const hasReturn = customerBookings
-        ? customerBookings.some((startAt) => startAt > responseDate)
-        : false;
-      if (hasReturn) bucket.returned++;
+      if (!customerBookings) continue;
+
+      const nextBooking = customerBookings.find((startAt) => startAt > responseDate);
+      if (!nextBooking) continue; // No return visit, exclude from calculation
+
+      // Calculate interval in days
+      const responseDateMs = new Date(responseDate).getTime();
+      const nextBookingMs = new Date(nextBooking).getTime();
+      const intervalDays = Math.round((nextBookingMs - responseDateMs) / (1000 * 60 * 60 * 24));
+      if (intervalDays > 0) {
+        bucket.intervals.push(intervalDays);
+      }
     }
 
     for (const bucket of scoreBuckets) {
-      if (bucket.total > 0) {
-        csatRetentionRate.push({
+      if (bucket.intervals.length > 0) {
+        const avgInterval = Math.round(
+          bucket.intervals.reduce((s, d) => s + d, 0) / bucket.intervals.length
+        );
+        csatReturnInterval.push({
           scoreLabel: bucket.label,
           minScore: bucket.min,
           maxScore: bucket.max,
-          totalCount: bucket.total,
-          returnedCount: bucket.returned,
-          retentionRate: Math.round((bucket.returned / bucket.total) * 100),
+          avgIntervalDays: avgInterval,
+          count: bucket.intervals.length,
         });
       }
     }
@@ -1045,7 +1056,7 @@ export async function getSurveyAdvancedStats(
     revenueCsatInsight,
     menuCsatMatrix,
     driverRegression,
-    csatRetentionRate,
+    csatReturnInterval,
     csatVsUnitPrice,
     csatVsLtv,
     surveyBenchmark,
@@ -1060,7 +1071,7 @@ function emptyAdvancedStats(): SurveyAdvancedStats {
     unitPriceCsat: [], newVsRepeaterCsat: [], revenueCorrelation: [],
     revenueCsatInsight: null,
     menuCsatMatrix: [], driverRegression: [],
-    csatRetentionRate: [],
+    csatReturnInterval: [],
     csatVsUnitPrice: [], csatVsLtv: [],
     surveyBenchmark: { available: false, providerCount: 0 },
   };
