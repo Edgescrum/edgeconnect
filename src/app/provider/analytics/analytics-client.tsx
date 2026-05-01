@@ -155,9 +155,9 @@ export function AnalyticsClient({
         setFilteredLtvStats(data.ltvStats);
       } catch (err) {
         console.error("[AnalyticsClient] フィルター エラー:", err);
-        // エラー時は「全体」「全期間」に戻し、初期データを復元
+        // エラー時は「全体」「全期間」に戻し、初期データ（全期間）を復元
         setSegment("all");
-        setDateRange("this_year");
+        setDateRange("all");
         setSegmentMonthlyData(allMonthlyData);
         setSegmentMonthlyAvgInterval(monthlyAvgInterval);
         setFilteredAvgBookingInterval(avgBookingInterval);
