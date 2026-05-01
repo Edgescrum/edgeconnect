@@ -26,7 +26,8 @@ async function requireStandardPlan() {
 /** 業界ベンチマーク（フィルター適用後の自分データ vs 業界平均） */
 export async function getCategoryBenchmark(
   segment: SegmentKey = "all",
-  dateRange: DateRangeKey = "all"
+  dateRange: DateRangeKey = "all",
+  prefetchedMonthlyData?: Record<string, unknown>[] | null
 ) {
   const provider = await requireStandardPlan();
   const supabase = await createClient();
@@ -65,12 +66,16 @@ export async function getCategoryBenchmark(
   const filterStart = startDate || monthStart;
   const filterEnd = endDate || now.toISOString();
 
+  // Use prefetched monthly data if available (avoids duplicate RPC call)
+  const needsFetchMonthly = !prefetchedMonthlyData || customerIds !== null;
   const [monthlyResult, intervalResult] = await Promise.all([
-    supabase.rpc("get_monthly_stats_filtered", {
-      p_provider_id: provider.id,
-      p_months: 120,
-      p_customer_ids: customerIds,
-    }),
+    needsFetchMonthly
+      ? supabase.rpc("get_monthly_stats_filtered", {
+          p_provider_id: provider.id,
+          p_months: 120,
+          p_customer_ids: customerIds,
+        })
+      : Promise.resolve({ data: prefetchedMonthlyData, error: null }),
     supabase.rpc("get_avg_booking_interval_filtered", {
       p_provider_id: provider.id,
       p_customer_ids: customerIds,

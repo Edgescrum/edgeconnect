@@ -5,15 +5,29 @@ import { createClient } from "@/lib/supabase/server";
 import { getProviderId } from "@/lib/auth/provider-session";
 import type { SegmentKey, DateRangeKey } from "@/lib/actions/analytics";
 
-async function getProviderWithPlan() {
+interface ProviderWithPlan {
+  id: number;
+  plan: string;
+  category: string | null;
+}
+
+async function getProviderWithPlan(providerId?: number): Promise<ProviderWithPlan> {
   const supabase = await createClient();
+  if (providerId) {
+    const { data } = await supabase
+      .from("providers")
+      .select("id, plan, category")
+      .eq("id", providerId)
+      .single();
+    return { id: providerId, plan: data?.plan || "basic", category: data?.category || null };
+  }
   const provider = await getProviderId();
   const { data } = await supabase
     .from("providers")
     .select("plan, category")
     .eq("id", provider.id)
     .single();
-  return { ...provider, plan: data?.plan || "basic", category: data?.category || null };
+  return { id: provider.id, plan: data?.plan || "basic", category: data?.category || null };
 }
 
 // ============================================================
@@ -178,9 +192,10 @@ export interface SurveyAdvancedStats {
 
 export async function getSurveyBasicStats(
   segment: SegmentKey = "all",
-  dateRange: DateRangeKey = "all"
+  dateRange: DateRangeKey = "all",
+  providerId?: number
 ): Promise<SurveyBasicStats> {
-  const provider = await getProviderWithPlan();
+  const provider = await getProviderWithPlan(providerId);
   const supabase = createAdminClient();
   const { startDate, endDate } = computeDateRange(dateRange);
 
@@ -421,9 +436,10 @@ function regressionSlope(xs: number[], ys: number[]): number {
 
 export async function getSurveyAdvancedStats(
   segment: SegmentKey = "all",
-  dateRange: DateRangeKey = "all"
+  dateRange: DateRangeKey = "all",
+  providerId?: number
 ): Promise<SurveyAdvancedStats> {
-  const provider = await getProviderWithPlan();
+  const provider = await getProviderWithPlan(providerId);
   if (provider.plan === "basic") {
     throw new Error("この機能はスタンダードプラン以上でご利用いただけます");
   }
@@ -548,23 +564,15 @@ export async function getSurveyAdvancedStats(
   const customerIds = [...new Set(responses.map((r) => r.customer_user_id as number))];
   let segmentCsat: SegmentCsat[] = [];
 
-  // Build segment map for cross-analysis
+  // Build segment map for cross-analysis (single RPC call instead of 4)
   const segmentMapAll = new Map<number, string>();
   if (customerIds.length > 0) {
-    const segmentNames = ["excellent", "normal", "dormant", "at_risk"];
-    const segmentResults = await Promise.all(
-      segmentNames.map((seg) =>
-        supabase.rpc("get_segment_customer_ids", {
-          p_provider_id: provider.id,
-          p_segment: seg,
-        }).then(({ data }) => ({ seg, data }))
-      )
-    );
-    for (const { seg, data: segIds } of segmentResults) {
-      if (segIds) {
-        for (const row of segIds as { customer_user_id: number }[]) {
-          segmentMapAll.set(row.customer_user_id, seg);
-        }
+    const { data: allSegments } = await supabase.rpc("get_all_customer_segments", {
+      p_provider_id: provider.id,
+    });
+    if (allSegments) {
+      for (const row of allSegments as { customer_user_id: number; segment: string }[]) {
+        segmentMapAll.set(row.customer_user_id, row.segment);
       }
     }
 
@@ -898,6 +906,18 @@ export async function getSurveyAdvancedStats(
 
     const providerBookings = allProviderBookings || [];
 
+    // O(n+m): Group bookings by customer_user_id with sorted dates
+    const bookingsByCustomer = new Map<number, string[]>();
+    for (const b of providerBookings) {
+      const custId = b.customer_user_id as number;
+      const list = bookingsByCustomer.get(custId);
+      if (list) {
+        list.push(b.start_at as string);
+      } else {
+        bookingsByCustomer.set(custId, [b.start_at as string]);
+      }
+    }
+
     // For each response, check if the customer has a confirmed booking AFTER the response date
     const scoreBuckets: { label: string; min: number; max: number; total: number; returned: number }[] = [
       { label: "満足（4, 5）", min: 4, max: 5, total: 0, returned: 0 },
@@ -915,10 +935,11 @@ export async function getSurveyAdvancedStats(
 
       bucket.total++;
 
-      // Check if this customer has a confirmed booking after response date
-      const hasReturn = providerBookings.some(
-        (b) => (b.customer_user_id as number) === custId && (b.start_at as string) > responseDate
-      );
+      // O(1) lookup + O(k) check where k is bookings for this customer (much smaller than m)
+      const customerBookings = bookingsByCustomer.get(custId);
+      const hasReturn = customerBookings
+        ? customerBookings.some((startAt) => startAt > responseDate)
+        : false;
       if (hasReturn) bucket.returned++;
     }
 

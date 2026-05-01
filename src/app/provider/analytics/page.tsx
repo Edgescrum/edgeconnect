@@ -44,7 +44,7 @@ export default async function AnalyticsPage() {
         p_start_date: null,
         p_end_date: null,
       }),
-      getSurveyBasicStats(),
+      getSurveyBasicStats("all", "all", provider.id),
     ]);
 
     const allMonthlyData = (monthly120Result.data || []).map((row: Record<string, unknown>) => ({
@@ -88,6 +88,7 @@ export default async function AnalyticsPage() {
     .eq("provider_id", provider.id)
     .single();
 
+  // Fetch monthly data first, then pass to benchmark to avoid duplicate RPC call
   const [
     monthly120Result,
     menusResult,
@@ -95,7 +96,6 @@ export default async function AnalyticsPage() {
     avgIntervalResult,
     monthlyAvgIntervalResult,
     ltvResult,
-    benchmarkResult,
     surveyBasicStats,
   ] = await Promise.all([
     supabase.rpc("get_monthly_stats_filtered", {
@@ -132,9 +132,11 @@ export default async function AnalyticsPage() {
       p_start_date: null,
       p_end_date: null,
     }),
-    getCategoryBenchmark("all", "this_year").catch(() => ({ available: false, provider_count: 0 })),
-    getSurveyBasicStats(),
+    getSurveyBasicStats("all", "all", provider.id),
   ]);
+
+  // Pass prefetched monthly data to avoid duplicate get_monthly_stats_filtered call
+  const benchmarkResult = await getCategoryBenchmark("all", "this_year", monthly120Result.data || []).catch(() => ({ available: false, provider_count: 0 }));
 
   // unique_customers が RPC から返されない場合（マイグレーション未適用時）のフォールバック
   const allMonthlyData = (monthly120Result.data || []).map((row: Record<string, unknown>) => ({
