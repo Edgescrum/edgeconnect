@@ -148,6 +148,26 @@ export async function getAnalyticsBySegment(
 
   const segmentParam = segment === "all" ? null : segment;
 
+  // Critical 2: セグメントの顧客IDリストを1回だけ取得し、各RPCに渡す
+  let customerIds: number[] | null = null;
+  if (segmentParam) {
+    const { data: segmentData, error: segmentError } = await supabase.rpc(
+      "get_segment_customer_ids",
+      {
+        p_provider_id: provider.id,
+        p_segment: segmentParam,
+      }
+    );
+    if (segmentError) {
+      console.error("[getAnalyticsBySegment] get_segment_customer_ids error:", segmentError);
+    }
+    customerIds = segmentData
+      ? (segmentData as { customer_user_id: number }[]).map(
+          (r) => r.customer_user_id
+        )
+      : [];
+  }
+
   const [
     monthly24Result,
     monthlyAvgIntervalResult,
@@ -155,27 +175,27 @@ export async function getAnalyticsBySegment(
     menusResult,
     heatmapResult,
   ] = await Promise.all([
-    supabase.rpc("get_monthly_stats", {
+    supabase.rpc("get_monthly_stats_filtered", {
       p_provider_id: provider.id,
       p_months: 24,
-      p_segment: segmentParam,
+      p_customer_ids: customerIds,
     }),
-    supabase.rpc("get_monthly_avg_interval", {
+    supabase.rpc("get_monthly_avg_interval_filtered", {
       p_provider_id: provider.id,
       p_months: 24,
-      p_segment: segmentParam,
+      p_customer_ids: customerIds,
     }),
-    supabase.rpc("get_avg_booking_interval", {
+    supabase.rpc("get_avg_booking_interval_filtered", {
       p_provider_id: provider.id,
-      p_segment: segmentParam,
+      p_customer_ids: customerIds,
     }),
-    supabase.rpc("get_popular_menus", {
+    supabase.rpc("get_popular_menus_filtered", {
       p_provider_id: provider.id,
-      p_segment: segmentParam,
+      p_customer_ids: customerIds,
     }),
-    supabase.rpc("get_booking_heatmap", {
+    supabase.rpc("get_booking_heatmap_filtered", {
       p_provider_id: provider.id,
-      p_segment: segmentParam,
+      p_customer_ids: customerIds,
     }),
   ]);
 
