@@ -131,19 +131,28 @@ export function SurveyFormClient({ detail }: { detail: SurveyBookingDetail }) {
 
       <div className="mx-auto max-w-2xl px-4 sm:px-6 py-6">
         {/* Provider & Booking Info */}
-        <div className="mb-6 flex items-center gap-3 rounded-xl border border-border bg-card p-4 sm:p-6">
-          <ProviderAvatar
-            name={detail.providerName}
-            iconUrl={detail.providerIconUrl}
-            size={48}
-          />
-          <div>
-            <p className="font-semibold">{detail.providerName}</p>
-            <p className="text-xs text-muted">{detail.serviceName}</p>
+        <div className="mb-6 rounded-xl border border-border bg-card p-4 sm:p-6">
+          <div className="flex flex-col items-center text-center">
+            <ProviderAvatar
+              name={detail.providerName}
+              iconUrl={detail.providerIconUrl}
+              size={56}
+            />
+            <p className="mt-2 text-base font-semibold">{detail.providerName}</p>
+            <p className="mt-0.5 text-sm text-muted">{detail.serviceName}</p>
+          </div>
+          <div className="mt-3 flex items-center justify-center gap-4 border-t border-border pt-3">
+            <div className="flex items-center gap-1.5 text-sm text-muted">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
+              </svg>
+              <span>{formatDate(detail.startAt)}</span>
+            </div>
             {detail.servicePrice != null && (
-              <p className="text-xs text-muted">{detail.servicePrice.toLocaleString()}円</p>
+              <div className="flex items-center gap-1.5 text-sm font-medium">
+                <span>{detail.servicePrice.toLocaleString()}円</span>
+              </div>
             )}
-            <p className="text-xs text-muted">{formatDate(detail.startAt)}</p>
           </div>
         </div>
 
@@ -225,7 +234,7 @@ export function SurveyFormClient({ detail }: { detail: SurveyBookingDetail }) {
             )}
             {reviewPublic && reviewText && (
               <p className="text-xs text-muted">
-                公開された口コミはプロフィールページに表示されます。お名前（表示名）とともに公開されます。
+                公開された口コミはプロフィールページに匿名で表示されます。お名前は公開されません。
               </p>
             )}
           </div>

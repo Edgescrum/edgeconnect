@@ -124,6 +124,38 @@ export function ReviewManagementClient({ reviews: initialReviews }: { reviews: P
         </div>
       </div>
 
+      {/* Driver averages */}
+      {(() => {
+        const driverServiceAvg = reviews.filter(r => r.driverService != null).length > 0
+          ? (reviews.filter(r => r.driverService != null).reduce((sum, r) => sum + (r.driverService || 0), 0) / reviews.filter(r => r.driverService != null).length)
+          : null;
+        const driverQualityAvg = reviews.filter(r => r.driverQuality != null).length > 0
+          ? (reviews.filter(r => r.driverQuality != null).reduce((sum, r) => sum + (r.driverQuality || 0), 0) / reviews.filter(r => r.driverQuality != null).length)
+          : null;
+        const driverPriceAvg = reviews.filter(r => r.driverPrice != null).length > 0
+          ? (reviews.filter(r => r.driverPrice != null).reduce((sum, r) => sum + (r.driverPrice || 0), 0) / reviews.filter(r => r.driverPrice != null).length)
+          : null;
+
+        if (driverServiceAvg == null && driverQualityAvg == null && driverPriceAvg == null) return null;
+
+        return (
+          <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+            <p className="mb-3 text-xs font-semibold text-muted">カテゴリ別平均スコア</p>
+            <div className="space-y-2">
+              {driverServiceAvg != null && (
+                <RatingBar label="接客" value={Number(driverServiceAvg.toFixed(1))} />
+              )}
+              {driverQualityAvg != null && (
+                <RatingBar label="品質" value={Number(driverQualityAvg.toFixed(1))} />
+              )}
+              {driverPriceAvg != null && (
+                <RatingBar label="価格" value={Number(driverPriceAvg.toFixed(1))} />
+              )}
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Star distribution */}
       <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
         <p className="mb-3 text-xs font-semibold text-muted">スコア分布</p>

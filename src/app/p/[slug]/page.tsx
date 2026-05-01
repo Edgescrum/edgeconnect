@@ -53,7 +53,7 @@ interface ReviewItem {
   csat: number;
   review_text: string;
   created_at: string;
-  customer_name: string | null;
+  service_name: string | null;
 }
 
 interface ProviderProfile {
