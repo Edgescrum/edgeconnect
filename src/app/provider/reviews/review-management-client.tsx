@@ -3,14 +3,14 @@
 import { useState, useTransition } from "react";
 import { toggleReviewVisibility, type ProviderReviewItem } from "@/lib/actions/survey";
 
-function StarDisplay({ rating }: { rating: number }) {
+function StarDisplay({ rating, size = 14 }: { rating: number; size?: number }) {
   return (
     <span className="inline-flex items-center gap-0.5">
       {[1, 2, 3, 4, 5].map((i) => (
         <svg
           key={i}
-          width={12}
-          height={12}
+          width={size}
+          height={size}
           viewBox="0 0 24 24"
           fill={i <= rating ? "#f59e0b" : "#e5e7eb"}
           stroke="none"
@@ -27,6 +27,28 @@ function formatDate(dateStr: string) {
   return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`;
 }
 
+function formatFullDate(dateStr: string) {
+  const d = new Date(dateStr);
+  const days = ["日", "月", "火", "水", "木", "金", "土"];
+  return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}(${days[d.getDay()]})`;
+}
+
+function RatingBar({ label, value }: { label: string; value: number }) {
+  const pct = (value / 5) * 100;
+  return (
+    <div className="flex items-center gap-2 text-xs">
+      <span className="w-8 shrink-0 text-muted">{label}</span>
+      <div className="h-1.5 flex-1 rounded-full bg-gray-100">
+        <div
+          className="h-1.5 rounded-full bg-amber-400 transition-all"
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      <span className="w-5 shrink-0 text-right font-medium text-foreground">{value}</span>
+    </div>
+  );
+}
+
 export function ReviewManagementClient({ reviews: initialReviews }: { reviews: ProviderReviewItem[] }) {
   const [reviews, setReviews] = useState(initialReviews);
   const [filter, setFilter] = useState<"all" | "visible" | "hidden">("all");
@@ -40,6 +62,7 @@ export function ReviewManagementClient({ reviews: initialReviews }: { reviews: P
 
   const visibleCount = reviews.filter((r) => r.reviewVisible).length;
   const hiddenCount = reviews.filter((r) => !r.reviewVisible).length;
+  const publicReviewCount = reviews.filter((r) => r.reviewPublic && r.reviewText).length;
 
   function handleToggleVisibility(reviewId: number, currentVisible: boolean) {
     startTransition(async () => {
@@ -56,110 +79,221 @@ export function ReviewManagementClient({ reviews: initialReviews }: { reviews: P
 
   if (reviews.length === 0) {
     return (
-      <div className="py-16 text-center">
-        <p className="text-sm text-muted">まだ口コミはありません</p>
+      <div className="mt-8 flex flex-col items-center justify-center py-16 text-center">
+        <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-gray-50">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-gray-300">
+            <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+          </svg>
+        </div>
+        <p className="text-lg font-semibold">まだ口コミはありません</p>
+        <p className="mt-2 max-w-xs text-sm text-muted">
+          お客さまがアンケートに回答すると、口コミがここに表示されます
+        </p>
       </div>
     );
   }
 
-  const avgCsat = reviews.length > 0
-    ? (reviews.reduce((sum, r) => sum + r.csat, 0) / reviews.length).toFixed(1)
-    : "-";
+  const avgCsat = (reviews.reduce((sum, r) => sum + r.csat, 0) / reviews.length).toFixed(1);
+
+  // Distribution for star chart
+  const distribution = [0, 0, 0, 0, 0];
+  for (const r of reviews) {
+    if (r.csat >= 1 && r.csat <= 5) distribution[r.csat - 1]++;
+  }
 
   return (
-    <div className="space-y-4">
-      {/* Summary */}
-      <div className="flex items-center gap-6 rounded-xl border border-border bg-card p-4">
-        <div className="text-center">
-          <p className="text-2xl font-bold">{avgCsat}</p>
-          <p className="text-xs text-muted">平均CSAT</p>
+    <div className="mt-4 space-y-5 sm:mt-6">
+      {/* Summary cards */}
+      <div className="grid grid-cols-3 gap-3">
+        <div className="rounded-2xl border border-border bg-card p-4 text-center shadow-sm">
+          <div className="flex items-center justify-center gap-1">
+            <span className="text-3xl font-bold tracking-tight">{avgCsat}</span>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="#f59e0b" stroke="none" className="mt-0.5">
+              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+            </svg>
+          </div>
+          <p className="mt-1 text-xs text-muted">平均スコア</p>
         </div>
-        <div className="text-center">
-          <p className="text-2xl font-bold">{reviews.length}</p>
-          <p className="text-xs text-muted">総回答数</p>
+        <div className="rounded-2xl border border-border bg-card p-4 text-center shadow-sm">
+          <p className="text-3xl font-bold tracking-tight">{reviews.length}</p>
+          <p className="mt-1 text-xs text-muted">総回答数</p>
         </div>
-        <div className="text-center">
-          <p className="text-2xl font-bold">{reviews.filter((r) => r.reviewPublic && r.reviewText).length}</p>
-          <p className="text-xs text-muted">公開口コミ</p>
+        <div className="rounded-2xl border border-border bg-card p-4 text-center shadow-sm">
+          <p className="text-3xl font-bold tracking-tight">{publicReviewCount}</p>
+          <p className="mt-1 text-xs text-muted">公開口コミ</p>
         </div>
       </div>
 
-      {/* Filter */}
-      <div className="flex gap-2">
+      {/* Star distribution */}
+      <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+        <p className="mb-3 text-xs font-semibold text-muted">スコア分布</p>
+        <div className="space-y-2">
+          {[5, 4, 3, 2, 1].map((star) => (
+            <div key={star} className="flex items-center gap-2 text-xs">
+              <span className="w-4 shrink-0 text-right font-medium text-foreground">{star}</span>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="#f59e0b" stroke="none">
+                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+              </svg>
+              <div className="h-2 flex-1 overflow-hidden rounded-full bg-gray-100">
+                <div
+                  className="h-2 rounded-full bg-amber-400 transition-all"
+                  style={{ width: reviews.length > 0 ? `${(distribution[star - 1] / reviews.length) * 100}%` : "0%" }}
+                />
+              </div>
+              <span className="w-6 shrink-0 text-right text-muted">{distribution[star - 1]}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Filter tabs */}
+      <div className="flex rounded-xl bg-gray-100 p-1">
         {[
-          { key: "all" as const, label: `すべて (${reviews.length})` },
-          { key: "visible" as const, label: `表示中 (${visibleCount})` },
-          { key: "hidden" as const, label: `非表示 (${hiddenCount})` },
+          { key: "all" as const, label: "すべて", count: reviews.length },
+          { key: "visible" as const, label: "公開中", count: visibleCount },
+          { key: "hidden" as const, label: "非表示", count: hiddenCount },
         ].map((tab) => (
           <button
             key={tab.key}
             onClick={() => setFilter(tab.key)}
-            className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+            className={`flex-1 rounded-lg py-2 text-sm font-medium transition-colors ${
               filter === tab.key
-                ? "bg-accent text-white"
-                : "bg-gray-100 text-muted hover:bg-gray-200"
+                ? "bg-white text-foreground shadow-sm"
+                : "text-muted hover:text-foreground"
             }`}
           >
             {tab.label}
+            <span className={`ml-1 text-xs ${filter === tab.key ? "text-muted" : "text-muted/60"}`}>
+              {tab.count}
+            </span>
           </button>
         ))}
       </div>
 
       {/* Review list */}
+      {filteredReviews.length === 0 && (
+        <div className="flex flex-col items-center justify-center py-12 text-center">
+          <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-gray-50">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-gray-300">
+              <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+            </svg>
+          </div>
+          <p className="text-sm font-medium text-muted">
+            {filter === "visible" && "公開中の口コミはありません"}
+            {filter === "hidden" && "非表示の口コミはありません"}
+          </p>
+        </div>
+      )}
+
       <div className="space-y-3">
         {filteredReviews.map((review) => (
           <div
             key={review.id}
-            className={`rounded-xl border bg-card p-4 ${
-              review.reviewVisible ? "border-border" : "border-gray-200 opacity-60"
+            className={`overflow-hidden rounded-2xl border bg-card shadow-sm transition-all ${
+              review.reviewVisible
+                ? "border-border"
+                : "border-gray-200 opacity-60"
             }`}
           >
-            <div className="flex items-start justify-between gap-2">
-              <div className="flex-1 space-y-1">
-                <div className="flex items-center gap-2">
-                  <StarDisplay rating={review.csat} />
-                  <span className="text-xs text-muted">
-                    {review.customerName || "お客さま"}
-                  </span>
-                  <span className="text-xs text-muted">
-                    {formatDate(review.createdAt)}
-                  </span>
+            {/* Card header */}
+            <div className="flex items-center justify-between border-b border-border/50 bg-gray-50/50 px-4 py-3">
+              <div className="flex items-center gap-3">
+                {/* Avatar placeholder */}
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent/10 text-xs font-bold text-accent">
+                  {(review.customerName || "?")[0]}
                 </div>
-                {review.serviceName && (
-                  <p className="text-xs text-muted">{review.serviceName}</p>
-                )}
-                {review.comment && (
-                  <p className="text-sm leading-relaxed text-foreground">
-                    <span className="text-xs text-muted">感想: </span>
-                    {review.comment}
-                  </p>
-                )}
-                {review.reviewText && (
-                  <div className="mt-1 rounded-lg bg-accent-bg p-2">
-                    <p className="text-xs text-muted">口コミ ({review.reviewPublic ? "公開" : "非公開"}):</p>
-                    <p className="text-sm leading-relaxed">{review.reviewText}</p>
+                <div>
+                  <p className="text-sm font-semibold">{review.customerName || "お客さま"}</p>
+                  <div className="flex items-center gap-2">
+                    {review.serviceName && (
+                      <span className="text-xs text-muted">{review.serviceName}</span>
+                    )}
+                    {review.bookingDate && (
+                      <span className="text-xs text-muted">{formatFullDate(review.bookingDate)}</span>
+                    )}
                   </div>
-                )}
-                {/* Driver scores */}
-                <div className="flex gap-4 text-xs text-muted">
-                  {review.driverService != null && <span>接客: {review.driverService}</span>}
-                  {review.driverQuality != null && <span>品質: {review.driverQuality}</span>}
-                  {review.driverPrice != null && <span>価格: {review.driverPrice}</span>}
                 </div>
               </div>
+              <span className="text-xs text-muted">{formatDate(review.createdAt)}</span>
+            </div>
 
+            {/* Card body */}
+            <div className="p-4 space-y-3">
+              {/* Star rating + CSAT */}
+              <div className="flex items-center gap-2">
+                <StarDisplay rating={review.csat} size={16} />
+                <span className="text-sm font-semibold text-foreground">{review.csat}.0</span>
+              </div>
+
+              {/* Driver scores */}
+              {(review.driverService != null || review.driverQuality != null || review.driverPrice != null) && (
+                <div className="space-y-1.5">
+                  {review.driverService != null && (
+                    <RatingBar label="接客" value={review.driverService} />
+                  )}
+                  {review.driverQuality != null && (
+                    <RatingBar label="品質" value={review.driverQuality} />
+                  )}
+                  {review.driverPrice != null && (
+                    <RatingBar label="価格" value={review.driverPrice} />
+                  )}
+                </div>
+              )}
+
+              {/* Comment */}
+              {review.comment && (
+                <div>
+                  <p className="mb-1 text-[10px] font-medium uppercase tracking-wider text-muted">感想</p>
+                  <p className="text-sm leading-relaxed text-foreground">{review.comment}</p>
+                </div>
+              )}
+
+              {/* Review text */}
+              {review.reviewText && (
+                <div className="rounded-xl bg-accent/5 p-3">
+                  <div className="mb-1 flex items-center gap-1.5">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-accent">
+                      <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+                    </svg>
+                    <span className="text-[10px] font-medium uppercase tracking-wider text-accent">
+                      口コミ ({review.reviewPublic ? "公開" : "非公開"})
+                    </span>
+                  </div>
+                  <p className="text-sm leading-relaxed">{review.reviewText}</p>
+                </div>
+              )}
+
+              {/* Visibility toggle */}
               {review.reviewPublic && review.reviewText && (
-                <button
-                  onClick={() => handleToggleVisibility(review.id, review.reviewVisible)}
-                  disabled={isPending}
-                  className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
-                    review.reviewVisible
-                      ? "bg-gray-100 text-muted hover:bg-gray-200"
-                      : "bg-accent text-white hover:bg-accent-dark"
-                  }`}
-                >
-                  {review.reviewVisible ? "非表示にする" : "表示する"}
-                </button>
+                <div className="flex justify-end pt-1">
+                  <button
+                    onClick={() => handleToggleVisibility(review.id, review.reviewVisible)}
+                    disabled={isPending}
+                    className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
+                      review.reviewVisible
+                        ? "bg-gray-100 text-muted hover:bg-gray-200 hover:text-foreground"
+                        : "bg-accent text-white hover:bg-accent/90 shadow-sm"
+                    }`}
+                  >
+                    {review.reviewVisible ? (
+                      <>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24" />
+                          <line x1="1" y1="1" x2="23" y2="23" />
+                        </svg>
+                        非表示にする
+                      </>
+                    ) : (
+                      <>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                          <circle cx="12" cy="12" r="3" />
+                        </svg>
+                        表示する
+                      </>
+                    )}
+                  </button>
+                </div>
               )}
             </div>
           </div>

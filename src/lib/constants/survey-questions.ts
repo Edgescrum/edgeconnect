@@ -62,8 +62,8 @@ export function getQ3Text(category: string | null): string {
  */
 export const RATING_LABELS = [
   "", // 0は使わない
+  "とても不満",
   "不満",
-  "やや不満",
   "普通",
   "満足",
   "とても満足",

@@ -19,25 +19,28 @@ function RatingSlider({
   return (
     <div className="space-y-3">
       <p className="text-sm font-medium leading-relaxed">{label}</p>
-      <div className="flex items-center gap-2">
+      <div className="grid grid-cols-5 gap-1.5">
         {[1, 2, 3, 4, 5].map((n) => (
           <button
             key={n}
             type="button"
             onClick={() => onChange(n)}
-            className={`flex h-11 w-11 items-center justify-center rounded-xl text-sm font-bold transition-all ${
-              value === n
-                ? "bg-accent text-white shadow-md scale-110"
-                : "bg-gray-100 text-gray-500 hover:bg-gray-200"
-            }`}
+            className="flex flex-col items-center gap-1"
           >
-            {n}
+            <span className={`text-[10px] leading-tight ${value === n ? "text-accent font-semibold" : "text-muted"}`}>
+              {RATING_LABELS[n]}
+            </span>
+            <span
+              className={`flex h-11 w-full items-center justify-center rounded-xl text-sm font-bold transition-all ${
+                value === n
+                  ? "bg-accent text-white shadow-md scale-105"
+                  : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+              }`}
+            >
+              {n}
+            </span>
           </button>
         ))}
-      </div>
-      <div className="flex justify-between text-xs text-muted">
-        <span>{RATING_LABELS[1]}</span>
-        <span>{RATING_LABELS[5]}</span>
       </div>
     </div>
   );
@@ -137,6 +140,9 @@ export function SurveyFormClient({ detail }: { detail: SurveyBookingDetail }) {
           <div>
             <p className="font-semibold">{detail.providerName}</p>
             <p className="text-xs text-muted">{detail.serviceName}</p>
+            {detail.servicePrice != null && (
+              <p className="text-xs text-muted">{detail.servicePrice.toLocaleString()}円</p>
+            )}
             <p className="text-xs text-muted">{formatDate(detail.startAt)}</p>
           </div>
         </div>
