@@ -843,74 +843,206 @@ export function AnalyticsClient({
         </div>
       </ChartCard>
 
-      {/* 6+7. 平均予約間隔 + 平均LTV */}
+      {/* 6+7. 新規 vs リピーター比率 + キャンセル率 */}
       <div className="grid gap-4 sm:grid-cols-2">
+        {/* 新規 vs リピーター比率 */}
         <ChartCard
-          title="平均予約間隔"
+          title="新規 vs リピーター比率"
+          icon={
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+              <circle cx="9" cy="7" r="4" />
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+              <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+            </svg>
+          }
+        >
+          {(() => {
+            const totalCustomers = filteredAvgBookingInterval.total_customers;
+            const repeaters = filteredAvgBookingInterval.customers_with_interval;
+            const newCustomers = totalCustomers - repeaters;
+            const repeaterPct = totalCustomers > 0 ? Math.round((repeaters / totalCustomers) * 100) : 0;
+            const newPct = totalCustomers > 0 ? 100 - repeaterPct : 0;
+
+            if (totalCustomers === 0) {
+              return <EmptyState />;
+            }
+
+            const circumference = 2 * Math.PI * 40;
+            const repeaterDash = (repeaterPct / 100) * circumference;
+            const newDash = (newPct / 100) * circumference;
+
+            return (
+              <div className="flex flex-col sm:flex-row items-center gap-6">
+                {/* ドーナツチャート */}
+                <div className="relative flex h-36 w-36 shrink-0 items-center justify-center">
+                  <svg className="h-36 w-36 -rotate-90" viewBox="0 0 100 100">
+                    <circle cx="50" cy="50" r="40" fill="none" stroke="var(--border)" strokeWidth="12" opacity="0.3" />
+                    {newCustomers > 0 && (
+                      <circle
+                        cx="50" cy="50" r="40"
+                        fill="none"
+                        stroke="#3b82f6"
+                        strokeWidth="12"
+                        strokeLinecap="round"
+                        strokeDasharray={`${Math.max(0, newDash - (repeaters > 0 ? 2 : 0))} ${circumference - Math.max(0, newDash - (repeaters > 0 ? 2 : 0))}`}
+                        strokeDashoffset="0"
+                        className="transition-all duration-700"
+                      />
+                    )}
+                    {repeaters > 0 && (
+                      <circle
+                        cx="50" cy="50" r="40"
+                        fill="none"
+                        stroke="#10b981"
+                        strokeWidth="12"
+                        strokeLinecap="round"
+                        strokeDasharray={`${Math.max(0, repeaterDash - (newCustomers > 0 ? 2 : 0))} ${circumference - Math.max(0, repeaterDash - (newCustomers > 0 ? 2 : 0))}`}
+                        strokeDashoffset={-newDash}
+                        className="transition-all duration-700"
+                      />
+                    )}
+                  </svg>
+                  <div className="absolute text-center">
+                    <span className="text-lg font-bold text-foreground">{totalCustomers}</span>
+                    <span className="block text-[10px] text-muted">人</span>
+                  </div>
+                </div>
+
+                {/* ラベル */}
+                <div className="flex-1 space-y-3 w-full">
+                  <div className="flex items-center gap-3">
+                    <div className="h-3 w-3 shrink-0 rounded-full bg-blue-500" />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-baseline justify-between">
+                        <p className="text-sm font-medium">新規</p>
+                        <div className="ml-2 shrink-0 flex items-center gap-2">
+                          <span className="text-xs text-muted">{newCustomers}人</span>
+                          <span className="text-xs font-semibold text-foreground">{newPct}%</span>
+                        </div>
+                      </div>
+                      <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-border/30">
+                        <div
+                          className="h-full rounded-full bg-blue-500 transition-all duration-500"
+                          style={{ width: `${newPct}%` }}
+                        />
+                      </div>
+                      <p className="mt-0.5 text-[11px] text-muted">初めて来店した顧客</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <div className="h-3 w-3 shrink-0 rounded-full bg-emerald-500" />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-baseline justify-between">
+                        <p className="text-sm font-medium">リピーター</p>
+                        <div className="ml-2 shrink-0 flex items-center gap-2">
+                          <span className="text-xs text-muted">{repeaters}人</span>
+                          <span className="text-xs font-semibold text-foreground">{repeaterPct}%</span>
+                        </div>
+                      </div>
+                      <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-border/30">
+                        <div
+                          className="h-full rounded-full bg-emerald-500 transition-all duration-500"
+                          style={{ width: `${repeaterPct}%` }}
+                        />
+                      </div>
+                      <p className="mt-0.5 text-[11px] text-muted">2回以上来店した顧客</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+        </ChartCard>
+
+        {/* キャンセル率 */}
+        <ChartCard
+          title="キャンセル率"
           icon={
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="10" />
-              <polyline points="12 6 12 12 16 14" />
+              <line x1="15" y1="9" x2="9" y2="15" />
+              <line x1="9" y1="9" x2="15" y2="15" />
             </svg>
           }
         >
-          <div className="flex items-center gap-6">
-            <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-accent/10">
-              <div className="text-center">
-                <span className="text-xl font-bold text-accent">
-                  {filteredAvgBookingInterval.avg_interval_days > 0 ? filteredAvgBookingInterval.avg_interval_days : "-"}
-                </span>
-                {filteredAvgBookingInterval.avg_interval_days > 0 && (
-                  <span className="block text-xs font-medium text-accent/70">日</span>
-                )}
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              {filteredAvgBookingInterval.avg_interval_days > 0 ? (
-                <>
-                  <p className="text-sm text-foreground">
-                    平均 <span className="font-semibold">{filteredAvgBookingInterval.avg_interval_days}日</span> ごとに来店
-                  </p>
-                  <p className="text-xs text-muted">
-                    リピーター: {filteredAvgBookingInterval.customers_with_interval}人 / 全{filteredAvgBookingInterval.total_customers}人
-                  </p>
-                </>
-              ) : (
-                <p className="text-xs text-muted">
-                  2回以上来店した顧客がいるとデータが表示されます
-                </p>
-              )}
-            </div>
-          </div>
-        </ChartCard>
+          {(() => {
+            const totalBookings = filteredMonthlyData.reduce((sum, d) => sum + d.booking_count + d.cancel_count, 0);
+            const totalCancels = filteredMonthlyData.reduce((sum, d) => sum + d.cancel_count, 0);
+            const cancelRate = totalBookings > 0 ? Math.round((totalCancels / totalBookings) * 1000) / 10 : 0;
+            const confirmedCount = totalBookings - totalCancels;
 
-        <ChartCard
-          title="平均LTV（顧客生涯価値）"
-          icon={
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
-              <line x1="7" y1="7" x2="7.01" y2="7" />
-            </svg>
-          }
-        >
-          <div className="flex items-center gap-6">
-            <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-accent/10">
-              <div className="text-center">
-                <span className="text-xl font-bold text-accent">
-                  {Math.round(filteredLtvStats.avg_ltv).toLocaleString()}
-                </span>
-                <span className="block text-xs font-medium text-accent/70">円</span>
+            if (totalBookings === 0) {
+              return <EmptyState />;
+            }
+
+            // 色: 低い（緑） → 高い（赤）
+            const getCancelRateColor = (rate: number) => {
+              if (rate <= 5) return { text: "text-emerald-600", bg: "bg-emerald-500", hex: "#10b981", label: "とても良い" };
+              if (rate <= 10) return { text: "text-emerald-500", bg: "bg-emerald-400", hex: "#34d399", label: "良い" };
+              if (rate <= 20) return { text: "text-amber-500", bg: "bg-amber-400", hex: "#fbbf24", label: "やや高め" };
+              if (rate <= 30) return { text: "text-orange-500", bg: "bg-orange-400", hex: "#fb923c", label: "注意" };
+              return { text: "text-red-500", bg: "bg-red-400", hex: "#f87171", label: "要改善" };
+            };
+
+            const rateStyle = getCancelRateColor(cancelRate);
+            const confirmedPct = totalBookings > 0 ? Math.round((confirmedCount / totalBookings) * 100) : 0;
+            const cancelPct = 100 - confirmedPct;
+
+            return (
+              <div className="space-y-4">
+                {/* メイン数値 */}
+                <div className="flex items-center gap-4">
+                  <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-background ring-1 ring-border/60">
+                    <div className="text-center">
+                      <span className={`text-2xl font-bold ${rateStyle.text}`}>
+                        {cancelRate}
+                      </span>
+                      <span className={`block text-xs font-medium ${rateStyle.text} opacity-70`}>%</span>
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <p className="text-sm text-foreground">
+                      全{totalBookings}件中 <span className="font-semibold">{totalCancels}件</span> キャンセル
+                    </p>
+                    <span
+                      className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold"
+                      style={{ backgroundColor: `${rateStyle.hex}15`, color: rateStyle.hex }}
+                    >
+                      {rateStyle.label}
+                    </span>
+                  </div>
+                </div>
+
+                {/* 横棒グラフ */}
+                <div className="space-y-2">
+                  <div className="flex h-4 overflow-hidden rounded-full bg-border/30">
+                    <div
+                      className="h-full rounded-l-full bg-emerald-500 transition-all duration-500"
+                      style={{ width: `${confirmedPct}%` }}
+                    />
+                    {cancelPct > 0 && (
+                      <div
+                        className="h-full rounded-r-full bg-red-400 transition-all duration-500"
+                        style={{ width: `${cancelPct}%` }}
+                      />
+                    )}
+                  </div>
+                  <div className="flex justify-between text-xs text-muted">
+                    <div className="flex items-center gap-1.5">
+                      <div className="h-2 w-2 rounded-full bg-emerald-500" />
+                      <span>確定 {confirmedCount}件 ({confirmedPct}%)</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <div className="h-2 w-2 rounded-full bg-red-400" />
+                      <span>キャンセル {totalCancels}件 ({cancelPct}%)</span>
+                    </div>
+                  </div>
+                </div>
               </div>
-            </div>
-            <div className="space-y-1.5">
-              <p className="text-sm text-foreground">顧客1人あたりの平均累計売上</p>
-              {totalSegments > 0 && (
-                <p className="text-xs text-muted">
-                  対象顧客数: {totalSegments}人
-                </p>
-              )}
-            </div>
-          </div>
+            );
+          })()}
         </ChartCard>
       </div>
 
