@@ -200,16 +200,24 @@ export function BookingFlow({
 
   async function handleConfirm() {
     if (!validateForm()) return;
-    // 最新の友だち状態をAPIで確認
-    try {
-      const res = await fetch("/api/user/friend-status");
-      const { isLineFriend: isFriend } = await res.json();
-      if (!isFriend) {
-        setShowFriendPrompt(true);
-        return;
+    // LIFFブラウザ内（LINEアプリ内）からアクセスしている場合は友だちチェックをスキップ
+    const isInLiff = typeof window !== "undefined" && (
+      window.navigator.userAgent.includes("LIFF") ||
+      window.navigator.userAgent.includes("Line") ||
+      window.location.href.includes("liff.line.me")
+    );
+    if (!isInLiff && !isLineFriend) {
+      // 最新の友だち状態をAPIで確認
+      try {
+        const res = await fetch("/api/user/friend-status");
+        const { isLineFriend: isFriend } = await res.json();
+        if (!isFriend) {
+          setShowFriendPrompt(true);
+          return;
+        }
+      } catch {
+        // 取得失敗時はそのまま予約に進む
       }
-    } catch {
-      // 取得失敗時はそのまま予約に進む
     }
     submitBooking();
   }

@@ -11,7 +11,13 @@ export default async function HomePage() {
 
   const supabase = await createClient();
 
-  const [providerResult, bookingsResult, pendingSurveyCount] = await Promise.all([
+  const now = new Date().toISOString();
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  const todayEnd = new Date(todayStart);
+  todayEnd.setDate(todayEnd.getDate() + 1);
+
+  const [providerResult, bookingsResult, pendingSurveyCount, todayBookingsResult, upcomingBookingsResult, favoritesResult] = await Promise.all([
     user.role === "provider"
       ? supabase
           .from("providers")
@@ -28,6 +34,23 @@ export default async function HomePage() {
       .order("created_at", { ascending: false })
       .limit(10),
     getPendingSurveyCount(),
+    supabase
+      .from("bookings")
+      .select("id", { count: "exact", head: true })
+      .eq("customer_user_id", user.id)
+      .eq("status", "confirmed")
+      .gte("start_at", todayStart.toISOString())
+      .lt("start_at", todayEnd.toISOString()),
+    supabase
+      .from("bookings")
+      .select("id", { count: "exact", head: true })
+      .eq("customer_user_id", user.id)
+      .eq("status", "confirmed")
+      .gte("start_at", now),
+    supabase
+      .from("favorites")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id),
   ]);
 
   const provider = providerResult.data as {
@@ -61,7 +84,9 @@ export default async function HomePage() {
     }
   }
 
-  // ユーザー属性未設定チェック（性別・生年月日が両方未設定の場合に案内を表示）
+  // ユーザー属性未設定チェック（名前が未設定の場合に初回ポップアップを表示）
+  const showProfileModal = !user.customerName;
+  // 性別・生年月日が両方未設定の場合にバナーを表示
   const showAttributePrompt = !user.gender && !user.birthDate;
 
   return (
@@ -73,6 +98,12 @@ export default async function HomePage() {
           recentProviders={recentProviders}
           pendingSurveyCount={pendingSurveyCount}
           showAttributePrompt={showAttributePrompt}
+          showProfileModal={showProfileModal}
+          stats={{
+            todayBookings: todayBookingsResult.count ?? 0,
+            upcomingBookings: upcomingBookingsResult.count ?? 0,
+            favorites: favoritesResult.count ?? 0,
+          }}
         />
       </div>
       <PublicFooter maxWidth="max-w-5xl" />

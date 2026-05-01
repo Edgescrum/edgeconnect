@@ -112,9 +112,12 @@ export function ScheduleEditor({
   async function saveInterval() {
     setError(null);
     setSaving("interval");
-    showSuccess("インターバルを保存しました");
+    showSuccess("予約設定を保存しました");
     try {
-      await updateInterval(intervalBefore, intervalAfter);
+      await Promise.all([
+        updateInterval(intervalBefore, intervalAfter),
+        updateSlotStep(slotStep),
+      ]);
     } catch (e) {
       setSuccess(null);
       setError(e instanceof Error ? e.message : "保存に失敗しました");
@@ -198,8 +201,8 @@ export function ScheduleEditor({
         </div>
       )}
 
-      {/* --- モバイル版: 縦積み --- */}
-      <div className="space-y-8 sm:hidden">
+      {/* --- モバイル版: 統合レイアウト --- */}
+      <div className="space-y-6 sm:hidden">
         {/* 営業時間 */}
         <section>
           <h2 className="text-sm font-semibold">営業時間</h2>
@@ -208,20 +211,32 @@ export function ScheduleEditor({
           <SaveButton onClick={saveHours} saving={saving === "hours"} label="営業時間を保存" />
         </section>
 
-        {/* インターバル */}
-        <section>
-          <h2 className="text-sm font-semibold">予約のインターバル</h2>
-          <p className="mt-1 text-xs text-muted">予約と予約の間に確保するバッファ時間です。</p>
-          <IntervalEditor intervalBefore={intervalBefore} intervalAfter={intervalAfter} setIntervalBefore={setIntervalBefore} setIntervalAfter={setIntervalAfter} />
-          <SaveButton onClick={saveInterval} saving={saving === "interval"} label="インターバルを保存" />
-        </section>
+        {/* インターバル + 予約枠の刻み（統合） */}
+        <section className="rounded-2xl bg-card p-4 ring-1 ring-border">
+          <h2 className="text-sm font-semibold">予約設定</h2>
+          <p className="mt-1 text-xs text-muted">インターバルと予約枠の間隔を設定します。</p>
 
-        {/* 予約枠の刻み */}
-        <section>
-          <h2 className="text-sm font-semibold">予約枠の刻み</h2>
-          <p className="mt-1 text-xs text-muted">予約可能な時刻の間隔です。例：30分なら 9:00, 9:30, 10:00...</p>
-          <SlotStepEditor slotStep={slotStep} setSlotStep={setSlotStep} />
-          <SaveButton onClick={handleSaveSlotStep} saving={saving === "slotStep"} label="刻みを保存" />
+          <div className="mt-4 space-y-4">
+            <div>
+              <p className="text-xs font-medium text-muted">予約前後のバッファ</p>
+              <IntervalEditor intervalBefore={intervalBefore} intervalAfter={intervalAfter} setIntervalBefore={setIntervalBefore} setIntervalAfter={setIntervalAfter} />
+            </div>
+            <div className="border-t border-border pt-4">
+              <p className="text-xs font-medium text-muted">予約枠の刻み（例：30分なら 9:00, 9:30, 10:00...）</p>
+              <SlotStepEditor slotStep={slotStep} setSlotStep={setSlotStep} />
+            </div>
+          </div>
+
+          <div className="mt-4 flex gap-2">
+            <button
+              onClick={saveInterval}
+              disabled={saving === "interval"}
+              className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-accent py-3 font-semibold text-white shadow-lg shadow-accent/25 disabled:opacity-60 active:scale-[0.98]"
+            >
+              {saving === "interval" && <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />}
+              {saving === "interval" ? "処理中..." : "保存"}
+            </button>
+          </div>
         </section>
       </div>
 

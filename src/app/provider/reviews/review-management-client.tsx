@@ -94,7 +94,7 @@ export function ReviewManagementClient({ reviews: initialReviews, initialSegment
 
   const visibleCount = reviews.filter((r) => r.reviewVisible && r.reviewPublic && hasReviewText(r)).length;
   const hiddenCount = reviews.length - visibleCount;
-  const publicReviewCount = reviews.filter((r) => r.reviewPublic && r.reviewText).length;
+  const publicReviewCount = reviews.filter((r) => r.reviewPublic && r.reviewVisible && hasReviewText(r)).length;
 
   function handleToggleVisibility(reviewId: number, currentVisible: boolean) {
     startTransition(async () => {
@@ -109,27 +109,31 @@ export function ReviewManagementClient({ reviews: initialReviews, initialSegment
     });
   }
 
-  if (reviews.length === 0) {
-    return (
-      <div className="mt-8 flex flex-col items-center justify-center py-16 text-center">
-        <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-gray-50">
-          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-gray-300">
-            <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
-          </svg>
-        </div>
-        <p className="text-lg font-semibold">まだ口コミはありません</p>
-        <p className="mt-2 max-w-xs text-sm text-muted">
-          お客さまがアンケートに回答すると、口コミがここに表示されます
-        </p>
-      </div>
-    );
-  }
-
-  const avgCsat = (reviews.reduce((sum, r) => sum + r.csat, 0) / reviews.length).toFixed(1);
+  const avgCsat = reviews.length > 0
+    ? (reviews.reduce((sum, r) => sum + r.csat, 0) / reviews.length).toFixed(1)
+    : "0.0";
 
   return (
     <div className="mt-4 space-y-5 sm:mt-6">
-      {/* Summary cards */}
+      {/* Segment filter - always visible, placed above KPI */}
+      <div className="flex flex-wrap gap-2">
+        {SEGMENT_OPTIONS.map((opt) => (
+          <button
+            key={opt.key}
+            onClick={() => handleSegmentChange(opt.key)}
+            disabled={isPending}
+            className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+              segment === opt.key
+                ? "border-accent bg-accent/10 text-accent"
+                : "border-border bg-card text-muted hover:border-accent/40 hover:text-foreground"
+            }`}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Summary cards - filtered by segment */}
       <div className="grid grid-cols-3 gap-3">
         <div className="rounded-2xl border border-border bg-card p-4 text-center shadow-sm">
           <div className="flex items-center justify-center gap-1">
@@ -150,23 +154,19 @@ export function ReviewManagementClient({ reviews: initialReviews, initialSegment
         </div>
       </div>
 
-      {/* Segment filter */}
-      <div className="flex flex-wrap gap-2">
-        {SEGMENT_OPTIONS.map((opt) => (
-          <button
-            key={opt.key}
-            onClick={() => handleSegmentChange(opt.key)}
-            disabled={isPending}
-            className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
-              segment === opt.key
-                ? "border-accent bg-accent/10 text-accent"
-                : "border-border bg-card text-muted hover:border-accent/40 hover:text-foreground"
-            }`}
-          >
-            {opt.label}
-          </button>
-        ))}
-      </div>
+      {reviews.length === 0 && (
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-gray-50">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-gray-300">
+              <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+            </svg>
+          </div>
+          <p className="text-lg font-semibold">この条件に該当する口コミはありません</p>
+          <p className="mt-2 max-w-xs text-sm text-muted">
+            セグメントを変更して確認してください
+          </p>
+        </div>
+      )}
 
       {/* Filter tabs */}
       <TabFilter

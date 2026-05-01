@@ -13,13 +13,14 @@ interface BookingItem {
   provider: { name: string; slug: string } | null;
 }
 
-type FilterType = "all" | "today" | "week" | "upcoming";
+type FilterType = "all" | "today" | "week" | "upcoming" | "past";
 
 const FILTERS: { value: FilterType; label: string }[] = [
-  { value: "all", label: "すべて" },
+  { value: "upcoming", label: "今後の予約" },
   { value: "today", label: "今日" },
   { value: "week", label: "今週" },
-  { value: "upcoming", label: "今後" },
+  { value: "past", label: "過去の予約" },
+  { value: "all", label: "すべて" },
 ];
 
 const DAYS = ["日", "月", "火", "水", "木", "金", "土"];
@@ -28,9 +29,9 @@ const FILTER_STORAGE_KEY = "peco_bookings_filter";
 
 export function CustomerBookingList({ bookings }: { bookings: BookingItem[] }) {
   const [filter, setFilterState] = useState<FilterType>(() => {
-    if (typeof window === "undefined") return "all";
+    if (typeof window === "undefined") return "upcoming";
     const saved = sessionStorage.getItem(FILTER_STORAGE_KEY);
-    return (FILTERS.find((f) => f.value === saved)?.value) || "all";
+    return (FILTERS.find((f) => f.value === saved)?.value) || "upcoming";
   });
 
   function setFilter(value: FilterType) {
@@ -67,6 +68,8 @@ export function CustomerBookingList({ bookings }: { bookings: BookingItem[] }) {
           return b.status === "confirmed" && start >= todayStart && start < weekEnd;
         case "upcoming":
           return b.status === "confirmed" && start >= now;
+        case "past":
+          return b.status !== "cancelled" && start < now;
         default:
           return true;
       }
