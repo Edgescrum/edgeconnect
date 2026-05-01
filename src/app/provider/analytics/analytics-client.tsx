@@ -1626,12 +1626,12 @@ function SurveyAnalyticsTab({
                 <p className="mb-4 text-xs text-muted">満足度スコア別に、その後再来店した顧客の割合を表示します</p>
                 <div className="space-y-3">
                   {advancedStats.csatRetentionRate.map((item) => {
-                    const barColor = item.scoreLabel === "満足"
-                      ? "bg-emerald-500" : item.scoreLabel === "普通"
+                    const barColor = item.scoreLabel.startsWith("満足")
+                      ? "bg-emerald-500" : item.scoreLabel.startsWith("普通")
                       ? "bg-amber-400" : "bg-red-400";
                     return (
                       <div key={item.scoreLabel} className="flex items-center gap-3">
-                        <span className="w-12 shrink-0 text-sm font-medium text-foreground">{item.scoreLabel}</span>
+                        <span className="w-24 shrink-0 text-sm font-medium text-foreground">{item.scoreLabel}</span>
                         <div className="flex-1 h-5 overflow-hidden rounded-md bg-border/20">
                           <div
                             className={`h-full rounded-md transition-all duration-700 ${barColor}`}
@@ -1667,11 +1667,10 @@ function SurveyAnalyticsTab({
                 {(() => {
                   const items = advancedStats.csatVsUnitPrice;
                   const maxPrice = Math.max(...items.map((i) => i.avgUnitPrice));
-                  const highestItem = items.reduce((best, cur) => cur.avgUnitPrice > best.avgUnitPrice ? cur : best, items[0]);
 
                   const getCardStyle = (label: string) => {
-                    if (label === "満足") return { ring: "ring-emerald-200", bg: "bg-emerald-50", barColor: "bg-emerald-500", textColor: "text-emerald-700" };
-                    if (label === "普通") return { ring: "ring-amber-200", bg: "bg-amber-50", barColor: "bg-amber-400", textColor: "text-amber-700" };
+                    if (label.startsWith("満足")) return { ring: "ring-emerald-200", bg: "bg-emerald-50", barColor: "bg-emerald-500", textColor: "text-emerald-700" };
+                    if (label.startsWith("普通")) return { ring: "ring-amber-200", bg: "bg-amber-50", barColor: "bg-amber-400", textColor: "text-amber-700" };
                     return { ring: "ring-red-200", bg: "bg-red-50", barColor: "bg-red-400", textColor: "text-red-700" };
                   };
 
@@ -1680,13 +1679,9 @@ function SurveyAnalyticsTab({
                       <div className="grid gap-3 sm:grid-cols-3">
                         {items.map((item) => {
                           const style = getCardStyle(item.scoreLabel);
-                          const isHighest = item === highestItem;
                           const barWidth = maxPrice > 0 ? (item.avgUnitPrice / maxPrice) * 100 : 0;
                           return (
-                            <div key={item.scoreLabel} className={`relative rounded-xl p-4 ring-1 ${style.ring} ${style.bg} ${isHighest ? "ring-2 shadow-sm" : ""}`}>
-                              {isHighest && (
-                                <span className="absolute -top-2 right-3 rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-bold text-white">最高</span>
-                              )}
+                            <div key={item.scoreLabel} className={`relative rounded-xl p-4 ring-1 ${style.ring} ${style.bg}`}>
                               <p className={`text-xs font-semibold ${style.textColor}`}>{item.scoreLabel}</p>
                               <p className="mt-2 text-2xl font-bold text-foreground">{item.avgUnitPrice.toLocaleString()}<span className="text-sm font-normal">円</span></p>
                               <p className="mt-1 text-[11px] text-muted">{item.customerCount}人</p>
@@ -1698,8 +1693,8 @@ function SurveyAnalyticsTab({
                         })}
                       </div>
                       {(() => {
-                        const satisfiedItem = items.find((i) => i.scoreLabel === "満足");
-                        const dissatisfiedItem = items.find((i) => i.scoreLabel === "不満足");
+                        const satisfiedItem = items.find((i) => i.scoreLabel.startsWith("満足"));
+                        const dissatisfiedItem = items.find((i) => i.scoreLabel.startsWith("不満足"));
                         if (!satisfiedItem || !dissatisfiedItem) return null;
                         const diff = satisfiedItem.avgUnitPrice - dissatisfiedItem.avgUnitPrice;
                         if (diff <= 0) return null;
@@ -1719,31 +1714,47 @@ function SurveyAnalyticsTab({
             {advancedStats.csatVsLtv && advancedStats.csatVsLtv.length > 0 && (
               <ChartCard title="満足度と累計利用金額" icon={<CurrencyIcon />}>
                 <p className="mb-4 text-xs text-muted">満足度スコア別の平均累計利用金額</p>
-                <ResponsiveContainer width="100%" height={Math.max(150, advancedStats.csatVsLtv.length * 50)}>
-                  <BarChart data={advancedStats.csatVsLtv} layout="vertical" margin={{ left: 10, right: 10 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" opacity={0.5} horizontal={false} />
-                    <XAxis type="number" fontSize={11} stroke="var(--color-muted)" axisLine={false} tickLine={false} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
-                    <YAxis type="category" dataKey="scoreLabel" fontSize={11} stroke="var(--color-muted)" axisLine={false} tickLine={false} width={50} />
-                    <Tooltip
-                      formatter={(value) => [`${Number(value).toLocaleString()}円`, "平均累計利用金額"]}
-                      contentStyle={{ borderRadius: "12px", border: "1px solid var(--border)", fontSize: "13px" }}
-                    />
-                    <Bar dataKey="avgLtv" fill="#8b5cf6" radius={[0, 4, 4, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
                 {(() => {
                   const items = advancedStats.csatVsLtv;
-                  if (items.length < 2) return null;
-                  const totalCustomers = items.reduce((s, i) => s + i.customerCount, 0);
-                  if (totalCustomers === 0) return null;
-                  const highItem = items[items.length - 1]; // highest score
-                  const lowItem = items[0]; // lowest score
-                  const ratio = lowItem.avgLtv > 0 ? highItem.avgLtv / lowItem.avgLtv : 0;
-                  if (ratio < 1.5) return null;
+                  const maxLtv = Math.max(...items.map((i) => i.avgLtv));
+
+                  const getCardStyle = (label: string) => {
+                    if (label.startsWith("満足")) return { ring: "ring-emerald-200", bg: "bg-emerald-50", barColor: "bg-emerald-500", textColor: "text-emerald-700" };
+                    if (label.startsWith("普通")) return { ring: "ring-amber-200", bg: "bg-amber-50", barColor: "bg-amber-400", textColor: "text-amber-700" };
+                    return { ring: "ring-red-200", bg: "bg-red-50", barColor: "bg-red-400", textColor: "text-red-700" };
+                  };
+
                   return (
-                    <p className="mt-4 rounded-xl p-3 text-xs leading-relaxed bg-emerald-50 text-emerald-700">
-                      {`${highItem.scoreLabel}のお客さんは平均${highItem.avgLtv.toLocaleString()}円利用しています。${lowItem.scoreLabel}のお客さんの${ratio.toFixed(1)}倍です。満足度向上が長期的な売上につながります。`}
-                    </p>
+                    <>
+                      <div className="grid gap-3 sm:grid-cols-3">
+                        {items.map((item) => {
+                          const style = getCardStyle(item.scoreLabel);
+                          const barWidth = maxLtv > 0 ? (item.avgLtv / maxLtv) * 100 : 0;
+                          return (
+                            <div key={item.scoreLabel} className={`relative rounded-xl p-4 ring-1 ${style.ring} ${style.bg}`}>
+                              <p className={`text-xs font-semibold ${style.textColor}`}>{item.scoreLabel}</p>
+                              <p className="mt-2 text-2xl font-bold text-foreground">{item.avgLtv.toLocaleString()}<span className="text-sm font-normal">円</span></p>
+                              <p className="mt-1 text-[11px] text-muted">{item.customerCount}人</p>
+                              <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/60">
+                                <div className={`h-full rounded-full ${style.barColor} transition-all duration-700`} style={{ width: `${barWidth}%` }} />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      {(() => {
+                        const satisfiedItem = items.find((i) => i.scoreLabel.startsWith("満足"));
+                        const dissatisfiedItem = items.find((i) => i.scoreLabel.startsWith("不満足"));
+                        if (!satisfiedItem || !dissatisfiedItem) return null;
+                        const diff = satisfiedItem.avgLtv - dissatisfiedItem.avgLtv;
+                        if (diff <= 0) return null;
+                        return (
+                          <p className="mt-4 rounded-xl bg-emerald-50 p-3 text-xs leading-relaxed text-emerald-700">
+                            満足のお客さんは不満足のお客さんより平均{diff.toLocaleString()}円多く利用しています。満足度向上が長期的な売上につながります。
+                          </p>
+                        );
+                      })()}
+                    </>
                   );
                 })()}
               </ChartCard>
