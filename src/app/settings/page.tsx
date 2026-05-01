@@ -24,6 +24,8 @@ export default async function SettingsPage() {
         <SettingsForm
           defaultName={user.customerName || ""}
           defaultPhone={user.customerPhone || ""}
+          defaultGender={user.gender || ""}
+          defaultBirthDate={user.birthDate || ""}
         />
       </div>
     </main>
