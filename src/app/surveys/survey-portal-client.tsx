@@ -183,27 +183,29 @@ export function SurveyPortalClient({ groups }: { groups: SurveyGroup[] }) {
                 );
               }
 
-              // Completed - show summary
+              // Completed - show summary (link to read-only detail view)
               return (
-                <div key={survey.bookingId} className="rounded-xl border border-border bg-card p-4">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1 space-y-1">
-                      <p className="text-sm font-medium">{survey.serviceName}</p>
-                      <p className="text-xs text-muted">
-                        {formatDate(survey.startAt)}
-                      </p>
-                      {survey.responseCsat && (
-                        <div className="flex items-center gap-2 pt-0.5">
-                          <StarDisplay rating={survey.responseCsat} />
-                          <span className="text-xs text-muted">
-                            {survey.respondedAt && `${formatShortDate(survey.respondedAt)} 回答`}
-                          </span>
-                        </div>
-                      )}
+                <Link key={survey.bookingId} href={`/survey/${survey.bookingId}`}>
+                  <div className="rounded-xl border border-border bg-card p-4 transition-colors hover:border-gray-300 active:bg-gray-50 cursor-pointer">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 space-y-1">
+                        <p className="text-sm font-medium">{survey.serviceName}</p>
+                        <p className="text-xs text-muted">
+                          {formatDate(survey.startAt)}
+                        </p>
+                        {survey.responseCsat && (
+                          <div className="flex items-center gap-2 pt-0.5">
+                            <StarDisplay rating={survey.responseCsat} />
+                            <span className="text-xs text-muted">
+                              {survey.respondedAt && `${formatShortDate(survey.respondedAt)} 回答`}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                      <StatusBadge status={survey.status} />
                     </div>
-                    <StatusBadge status={survey.status} />
                   </div>
-                </div>
+                </Link>
               );
             })}
           </div>
