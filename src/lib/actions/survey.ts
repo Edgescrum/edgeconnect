@@ -15,6 +15,10 @@ export interface SurveyItem {
   endAt: string;
   expiresAt: string;
   status: "pending" | "completed" | "expired";
+  /** 回答済みの場合のCSATスコア */
+  responseCsat?: number;
+  /** 回答済みの場合の回答日 */
+  respondedAt?: string;
 }
 
 export interface SurveyGroup {
@@ -60,13 +64,16 @@ export async function getSurveyPortalData(): Promise<SurveyGroup[]> {
     (bookings || []).map((b) => [b.id as string, b])
   );
 
-  // 回答済みのbooking_idリストを取得
+  // 回答済みの情報を取得（CSATスコア・回答日含む）
   const { data: responses } = await supabase
     .from("survey_responses")
-    .select("booking_id")
+    .select("booking_id, csat, created_at")
     .eq("customer_user_id", user.id)
     .in("booking_id", bookingIds);
 
+  const responseMap = new Map(
+    (responses || []).map((r) => [r.booking_id as string, { csat: r.csat as number, createdAt: r.created_at as string }])
+  );
   const respondedBookingIds = new Set((responses || []).map((r) => r.booking_id));
 
   // グループ化
@@ -93,7 +100,9 @@ export async function getSurveyPortalData(): Promise<SurveyGroup[]> {
     if (isCompleted) {
       status = "completed";
     } else if (isExpired) {
+      // 期限切れは非表示にする
       status = "expired";
+      continue;
     } else {
       status = "pending";
     }
@@ -108,6 +117,8 @@ export async function getSurveyPortalData(): Promise<SurveyGroup[]> {
       });
     }
 
+    const responseData = responseMap.get(notification.booking_id);
+
     groupMap.get(slug)!.surveys.push({
       bookingId: notification.booking_id,
       providerName: (provider.name as string) || "",
@@ -118,6 +129,8 @@ export async function getSurveyPortalData(): Promise<SurveyGroup[]> {
       endAt: booking.end_at as string,
       expiresAt: expiresAt.toISOString(),
       status,
+      responseCsat: responseData?.csat,
+      respondedAt: responseData?.createdAt,
     });
   }
 
@@ -133,6 +146,55 @@ export async function getSurveyPortalData(): Promise<SurveyGroup[]> {
   return groups;
 }
 
+/**
+ * 未回答のアンケート件数を取得
+ */
+export async function getPendingSurveyCount(): Promise<number> {
+  const user = await resolveUser();
+  if (!user) return 0;
+
+  const supabase = await createClient();
+  const now = new Date();
+  const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+
+  const { data: notifications } = await supabase
+    .from("pending_survey_notifications")
+    .select("booking_id")
+    .eq("customer_user_id", user.id)
+    .eq("status", "sent");
+
+  if (!notifications || notifications.length === 0) return 0;
+
+  const bookingIds = notifications.map((n) => n.booking_id);
+
+  // 回答済みを除外
+  const { data: responses } = await supabase
+    .from("survey_responses")
+    .select("booking_id")
+    .eq("customer_user_id", user.id)
+    .in("booking_id", bookingIds);
+
+  const respondedIds = new Set((responses || []).map((r) => r.booking_id));
+
+  // 予約のend_atを取得して期限チェック
+  const { data: bookings } = await supabase
+    .from("bookings")
+    .select("id, end_at")
+    .in("id", bookingIds);
+
+  if (!bookings) return 0;
+
+  let count = 0;
+  for (const b of bookings) {
+    if (respondedIds.has(b.id)) continue;
+    const endAt = new Date(b.end_at as string);
+    const expiresAt = new Date(endAt.getTime() + sevenDaysMs);
+    if (now <= expiresAt) count++;
+  }
+
+  return count;
+}
+
 export interface SurveyBookingDetail {
   bookingId: string;
   providerName: string;
@@ -140,6 +202,7 @@ export interface SurveyBookingDetail {
   providerCategory: string | null;
   providerSubscriptionStatus: string;
   serviceName: string;
+  servicePrice: number | null;
   startAt: string;
   endAt: string;
   expiresAt: string;
@@ -161,7 +224,7 @@ export async function getSurveyDetail(bookingId: string): Promise<SurveyBookingD
     .from("bookings")
     .select(`
       id, start_at, end_at, status, customer_user_id,
-      services:service_id ( name ),
+      services:service_id ( name, price ),
       providers:provider_id ( name, icon_url, category, subscription_status )
     `)
     .eq("id", bookingId)
@@ -192,6 +255,7 @@ export async function getSurveyDetail(bookingId: string): Promise<SurveyBookingD
     providerCategory: provider.category as string | null,
     providerSubscriptionStatus: (provider.subscription_status as string) || "inactive",
     serviceName: (service?.name as string) || "",
+    servicePrice: (service?.price as number) ?? null,
     startAt: booking.start_at as string,
     endAt: booking.end_at as string,
     expiresAt: expiresAt.toISOString(),

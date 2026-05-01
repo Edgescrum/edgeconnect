@@ -10,14 +10,19 @@ export default async function ProviderReviewsPage() {
   const reviews = await getProviderReviews();
 
   return (
-    <div className="space-y-6">
+    <main className="min-h-screen bg-background px-4 py-6 sm:px-8 sm:py-8">
       <div>
-        <h1 className="text-xl font-bold">口コミ管理</h1>
-        <p className="mt-1 text-sm text-muted">
-          お客さまからの口コミを確認・管理できます。非表示にしてもCSATスコアには反映され続けます。
+        <div className="hidden sm:block">
+          <h1 className="text-xl font-bold">口コミ管理</h1>
+          <p className="mt-1 text-sm text-muted">
+            お客さまからの口コミを確認・管理できます
+          </p>
+        </div>
+        <p className="text-sm text-muted sm:hidden">
+          {reviews.length}件の口コミ
         </p>
+        <ReviewManagementClient reviews={reviews} />
       </div>
-      <ReviewManagementClient reviews={reviews} />
-    </div>
+    </main>
   );
 }

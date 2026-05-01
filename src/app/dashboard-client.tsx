@@ -15,10 +15,12 @@ export function DashboardClient({
   role,
   provider,
   recentProviders,
+  pendingSurveyCount = 0,
 }: {
   role: string;
   provider: ProviderBase | null;
   recentProviders: RecentProvider[];
+  pendingSurveyCount?: number;
 }) {
   const isProvider = role === "provider";
   const hasRecent = recentProviders.length > 0;
@@ -110,6 +112,29 @@ export function DashboardClient({
                 <ChevronRightIcon className="text-muted" />
               </Link>
 
+              <Link
+                href="/surveys"
+                className="flex items-center gap-3.5 rounded-xl bg-background p-3.5 ring-1 ring-border active:scale-[0.99]"
+              >
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-orange-50">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-orange-500">
+                    <path d="M9 11l3 3L22 4" />
+                    <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" />
+                  </svg>
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold">アンケート</p>
+                  <p className="text-xs text-muted">サービスの感想を回答</p>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  {pendingSurveyCount > 0 && (
+                    <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">
+                      {pendingSurveyCount}
+                    </span>
+                  )}
+                  <ChevronRightIcon className="text-muted" />
+                </div>
+              </Link>
 
               {hasRecent && (
                 <>
@@ -213,6 +238,31 @@ export function DashboardClient({
               <p className="text-sm text-muted">予約の確認・キャンセル</p>
             </div>
             <ChevronRightIcon size={16} className="text-muted" />
+          </Link>
+
+          {/* アンケートカード */}
+          <Link
+            href="/surveys"
+            className="col-span-12 flex items-center gap-4 rounded-2xl bg-card p-5 shadow-sm ring-1 ring-border hover:ring-accent/30 hover:shadow-md transition-all lg:col-span-6"
+          >
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-orange-50">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-orange-500">
+                <path d="M9 11l3 3L22 4" />
+                <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <p className="font-semibold">アンケート</p>
+              <p className="text-sm text-muted">サービスの感想を回答</p>
+            </div>
+            <div className="flex items-center gap-2">
+              {pendingSurveyCount > 0 && (
+                <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-xs font-bold text-white">
+                  {pendingSurveyCount}
+                </span>
+              )}
+              <ChevronRightIcon size={16} className="text-muted" />
+            </div>
           </Link>
 
           {/* 最近の利用 */}
