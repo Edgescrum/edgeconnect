@@ -1,6 +1,6 @@
 "use server";
 
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 import { resolveUser } from "@/lib/auth/session";
 import { containsNgWord } from "@/lib/constants/ng-words";
 import { revalidatePath } from "next/cache";
@@ -31,7 +31,7 @@ export async function getSurveyPortalData(): Promise<SurveyGroup[]> {
   const user = await resolveUser();
   if (!user) return [];
 
-  const supabase = createAdminClient();
+  const supabase = await createClient();
   const now = new Date();
   const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
 
@@ -154,7 +154,7 @@ export async function getSurveyDetail(bookingId: string): Promise<SurveyBookingD
   const user = await resolveUser();
   if (!user) return null;
 
-  const supabase = createAdminClient();
+  const supabase = await createClient();
 
   // 予約情報を取得
   const { data: booking } = await supabase
@@ -218,7 +218,7 @@ export async function submitSurvey(input: SubmitSurveyInput): Promise<{ success:
   const user = await resolveUser();
   if (!user) return { success: false, error: "ログインが必要です" };
 
-  const supabase = createAdminClient();
+  const supabase = await createClient();
 
   // 予約情報を取得
   const { data: booking } = await supabase
@@ -284,7 +284,7 @@ export async function deleteMyReview(surveyResponseId: number): Promise<{ succes
   const user = await resolveUser();
   if (!user) return { success: false, error: "ログインが必要です" };
 
-  const supabase = createAdminClient();
+  const supabase = await createClient();
 
   const { error } = await supabase
     .from("survey_responses")
@@ -311,7 +311,7 @@ export async function toggleReviewVisibility(
   const user = await resolveUser();
   if (!user || user.role !== "provider") return { success: false, error: "権限がありません" };
 
-  const supabase = createAdminClient();
+  const supabase = await createClient();
 
   const { error } = await supabase
     .from("survey_responses")
@@ -350,7 +350,7 @@ export async function getProviderReviews(): Promise<ProviderReviewItem[]> {
   const user = await resolveUser();
   if (!user || user.role !== "provider") return [];
 
-  const supabase = createAdminClient();
+  const supabase = await createClient();
 
   // 事業主IDを取得
   const { data: provider } = await supabase
