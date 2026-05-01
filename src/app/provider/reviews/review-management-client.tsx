@@ -76,14 +76,17 @@ export function ReviewManagementClient({ reviews: initialReviews }: { reviews: P
   const [filter, setFilter] = useState<"all" | "visible" | "hidden">("all");
   const [isPending, startTransition] = useTransition();
 
+  // 口コミテキストがあり、公開設定かつ表示中のもののみ「公開中」とする
+  const hasReviewText = (r: ProviderReviewItem) => !!r.reviewText && r.reviewText.trim() !== "";
+
   const filteredReviews = reviews.filter((r) => {
-    if (filter === "visible") return r.reviewVisible;
-    if (filter === "hidden") return !r.reviewVisible;
+    if (filter === "visible") return r.reviewVisible && r.reviewPublic && hasReviewText(r);
+    if (filter === "hidden") return !r.reviewVisible || !r.reviewPublic || !hasReviewText(r);
     return true;
   });
 
-  const visibleCount = reviews.filter((r) => r.reviewVisible).length;
-  const hiddenCount = reviews.filter((r) => !r.reviewVisible).length;
+  const visibleCount = reviews.filter((r) => r.reviewVisible && r.reviewPublic && hasReviewText(r)).length;
+  const hiddenCount = reviews.length - visibleCount;
   const publicReviewCount = reviews.filter((r) => r.reviewPublic && r.reviewText).length;
 
   function handleToggleVisibility(reviewId: number, currentVisible: boolean) {
