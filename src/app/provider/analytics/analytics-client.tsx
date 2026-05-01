@@ -1848,12 +1848,12 @@ function SurveyAnalyticsTab({
                 <BenchmarkTable
                   providerCount={advancedStats.surveyBenchmark.providerCount}
                   items={[
-                    { label: "平均満足度", industryValue: advancedStats.surveyBenchmark.avgCsat ?? 0, myValue: basicStats.avgCsat, unit: "/ 5", decimals: 1 },
+                    { label: "平均満足度", industryValue: advancedStats.surveyBenchmark.avgCsat ?? 0, myValue: basicStats.avgCsat, unit: "", decimals: 1 },
                     { label: "回答率", industryValue: advancedStats.surveyBenchmark.avgResponseRate ?? 0, myValue: basicStats.responseRate, unit: "%", decimals: 1 },
                     ...(advancedStats.driverAverages && (advancedStats.driverAverages.service > 0 || advancedStats.driverAverages.quality > 0 || advancedStats.driverAverages.price > 0) ? [
-                      { label: "接客・対応", industryValue: advancedStats.surveyBenchmark.avgDriverService ?? 0, myValue: advancedStats.driverAverages.service, unit: "/ 5", decimals: 1 },
-                      { label: "品質・仕上がり", industryValue: advancedStats.surveyBenchmark.avgDriverQuality ?? 0, myValue: advancedStats.driverAverages.quality, unit: "/ 5", decimals: 1 },
-                      { label: "価格", industryValue: advancedStats.surveyBenchmark.avgDriverPrice ?? 0, myValue: advancedStats.driverAverages.price, unit: "/ 5", decimals: 1 },
+                      { label: "接客・対応", industryValue: advancedStats.surveyBenchmark.avgDriverService ?? 0, myValue: advancedStats.driverAverages.service, unit: "", decimals: 1 },
+                      { label: "品質・仕上がり", industryValue: advancedStats.surveyBenchmark.avgDriverQuality ?? 0, myValue: advancedStats.driverAverages.quality, unit: "", decimals: 1 },
+                      { label: "価格", industryValue: advancedStats.surveyBenchmark.avgDriverPrice ?? 0, myValue: advancedStats.driverAverages.price, unit: "", decimals: 1 },
                     ] : []),
                   ]}
                 />
