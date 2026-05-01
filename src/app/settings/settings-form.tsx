@@ -8,12 +8,14 @@ import { Alert } from "@/components/Alert";
 import { FormLabel, FormInput } from "@/components/FormField";
 
 const GENDER_OPTIONS = [
-  { value: "", label: "選択してください" },
   { value: "male", label: "男性" },
   { value: "female", label: "女性" },
   { value: "other", label: "その他" },
   { value: "prefer_not_to_say", label: "回答しない" },
 ] as const;
+
+const currentYear = new Date().getFullYear();
+const BIRTH_YEARS = Array.from({ length: currentYear - 1940 + 1 }, (_, i) => currentYear - i);
 
 export function SettingsForm({
   defaultName,
@@ -29,7 +31,12 @@ export function SettingsForm({
   const [name, setName] = useState(defaultName);
   const [phone, setPhone] = useState(defaultPhone);
   const [gender, setGender] = useState(defaultGender);
-  const [birthDate, setBirthDate] = useState(defaultBirthDate);
+  // Extract year from birth_date for the birth year selector
+  const [birthYear, setBirthYear] = useState(() => {
+    if (!defaultBirthDate) return "";
+    const year = new Date(defaultBirthDate).getFullYear();
+    return isNaN(year) ? "" : String(year);
+  });
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -45,9 +52,11 @@ export function SettingsForm({
       return;
     }
     try {
+      // Convert birth year to a date (Jan 1 of that year) for DB storage
+      const birthDate = birthYear ? `${birthYear}-01-01` : null;
       await Promise.all([
         updateUserSettings(name, phone),
-        updateUserAttributes(gender || null, birthDate || null),
+        updateUserAttributes(gender || null, birthDate),
       ]);
       setSuccess(true);
       setTimeout(() => setSuccess(false), 2000);
@@ -93,29 +102,39 @@ export function SettingsForm({
         <div className="space-y-4">
           <div>
             <FormLabel htmlFor="gender">性別</FormLabel>
-            <select
-              id="gender"
-              value={gender}
-              onChange={(e) => setGender(e.target.value)}
-              className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
-            >
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               {GENDER_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setGender(gender === opt.value ? "" : opt.value)}
+                  className={`rounded-xl border px-3 py-2.5 text-sm font-medium transition-colors ${
+                    gender === opt.value
+                      ? "border-accent bg-accent/10 text-accent"
+                      : "border-border bg-card text-muted hover:border-accent/40"
+                  }`}
+                >
                   {opt.label}
-                </option>
+                </button>
               ))}
-            </select>
+            </div>
           </div>
 
           <div>
-            <FormLabel htmlFor="birthDate">生年月日</FormLabel>
-            <FormInput
-              id="birthDate"
-              type="date"
-              value={birthDate}
-              onChange={(e) => setBirthDate(e.target.value)}
-              max={new Date().toISOString().split("T")[0]}
-            />
+            <FormLabel htmlFor="birthYear">生まれ年</FormLabel>
+            <select
+              id="birthYear"
+              value={birthYear}
+              onChange={(e) => setBirthYear(e.target.value)}
+              className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+            >
+              <option value="">選択してください</option>
+              {BIRTH_YEARS.map((year) => (
+                <option key={year} value={String(year)}>
+                  {year}年
+                </option>
+              ))}
+            </select>
           </div>
         </div>
       </div>

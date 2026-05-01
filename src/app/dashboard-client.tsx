@@ -1,15 +1,25 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 
 import type { ProviderBase } from "@/lib/types/provider";
 import { GearIcon, SearchIcon, CalendarIcon, ChevronRightIcon, HeartIcon } from "@/components/icons";
 import { ProviderAvatar } from "@/components/ProviderAvatar";
+import { ProfilePromptModal } from "@/components/ProfilePromptModal";
 
 interface RecentProvider extends ProviderBase {
   lastService: string;
   lastDate: string;
 }
+
+interface UserStats {
+  todayBookings: number;
+  upcomingBookings: number;
+  favorites: number;
+}
+
+const PROVIDER_CTA_DISMISSED_KEY = "peco_provider_cta_dismissed";
 
 export function DashboardClient({
   role,
@@ -17,18 +27,36 @@ export function DashboardClient({
   recentProviders,
   pendingSurveyCount = 0,
   showAttributePrompt = false,
+  showProfileModal = false,
+  stats = { todayBookings: 0, upcomingBookings: 0, favorites: 0 },
 }: {
   role: string;
   provider: ProviderBase | null;
   recentProviders: RecentProvider[];
   pendingSurveyCount?: number;
   showAttributePrompt?: boolean;
+  showProfileModal?: boolean;
+  stats?: UserStats;
 }) {
   const isProvider = role === "provider";
   const hasRecent = recentProviders.length > 0;
+  const [providerCtaDismissed, setProviderCtaDismissed] = useState(true);
+
+  useEffect(() => {
+    const dismissed = localStorage.getItem(PROVIDER_CTA_DISMISSED_KEY);
+    setProviderCtaDismissed(!!dismissed);
+  }, []);
+
+  function dismissProviderCta() {
+    localStorage.setItem(PROVIDER_CTA_DISMISSED_KEY, "1");
+    setProviderCtaDismissed(true);
+  }
 
   return (
     <>
+      {/* Profile prompt modal for first-time users */}
+      {showProfileModal && <ProfilePromptModal />}
+
       {/* --- モバイル版 --- */}
       <div className="sm:hidden">
         <div>
@@ -65,8 +93,31 @@ export function DashboardClient({
             </div>
           </div>
 
-          {!isProvider && (
-            <div className="mx-4 mt-4 rounded-2xl bg-gradient-to-r from-amber-400 to-orange-400 p-4 text-white shadow">
+          {/* Stats cards */}
+          <div className="mx-4 mt-4 grid grid-cols-3 gap-2">
+            <div className="rounded-xl bg-card p-3 text-center ring-1 ring-border">
+              <p className="text-xl font-bold text-accent">{stats.todayBookings}</p>
+              <p className="text-[10px] text-muted">今日の予約</p>
+            </div>
+            <div className="rounded-xl bg-card p-3 text-center ring-1 ring-border">
+              <p className="text-xl font-bold text-accent">{stats.upcomingBookings}</p>
+              <p className="text-[10px] text-muted">今後の予約</p>
+            </div>
+            <div className="rounded-xl bg-card p-3 text-center ring-1 ring-border">
+              <p className="text-xl font-bold text-accent">{stats.favorites}</p>
+              <p className="text-[10px] text-muted">お気に入り</p>
+            </div>
+          </div>
+
+          {!isProvider && !providerCtaDismissed && (
+            <div className="relative mx-4 mt-4 rounded-2xl bg-gradient-to-r from-amber-400 to-orange-400 p-4 text-white shadow">
+              <button
+                onClick={dismissProviderCta}
+                className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-white/20 text-white/80 active:bg-white/30"
+                aria-label="閉じる"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+              </button>
               <p className="font-bold">予約を受け付けませんか？</p>
               <p className="mt-1 text-xs text-white/90">無料であなた専用の予約ページを作成できます</p>
               <Link
@@ -245,9 +296,32 @@ export function DashboardClient({
             </Link>
           )}
 
+          {/* Stats cards */}
+          <div className="col-span-12 grid grid-cols-3 gap-4 lg:col-span-6">
+            <div className="rounded-2xl bg-card p-4 text-center ring-1 ring-border shadow-sm">
+              <p className="text-2xl font-bold text-accent">{stats.todayBookings}</p>
+              <p className="mt-1 text-xs text-muted">今日の予約</p>
+            </div>
+            <div className="rounded-2xl bg-card p-4 text-center ring-1 ring-border shadow-sm">
+              <p className="text-2xl font-bold text-accent">{stats.upcomingBookings}</p>
+              <p className="mt-1 text-xs text-muted">今後の予約</p>
+            </div>
+            <div className="rounded-2xl bg-card p-4 text-center ring-1 ring-border shadow-sm">
+              <p className="text-2xl font-bold text-accent">{stats.favorites}</p>
+              <p className="mt-1 text-xs text-muted">お気に入り</p>
+            </div>
+          </div>
+
           {/* 事業主CTAカード（事業主でない場合） */}
-          {!isProvider && (
-            <div className="col-span-12 overflow-hidden rounded-2xl bg-gradient-to-r from-amber-400 to-orange-400 p-6 text-white shadow-lg lg:col-span-6">
+          {!isProvider && !providerCtaDismissed && (
+            <div className="relative col-span-12 overflow-hidden rounded-2xl bg-gradient-to-r from-amber-400 to-orange-400 p-6 text-white shadow-lg lg:col-span-6">
+              <button
+                onClick={dismissProviderCta}
+                className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-full bg-white/20 text-white/80 hover:bg-white/30 transition-colors"
+                aria-label="閉じる"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+              </button>
               <h3 className="text-lg font-bold">予約を受け付けませんか？</h3>
               <p className="mt-1 text-sm text-white/90">無料であなた専用の予約ページを作成できます。</p>
               <Link href="/provider/register" className="mt-4 inline-flex rounded-xl bg-white px-5 py-2.5 text-sm font-bold text-orange-500 shadow hover:shadow-md transition-shadow">

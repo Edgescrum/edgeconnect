@@ -17,10 +17,11 @@ interface BookingItem {
 type FilterType = "all" | "today" | "week" | "upcoming" | "past" | "cancelled";
 
 const FILTERS: { value: FilterType; label: string }[] = [
-  { value: "all", label: "すべて" },
+  { value: "upcoming", label: "今後の予約" },
   { value: "today", label: "今日" },
   { value: "week", label: "今週" },
-  { value: "upcoming", label: "今後" },
+  { value: "past", label: "過去の予約" },
+  { value: "all", label: "すべて" },
 ];
 
 const DAYS = ["日", "月", "火", "水", "木", "金", "土"];
@@ -35,9 +36,9 @@ export function BookingList({
   const FILTER_STORAGE_KEY = "peco_provider_bookings_filter";
 
   const [filter, setFilterState] = useState<FilterType>(() => {
-    if (typeof window === "undefined") return (FILTERS.find((f) => f.value === initialFilter)?.value) || "all";
+    if (typeof window === "undefined") return (FILTERS.find((f) => f.value === initialFilter)?.value) || "upcoming";
     const saved = sessionStorage.getItem(FILTER_STORAGE_KEY);
-    return (FILTERS.find((f) => f.value === saved)?.value) || (FILTERS.find((f) => f.value === initialFilter)?.value) || "all";
+    return (FILTERS.find((f) => f.value === saved)?.value) || (FILTERS.find((f) => f.value === initialFilter)?.value) || "upcoming";
   });
 
   function setFilter(value: FilterType) {

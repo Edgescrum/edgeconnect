@@ -109,7 +109,7 @@ export default async function ProviderProfilePage({
       {/* --- モバイル版 --- */}
       <div className="flex flex-1 flex-col sm:hidden">
         {/* Header */}
-        <div className="bg-gradient-to-b from-accent/10 to-accent/10">
+        <div className="sticky top-0 z-40 bg-gradient-to-b from-accent/10 to-accent/10 backdrop-blur-lg">
           <div className="mx-auto flex max-w-lg items-center px-4 py-3">
             <a href="/" className="flex items-center gap-1.5 rounded-lg py-1 active:bg-white/60">
               <img src="/logo.svg" alt="PeCo" className="h-5" />

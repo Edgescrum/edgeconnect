@@ -29,7 +29,7 @@ export function ProviderSidebar() {
   }
 
   return (
-    <aside className="hidden sm:flex sm:w-56 sm:shrink-0 sm:flex-col sm:border-r sm:border-border sm:bg-card/60 lg:w-64">
+    <aside className="hidden sm:sticky sm:top-0 sm:flex sm:h-screen sm:w-56 sm:shrink-0 sm:flex-col sm:overflow-y-auto sm:border-r sm:border-border sm:bg-card/60 lg:w-64">
       {/* ロゴ */}
       <div className="flex items-center gap-2 px-5 py-4">
         <Link href="/" className="flex items-center gap-2">
