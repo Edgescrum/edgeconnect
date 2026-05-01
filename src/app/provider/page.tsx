@@ -63,9 +63,10 @@ export default async function ProviderPage() {
       .eq("provider_id", provider.id)
       .single(),
     isStandard
-      ? supabase.rpc("get_monthly_stats", {
+      ? supabase.rpc("get_monthly_stats_filtered", {
           p_provider_id: provider.id,
           p_months: 2,
+          p_customer_ids: null,
         })
       : Promise.resolve(null),
   ]);

@@ -57,25 +57,39 @@ export default async function AnalyticsPage() {
     ltvResult,
     benchmarkResult,
   ] = await Promise.all([
-    supabase.rpc("get_monthly_stats", {
+    supabase.rpc("get_monthly_stats_filtered", {
       p_provider_id: provider.id,
       p_months: 120,
+      p_customer_ids: null,
     }),
-    supabase.rpc("get_popular_menus", {
+    supabase.rpc("get_popular_menus_filtered", {
       p_provider_id: provider.id,
+      p_customer_ids: null,
+      p_start_date: null,
+      p_end_date: null,
     }),
-    supabase.rpc("get_booking_heatmap", {
+    supabase.rpc("get_booking_heatmap_filtered", {
       p_provider_id: provider.id,
+      p_customer_ids: null,
+      p_start_date: null,
+      p_end_date: null,
     }),
-    supabase.rpc("get_avg_booking_interval", {
+    supabase.rpc("get_avg_booking_interval_filtered", {
       p_provider_id: provider.id,
+      p_customer_ids: null,
+      p_start_date: null,
+      p_end_date: null,
     }),
-    supabase.rpc("get_monthly_avg_interval", {
+    supabase.rpc("get_monthly_avg_interval_filtered", {
       p_provider_id: provider.id,
       p_months: 120,
+      p_customer_ids: null,
     }),
-    supabase.rpc("get_ltv_stats", {
+    supabase.rpc("get_ltv_stats_filtered", {
       p_provider_id: provider.id,
+      p_customer_ids: null,
+      p_start_date: null,
+      p_end_date: null,
     }),
     provider.category
       ? supabase.rpc("get_category_benchmark", {
