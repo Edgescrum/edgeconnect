@@ -1030,38 +1030,15 @@ export function AnalyticsClient({
               {/* ベンチマーク */}
               <ChartCard title="業界ベンチマーク比較" icon={<BarChartIcon />}>
                 {filteredBenchmark.available ? (
-                  <div className="space-y-4">
-                    <p className="text-xs text-muted">同カテゴリ {filteredBenchmark.provider_count}事業者の平均との比較</p>
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <BenchmarkComparisonCard
-                        label="月間予約実績"
-                        industryValue={filteredBenchmark.avg_monthly_bookings ?? 0}
-                        myValue={filteredBenchmark.my_monthly_bookings ?? 0}
-                        unit="件"
-                      />
-                      <BenchmarkComparisonCard
-                        label="月間売上"
-                        industryValue={filteredBenchmark.avg_monthly_revenue ?? 0}
-                        myValue={filteredBenchmark.my_monthly_revenue ?? 0}
-                        unit="円"
-                        isCurrency
-                      />
-                      <BenchmarkComparisonCard
-                        label="平均予約間隔"
-                        industryValue={filteredBenchmark.avg_booking_interval ?? null}
-                        myValue={filteredBenchmark.my_avg_interval ?? null}
-                        unit="日"
-                        invertComparison
-                      />
-                      <BenchmarkComparisonCard
-                        label="顧客単価"
-                        industryValue={filteredBenchmark.avg_unit_price ?? 0}
-                        myValue={filteredBenchmark.my_unit_price ?? null}
-                        unit="円"
-                        isCurrency
-                      />
-                    </div>
-                  </div>
+                  <BenchmarkTable
+                    providerCount={filteredBenchmark.provider_count}
+                    items={[
+                      { label: "月間予約", industryValue: filteredBenchmark.avg_monthly_bookings ?? 0, myValue: filteredBenchmark.my_monthly_bookings ?? 0, unit: "件" },
+                      { label: "月間売上", industryValue: filteredBenchmark.avg_monthly_revenue ?? 0, myValue: filteredBenchmark.my_monthly_revenue ?? 0, unit: "円", isCurrency: true },
+                      { label: "予約間隔", industryValue: filteredBenchmark.avg_booking_interval ?? null, myValue: filteredBenchmark.my_avg_interval ?? null, unit: "日", invertComparison: true },
+                      { label: "顧客単価", industryValue: filteredBenchmark.avg_unit_price ?? 0, myValue: filteredBenchmark.my_unit_price ?? null, unit: "円", isCurrency: true },
+                    ]}
+                  />
                 ) : (
                   <div className="flex items-center gap-3 rounded-xl bg-background p-4">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1868,54 +1845,18 @@ function SurveyAnalyticsTab({
             {/* 12. 業界ベンチマーク比較（アンケート分析版） */}
             <ChartCard title="業界ベンチマーク比較" icon={<BarChartIcon />}>
               {advancedStats.surveyBenchmark.available ? (
-                <div className="space-y-4">
-                  <p className="text-xs text-muted">同カテゴリ {advancedStats.surveyBenchmark.providerCount}事業者の平均との比較</p>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <BenchmarkComparisonCard
-                      label="平均満足度"
-                      industryValue={advancedStats.surveyBenchmark.avgCsat ?? 0}
-                      myValue={basicStats.avgCsat}
-                      unit="/ 5"
-                      decimals={1}
-                    />
-                    <BenchmarkComparisonCard
-                      label="回答率"
-                      industryValue={advancedStats.surveyBenchmark.avgResponseRate ?? 0}
-                      myValue={basicStats.responseRate}
-                      unit="%"
-                      decimals={1}
-                    />
-                  </div>
-                  {/* ドライバー別比較 */}
-                  {advancedStats.driverAverages && (advancedStats.driverAverages.service > 0 || advancedStats.driverAverages.quality > 0 || advancedStats.driverAverages.price > 0) && (
-                    <div className="mt-2">
-                      <p className="mb-2 text-xs font-medium text-muted">ドライバー別</p>
-                      <div className="grid gap-3 sm:grid-cols-3">
-                        <BenchmarkComparisonCard
-                          label="接客・対応"
-                          industryValue={advancedStats.surveyBenchmark.avgDriverService ?? 0}
-                          myValue={advancedStats.driverAverages.service}
-                          unit="/ 5"
-                          decimals={1}
-                        />
-                        <BenchmarkComparisonCard
-                          label="品質・仕上がり"
-                          industryValue={advancedStats.surveyBenchmark.avgDriverQuality ?? 0}
-                          myValue={advancedStats.driverAverages.quality}
-                          unit="/ 5"
-                          decimals={1}
-                        />
-                        <BenchmarkComparisonCard
-                          label="価格"
-                          industryValue={advancedStats.surveyBenchmark.avgDriverPrice ?? 0}
-                          myValue={advancedStats.driverAverages.price}
-                          unit="/ 5"
-                          decimals={1}
-                        />
-                      </div>
-                    </div>
-                  )}
-                </div>
+                <BenchmarkTable
+                  providerCount={advancedStats.surveyBenchmark.providerCount}
+                  items={[
+                    { label: "平均満足度", industryValue: advancedStats.surveyBenchmark.avgCsat ?? 0, myValue: basicStats.avgCsat, unit: "/ 5", decimals: 1 },
+                    { label: "回答率", industryValue: advancedStats.surveyBenchmark.avgResponseRate ?? 0, myValue: basicStats.responseRate, unit: "%", decimals: 1 },
+                    ...(advancedStats.driverAverages && (advancedStats.driverAverages.service > 0 || advancedStats.driverAverages.quality > 0 || advancedStats.driverAverages.price > 0) ? [
+                      { label: "接客・対応", industryValue: advancedStats.surveyBenchmark.avgDriverService ?? 0, myValue: advancedStats.driverAverages.service, unit: "/ 5", decimals: 1 },
+                      { label: "品質・仕上がり", industryValue: advancedStats.surveyBenchmark.avgDriverQuality ?? 0, myValue: advancedStats.driverAverages.quality, unit: "/ 5", decimals: 1 },
+                      { label: "価格", industryValue: advancedStats.surveyBenchmark.avgDriverPrice ?? 0, myValue: advancedStats.driverAverages.price, unit: "/ 5", decimals: 1 },
+                    ] : []),
+                  ]}
+                />
               ) : (
                 <div className="flex items-center gap-3 rounded-xl bg-background p-4">
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -2063,79 +2004,82 @@ function KpiSummaryCard({
   );
 }
 
-function BenchmarkComparisonCard({
-  label,
-  industryValue,
-  myValue,
-  unit,
-  isCurrency = false,
-  invertComparison = false,
-  decimals = 0,
-}: {
+interface BenchmarkTableItem {
   label: string;
   industryValue: number | null;
   myValue: number | null;
   unit: string;
   isCurrency?: boolean;
-  invertComparison?: boolean; // true = lower is better (e.g. interval)
+  invertComparison?: boolean;
   decimals?: number;
+}
+
+function BenchmarkTable({
+  items,
+  providerCount,
+  categoryLabel,
+}: {
+  items: BenchmarkTableItem[];
+  providerCount: number;
+  categoryLabel?: string;
 }) {
-  const formatValue = (v: number | null): string => {
+  const formatValue = (v: number | null, item: BenchmarkTableItem): string => {
     if (v === null || v === 0) return "-";
-    if (isCurrency) return `${Math.round(v).toLocaleString()}${unit}`;
-    if (decimals > 0) return `${v.toFixed(decimals)} ${unit}`;
-    return `${v}${unit}`;
+    if (item.isCurrency) return `\u00a5${Math.round(v).toLocaleString()}`;
+    if (item.decimals && item.decimals > 0) return `${v.toFixed(item.decimals)}${item.unit}`;
+    return `${v}${item.unit}`;
   };
 
-  const diff = industryValue != null && myValue != null && industryValue !== 0 && myValue !== 0
-    ? myValue - industryValue
-    : null;
+  const getDiff = (item: BenchmarkTableItem) => {
+    const { industryValue, myValue, invertComparison, isCurrency, decimals } = item;
+    const diff = industryValue != null && myValue != null && industryValue !== 0 && myValue !== 0
+      ? myValue - industryValue
+      : null;
+    if (diff === null) return { text: "", color: "text-muted", arrow: "" };
 
-  const isPositive = diff !== null
-    ? invertComparison ? diff <= 0 : diff >= 0
-    : null;
-
-  const formatDiff = (): string => {
-    if (diff === null) return "";
+    const isPositive = invertComparison ? diff <= 0 : diff >= 0;
     const absDiff = Math.abs(diff);
     const sign = diff >= 0 ? "+" : "-";
-    if (isCurrency) return `${sign}${Math.round(absDiff).toLocaleString()}${unit}`;
-    if (decimals > 0) return `${sign}${absDiff.toFixed(decimals)} ${unit}`;
-    return `${sign}${Math.round(absDiff * 10) / 10}${unit}`;
+    let text: string;
+    if (isCurrency) text = `${sign}\u00a5${Math.round(absDiff).toLocaleString()}`;
+    else if (decimals && decimals > 0) text = `${sign}${absDiff.toFixed(decimals)}${item.unit}`;
+    else text = `${sign}${Math.round(absDiff * 10) / 10}${item.unit}`;
+
+    const arrow = diff > 0 ? "\u2191" : diff < 0 ? "\u2193" : "\u2192";
+    const color = isPositive ? "text-emerald-600" : "text-red-500";
+    return { text, color, arrow };
   };
 
-  const arrow = diff === null ? "" : diff > 0 ? " ↑" : diff < 0 ? " ↓" : " →";
-  const diffColor = isPositive === null
-    ? "text-gray-500"
-    : isPositive
-    ? "text-emerald-600"
-    : "text-red-500";
-  const diffBg = isPositive === null
-    ? "bg-gray-100"
-    : isPositive
-    ? "bg-emerald-50"
-    : "bg-red-50";
-
   return (
-    <div className="rounded-xl bg-background p-3.5">
-      <p className="text-xs font-medium text-muted">{label}</p>
-      <div className="mt-2 space-y-1.5">
-        <div className="flex items-baseline justify-between">
-          <span className="text-[11px] text-muted">業界平均</span>
-          <span className="text-sm font-semibold">{formatValue(industryValue)}</span>
-        </div>
-        <div className="flex items-baseline justify-between">
-          <span className="text-[11px] text-muted">あなた</span>
-          <span className="text-sm font-bold">{formatValue(myValue)}</span>
-        </div>
-      </div>
-      {diff !== null && (
-        <div className={`mt-2 inline-flex items-center rounded-full px-2 py-0.5 ${diffBg}`}>
-          <span className={`text-[11px] font-medium ${diffColor}`}>
-            {formatDiff()}{arrow}
-          </span>
-        </div>
-      )}
+    <div className="overflow-x-auto">
+      <p className="mb-2 text-[11px] text-muted">
+        {categoryLabel ? `${categoryLabel} ` : "同カテゴリ "}{providerCount}社
+      </p>
+      <table className="w-full text-xs">
+        <thead>
+          <tr className="border-b border-border/60">
+            <th className="py-1.5 pr-3 text-left font-medium text-muted">指標</th>
+            <th className="px-2 py-1.5 text-right font-medium text-muted">業界平均</th>
+            <th className="px-2 py-1.5 text-right font-medium text-muted">あなた</th>
+            <th className="pl-2 py-1.5 text-right font-medium text-muted">差分</th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.map((item) => {
+            const { text, color, arrow } = getDiff(item);
+            return (
+              <tr key={item.label} className="border-b border-border/30 last:border-0">
+                <td className="py-2 pr-3 font-medium text-foreground">{item.label}</td>
+                <td className="px-2 py-2 text-right text-muted tabular-nums">{formatValue(item.industryValue, item)}</td>
+                <td className="px-2 py-2 text-right font-semibold text-foreground tabular-nums">{formatValue(item.myValue, item)}</td>
+                <td className={`pl-2 py-2 text-right font-medium tabular-nums ${color}`}>
+                  {text && `${text} ${arrow}`}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
 }
