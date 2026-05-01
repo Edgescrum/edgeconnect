@@ -436,7 +436,7 @@ export interface ProviderReviewItem {
 /**
  * 事業主向け: 自分の口コミ一覧を取得（管理画面用）
  */
-export async function getProviderReviews(): Promise<ProviderReviewItem[]> {
+export async function getProviderReviews(segment?: string): Promise<ProviderReviewItem[]> {
   const user = await resolveUser();
   if (!user || user.role !== "provider") return [];
 
@@ -451,7 +451,20 @@ export async function getProviderReviews(): Promise<ProviderReviewItem[]> {
 
   if (!provider) return [];
 
-  const { data: reviews } = await supabase
+  // セグメントフィルター用の顧客ID取得
+  let segmentCustomerIds: number[] | null = null;
+  if (segment && segment !== "all") {
+    const { data: segData } = await supabase.rpc("get_segment_customer_ids", {
+      p_provider_id: provider.id,
+      p_segment: segment,
+    });
+    segmentCustomerIds = segData
+      ? (segData as { customer_user_id: number }[]).map((r) => r.customer_user_id)
+      : [];
+    if (segmentCustomerIds.length === 0) return [];
+  }
+
+  let query = supabase
     .from("survey_responses")
     .select(`
       id, csat, review_text, comment,
@@ -466,6 +479,12 @@ export async function getProviderReviews(): Promise<ProviderReviewItem[]> {
     `)
     .eq("provider_id", provider.id)
     .order("created_at", { ascending: false });
+
+  if (segmentCustomerIds) {
+    query = query.in("customer_user_id", segmentCustomerIds);
+  }
+
+  const { data: reviews } = await query;
 
   if (!reviews) return [];
 

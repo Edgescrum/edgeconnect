@@ -23,8 +23,12 @@ async function requireStandardPlan() {
   return { ...provider, plan: data.plan, category: data.category };
 }
 
-/** 業界ベンチマーク */
-export async function getCategoryBenchmark() {
+/** 業界ベンチマーク（フィルター適用後の自分データ vs 業界平均） */
+export async function getCategoryBenchmark(
+  segment: SegmentKey = "all",
+  dateRange: DateRangeKey = "all",
+  prefetchedMonthlyData?: Record<string, unknown>[] | null
+) {
   const provider = await requireStandardPlan();
   const supabase = await createClient();
 
@@ -37,7 +41,82 @@ export async function getCategoryBenchmark() {
   });
 
   if (error) throw new Error(error.message);
-  return data || { available: false, provider_count: 0 };
+  if (!data || !data.available) {
+    return data || { available: false, provider_count: 0 };
+  }
+
+  // Calculate user's own values with filters applied
+  const { startDate, endDate } = computeDateRange(dateRange);
+  const segmentParam = segment === "all" ? null : segment;
+
+  let customerIds: number[] | null = null;
+  if (segmentParam) {
+    const { data: segmentData } = await supabase.rpc("get_segment_customer_ids", {
+      p_provider_id: provider.id,
+      p_segment: segmentParam,
+    });
+    customerIds = segmentData
+      ? (segmentData as { customer_user_id: number }[]).map((r) => r.customer_user_id)
+      : [];
+  }
+
+  // Get user's monthly stats (current month for comparison with benchmark)
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+  const filterStart = startDate || monthStart;
+  const filterEnd = endDate || now.toISOString();
+
+  // Use prefetched monthly data if available (avoids duplicate RPC call)
+  const needsFetchMonthly = !prefetchedMonthlyData || customerIds !== null;
+  const [monthlyResult, intervalResult] = await Promise.all([
+    needsFetchMonthly
+      ? supabase.rpc("get_monthly_stats_filtered", {
+          p_provider_id: provider.id,
+          p_months: 120,
+          p_customer_ids: customerIds,
+        })
+      : Promise.resolve({ data: prefetchedMonthlyData, error: null }),
+    supabase.rpc("get_avg_booking_interval_filtered", {
+      p_provider_id: provider.id,
+      p_customer_ids: customerIds,
+      p_start_date: filterStart,
+      p_end_date: filterEnd,
+    }),
+  ]);
+
+  // Calculate user's monthly bookings and revenue based on date range filter
+  const monthlyData = (monthlyResult.data || []) as Record<string, unknown>[];
+  let filteredData = monthlyData;
+  if (dateRange === "this_month") {
+    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    filteredData = monthlyData.filter((d) => (d.month as string) === currentMonth);
+  } else if (dateRange === "this_year") {
+    const currentYear = now.getFullYear().toString();
+    filteredData = monthlyData.filter((d) => (d.month as string).startsWith(currentYear));
+  }
+
+  // Calculate monthly averages
+  const totalBookings = filteredData.reduce((sum, d) => sum + Number(d.booking_count ?? 0), 0);
+  const totalRevenue = filteredData.reduce((sum, d) => sum + Number(d.revenue ?? 0), 0);
+  const totalUniqueCustomers = filteredData.reduce((sum, d) => sum + Number(d.unique_customers ?? 0), 0);
+  const monthCount = filteredData.length || 1;
+
+  const myMonthlyBookings = Math.round((totalBookings / monthCount) * 10) / 10;
+  const myMonthlyRevenue = Math.round(totalRevenue / monthCount);
+  const myUnitPrice = totalUniqueCustomers > 0
+    ? Math.round(totalRevenue / totalUniqueCustomers)
+    : null;
+
+  const intervalData = intervalResult.data as Record<string, unknown> | null;
+  const myAvgInterval = intervalData ? Number(intervalData.avg_interval_days ?? 0) : 0;
+
+  return {
+    ...data,
+    my_monthly_bookings: myMonthlyBookings,
+    my_monthly_revenue: myMonthlyRevenue,
+    my_avg_interval: myAvgInterval > 0 ? Math.round(myAvgInterval * 10) / 10 : null,
+    my_unit_price: myUnitPrice,
+  };
 }
 
 /** セグメント別フィルタリングデータ型 */

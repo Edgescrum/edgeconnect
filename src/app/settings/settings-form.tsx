@@ -1,21 +1,35 @@
 "use client";
 
 import { useState } from "react";
-import { updateUserSettings } from "@/lib/actions/user";
+import { updateUserSettings, updateUserAttributes } from "@/lib/actions/user";
 import { formatPhoneAsYouType, isValidJapanesePhone } from "@/lib/phone";
 import { Spinner } from "@/components/Spinner";
 import { Alert } from "@/components/Alert";
 import { FormLabel, FormInput } from "@/components/FormField";
 
+const GENDER_OPTIONS = [
+  { value: "", label: "選択してください" },
+  { value: "male", label: "男性" },
+  { value: "female", label: "女性" },
+  { value: "other", label: "その他" },
+  { value: "prefer_not_to_say", label: "回答しない" },
+] as const;
+
 export function SettingsForm({
   defaultName,
   defaultPhone,
+  defaultGender,
+  defaultBirthDate,
 }: {
   defaultName: string;
   defaultPhone: string;
+  defaultGender: string;
+  defaultBirthDate: string;
 }) {
   const [name, setName] = useState(defaultName);
   const [phone, setPhone] = useState(defaultPhone);
+  const [gender, setGender] = useState(defaultGender);
+  const [birthDate, setBirthDate] = useState(defaultBirthDate);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -31,7 +45,10 @@ export function SettingsForm({
       return;
     }
     try {
-      await updateUserSettings(name, phone);
+      await Promise.all([
+        updateUserSettings(name, phone),
+        updateUserAttributes(gender || null, birthDate || null),
+      ]);
       setSuccess(true);
       setTimeout(() => setSuccess(false), 2000);
     } catch (err) {
@@ -66,6 +83,41 @@ export function SettingsForm({
           inputMode="tel"
         />
         <p className="mt-1 text-xs text-muted">予約時に自動入力されます</p>
+      </div>
+
+      <div className="border-t border-border pt-5">
+        <p className="mb-3 text-xs font-medium text-muted">
+          以下の項目は任意です。入力するとより適切なサービス推薦に活用されます。
+        </p>
+
+        <div className="space-y-4">
+          <div>
+            <FormLabel htmlFor="gender">性別</FormLabel>
+            <select
+              id="gender"
+              value={gender}
+              onChange={(e) => setGender(e.target.value)}
+              className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+            >
+              {GENDER_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <FormLabel htmlFor="birthDate">生年月日</FormLabel>
+            <FormInput
+              id="birthDate"
+              type="date"
+              value={birthDate}
+              onChange={(e) => setBirthDate(e.target.value)}
+              max={new Date().toISOString().split("T")[0]}
+            />
+          </div>
+        </div>
       </div>
 
       {error && (

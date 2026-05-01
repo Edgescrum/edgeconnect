@@ -3,11 +3,17 @@ import { redirect } from "next/navigation";
 import { getProviderReviews } from "@/lib/actions/survey";
 import { ReviewManagementClient } from "./review-management-client";
 
-export default async function ProviderReviewsPage() {
+export default async function ProviderReviewsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ segment?: string }>;
+}) {
   const user = await resolveUser();
   if (!user || user.role !== "provider") redirect("/");
 
-  const reviews = await getProviderReviews();
+  const params = await searchParams;
+  const segment = params.segment || "all";
+  const reviews = await getProviderReviews(segment);
 
   return (
     <main className="min-h-screen bg-background px-4 py-6 sm:px-8 sm:py-8">
@@ -21,7 +27,7 @@ export default async function ProviderReviewsPage() {
         <p className="text-sm text-muted sm:hidden">
           {reviews.length}件の口コミ
         </p>
-        <ReviewManagementClient reviews={reviews} />
+        <ReviewManagementClient reviews={reviews} initialSegment={segment} />
       </div>
     </main>
   );
