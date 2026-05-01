@@ -47,6 +47,13 @@ export default async function AnalyticsPage() {
     );
   }
 
+  // 事業主の営業時間設定を取得
+  const { data: providerSettings } = await supabase
+    .from("provider_settings")
+    .select("business_hours")
+    .eq("provider_id", provider.id)
+    .single();
+
   // 全データを並列取得（get_monthly_stats は120ヶ月分（実質全期間）を1回だけ取得し、クライアントでスライス）
   const [
     monthly120Result,
@@ -129,6 +136,7 @@ export default async function AnalyticsPage() {
           avgBookingInterval={avgIntervalResult.data || { avg_interval_days: 0, total_customers: 0, customers_with_interval: 0 }}
           ltvStats={ltvResult.data || { avg_ltv: 0, segments: { excellent: 0, normal: 0, dormant: 0, at_risk: 0 } }}
           benchmark={benchmarkResult.data || { available: false, provider_count: 0 }}
+          businessHours={(providerSettings?.business_hours as Record<string, { open: string; close: string } | null>) || null}
         />
       </div>
     </main>

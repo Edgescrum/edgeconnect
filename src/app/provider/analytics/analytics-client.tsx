@@ -92,6 +92,13 @@ const SEGMENT_OPTIONS: { key: SegmentKey; label: string }[] = [
   { key: "at_risk", label: "離脱リスク" },
 ];
 
+interface BusinessHoursEntry {
+  open: string;
+  close: string;
+}
+
+type BusinessHours = Record<string, BusinessHoursEntry | null>;
+
 export function AnalyticsClient({
   allMonthlyData,
   monthlyAvgInterval,
@@ -100,6 +107,7 @@ export function AnalyticsClient({
   avgBookingInterval,
   ltvStats,
   benchmark,
+  businessHours,
 }: {
   allMonthlyData: MonthlyStat[];
   monthlyAvgInterval: MonthlyAvgInterval[];
@@ -108,6 +116,7 @@ export function AnalyticsClient({
   avgBookingInterval: AvgBookingInterval;
   ltvStats: LtvStats;
   benchmark: Benchmark;
+  businessHours: BusinessHours | null;
 }) {
   const [period, setPeriod] = useState<PeriodKey>("month");
   const [chartTab, setChartTab] = useState<"bookings" | "revenue" | "interval" | "unitPrice">("bookings");
@@ -377,15 +386,48 @@ export function AnalyticsClient({
     };
   });
 
-  const DAY_LABELS = ["日", "月", "火", "水", "木", "金", "土"];
+  // 月曜始まりの曜日ラベル
+  const DAY_LABELS = ["月", "火", "水", "木", "金", "土", "日"];
+  // DOW(PostgreSQL): 日=0, 月=1, 火=2, 水=3, 木=4, 金=5, 土=6
+  // 表示行: 月=0, 火=1, 水=2, 木=3, 金=4, 土=5, 日=6
+  // DOW → 表示行: DOW 1→0, 2→1, 3→2, 4→3, 5→4, 6→5, 0→6
+  const dowToRow = (dow: number) => (dow === 0 ? 6 : dow - 1);
+
+  // 営業時間からX軸の範囲を算出
+  const { heatmapStartHour, heatmapEndHour } = (() => {
+    if (!businessHours) return { heatmapStartHour: 9, heatmapEndHour: 20 };
+    let minStart = 24;
+    let maxEnd = 0;
+    let hasAny = false;
+    for (const key of Object.keys(businessHours)) {
+      const entry = businessHours[key];
+      if (!entry) continue;
+      hasAny = true;
+      const startH = parseInt(entry.open.split(":")[0], 10);
+      const endH = parseInt(entry.close.split(":")[0], 10);
+      // close が "21:00" なら21時の列まで表示する
+      const endMin = parseInt(entry.close.split(":")[1], 10);
+      const effectiveEnd = endMin > 0 ? endH + 1 : endH;
+      if (startH < minStart) minStart = startH;
+      if (effectiveEnd > maxEnd) maxEnd = effectiveEnd;
+    }
+    if (!hasAny) return { heatmapStartHour: 9, heatmapEndHour: 20 };
+    return { heatmapStartHour: minStart, heatmapEndHour: maxEnd };
+  })();
+  const heatmapHours = Array.from(
+    { length: heatmapEndHour - heatmapStartHour },
+    (_, i) => i + heatmapStartHour
+  );
 
   // ヒートマップデータの整形（フィルタリング済みデータを使用）
+  // 行は月曜始まり（0=月, 1=火, ..., 6=日）
   const heatmapGrid: number[][] = Array.from({ length: 7 }, () =>
     Array.from({ length: 24 }, () => 0)
   );
   let maxHeat = 1;
   for (const cell of filteredHeatmapData) {
-    heatmapGrid[cell.day_of_week][cell.hour_of_day] = cell.booking_count;
+    const row = dowToRow(cell.day_of_week);
+    heatmapGrid[row][cell.hour_of_day] = cell.booking_count;
     if (cell.booking_count > maxHeat) maxHeat = cell.booking_count;
   }
 
@@ -752,7 +794,7 @@ export function AnalyticsClient({
           <div className="min-w-[600px]">
             <div className="flex">
               <div className="w-8" />
-              {Array.from({ length: 12 }, (_, i) => i + 8).map((h) => (
+              {heatmapHours.map((h) => (
                 <div key={h} className="flex-1 text-center text-xs text-muted">
                   {h}
                 </div>
@@ -761,7 +803,7 @@ export function AnalyticsClient({
             {DAY_LABELS.map((day, dayIdx) => (
               <div key={dayIdx} className="flex items-center">
                 <div className="w-8 text-xs font-medium text-muted">{day}</div>
-                {Array.from({ length: 12 }, (_, i) => i + 8).map((h) => {
+                {heatmapHours.map((h) => {
                   const count = heatmapGrid[dayIdx][h];
                   const intensity = count / maxHeat;
                   return (
@@ -813,9 +855,9 @@ export function AnalyticsClient({
           }
         >
           <div className="flex items-center gap-6">
-            <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-full bg-accent/10">
+            <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-accent/10">
               <div className="text-center">
-                <span className="text-2xl font-bold text-accent">
+                <span className="text-xl font-bold text-accent">
                   {filteredAvgBookingInterval.avg_interval_days > 0 ? filteredAvgBookingInterval.avg_interval_days : "-"}
                 </span>
                 {filteredAvgBookingInterval.avg_interval_days > 0 && (
@@ -823,18 +865,18 @@ export function AnalyticsClient({
                 )}
               </div>
             </div>
-            <div className="text-sm text-muted space-y-2">
+            <div className="space-y-1.5">
               {filteredAvgBookingInterval.avg_interval_days > 0 ? (
                 <>
-                  <p className="text-xs">
-                    平均 <span className="font-semibold text-foreground">{filteredAvgBookingInterval.avg_interval_days}日</span> ごとに来店
+                  <p className="text-sm text-foreground">
+                    平均 <span className="font-semibold">{filteredAvgBookingInterval.avg_interval_days}日</span> ごとに来店
                   </p>
-                  <p className="text-xs opacity-70">
+                  <p className="text-xs text-muted">
                     リピーター: {filteredAvgBookingInterval.customers_with_interval}人 / 全{filteredAvgBookingInterval.total_customers}人
                   </p>
                 </>
               ) : (
-                <p className="text-xs opacity-70">
+                <p className="text-xs text-muted">
                   2回以上来店した顧客がいるとデータが表示されます
                 </p>
               )}
@@ -852,18 +894,18 @@ export function AnalyticsClient({
           }
         >
           <div className="flex items-center gap-6">
-            <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-accent/20 to-accent/5">
+            <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-accent/10">
               <div className="text-center">
-                <span className="text-2xl font-bold text-accent">
+                <span className="text-xl font-bold text-accent">
                   {Math.round(filteredLtvStats.avg_ltv).toLocaleString()}
                 </span>
                 <span className="block text-xs font-medium text-accent/70">円</span>
               </div>
             </div>
-            <div className="text-sm text-muted">
-              <p>顧客1人あたりの平均累計売上</p>
+            <div className="space-y-1.5">
+              <p className="text-sm text-foreground">顧客1人あたりの平均累計売上</p>
               {totalSegments > 0 && (
-                <p className="mt-1 text-xs opacity-70">
+                <p className="text-xs text-muted">
                   対象顧客数: {totalSegments}人
                 </p>
               )}
