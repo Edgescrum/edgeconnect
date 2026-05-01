@@ -1006,7 +1006,8 @@ export function AnalyticsClient({
                     <p className="text-sm text-foreground">
                       全{totalBookings}件中 <span className="font-semibold">{totalCancels}件</span> キャンセル
                     </p>
-                    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${rateStyle.text} bg-${rateStyle.hex === "#10b981" ? "emerald" : rateStyle.hex === "#34d399" ? "emerald" : rateStyle.hex === "#fbbf24" ? "amber" : rateStyle.hex === "#fb923c" ? "orange" : "red"}-50`}
+                    <span
+                      className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold"
                       style={{ backgroundColor: `${rateStyle.hex}15`, color: rateStyle.hex }}
                     >
                       {rateStyle.label}
