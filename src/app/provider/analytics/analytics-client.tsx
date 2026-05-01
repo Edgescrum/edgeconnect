@@ -11,11 +11,10 @@ import {
   ResponsiveContainer,
   BarChart,
   Bar,
-  Line,
-  ComposedChart,
 } from "recharts";
 import { getAnalyticsBySegment, type SegmentKey, type DateRangeKey } from "@/lib/actions/analytics";
 import { getSurveyAdvancedStats, type SurveyBasicStats, type SurveyAdvancedStats } from "@/lib/actions/survey-analytics";
+import { generateSurveyAdvice } from "@/lib/constants/survey-advice-templates";
 
 interface MonthlyStat {
   month: string;
@@ -1080,6 +1079,14 @@ export function AnalyticsClient({
 // ============================================================
 type SurveyChartTab = "csat" | "service" | "quality" | "price";
 
+// セグメント補足ラベル
+const SEGMENT_DESCRIPTIONS: Record<string, string> = {
+  excellent: "常連さん",
+  normal: "たまに来店",
+  dormant: "最近来ていない",
+  at_risk: "1回きり or 長期未来店",
+};
+
 // ============================================================
 // Survey Analytics Tab Component
 // ============================================================
@@ -1127,21 +1134,80 @@ function SurveyAnalyticsTab({
     return `${str.slice(0, 4)}年${parseInt(str.slice(5, 7))}月`;
   };
 
+  // Generate advice
+  const advice = (() => {
+    if (basicStats.totalResponses === 0) return null;
+
+    // Determine prev month CSAT from trend data
+    let prevMonthCsat: number | null = null;
+    let prevMonthLabel: string | null = null;
+    if (advancedStats && advancedStats.csatTrend.length >= 2) {
+      const prevEntry = advancedStats.csatTrend[advancedStats.csatTrend.length - 2];
+      prevMonthCsat = prevEntry.avgCsat;
+      const m = parseInt(prevEntry.month.slice(5, 7));
+      prevMonthLabel = `${m}月`;
+    }
+
+    // New vs Repeat
+    let newCsat: number | null = null;
+    let repeatCsat: number | null = null;
+    if (advancedStats?.newVsRepeaterCsat) {
+      const newItem = advancedStats.newVsRepeaterCsat.find((x) => x.type === "new");
+      const repeatItem = advancedStats.newVsRepeaterCsat.find((x) => x.type === "repeater");
+      if (newItem) newCsat = newItem.avgCsat;
+      if (repeatItem) repeatCsat = repeatItem.avgCsat;
+    }
+
+    // Menu gap
+    let menuHighName: string | null = null;
+    let menuHighScore: number | null = null;
+    let menuLowName: string | null = null;
+    let menuLowScore: number | null = null;
+    if (advancedStats?.menuCsat && advancedStats.menuCsat.length >= 2) {
+      const sorted = [...advancedStats.menuCsat].sort((a, b) => b.avgCsat - a.avgCsat);
+      menuHighName = sorted[0].serviceName;
+      menuHighScore = sorted[0].avgCsat;
+      menuLowName = sorted[sorted.length - 1].serviceName;
+      menuLowScore = sorted[sorted.length - 1].avgCsat;
+    }
+
+    return generateSurveyAdvice({
+      totalResponses: basicStats.totalResponses,
+      avgCsat: basicStats.avgCsat,
+      prevMonthCsat,
+      prevMonthLabel,
+      driverService: advancedStats?.driverAverages.service || 0,
+      driverQuality: advancedStats?.driverAverages.quality || 0,
+      driverPrice: advancedStats?.driverAverages.price || 0,
+      newCsat,
+      repeatCsat,
+      menuHighName,
+      menuHighScore,
+      menuLowName,
+      menuLowScore,
+    });
+  })();
+
+  // CSAT distribution max for bar width calculation
+  const maxDistCount = Math.max(...basicStats.csatDistribution.map((d) => d.count), 1);
+
   return (
     <div className="space-y-6">
-      {/* Basic KPI Cards */}
+      {/* 1. KPI Cards */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         <KpiSummaryCard
           icon={<ThumbsUpIcon />}
-          label="平均CSAT"
-          value={basicStats.totalResponses > 0 ? `${basicStats.avgCsat}` : "-"}
+          label="平均満足度"
+          value={basicStats.totalResponses > 0 ? `${basicStats.avgCsat} / 5` : "-"}
           subText={basicStats.totalResponses > 0 ? `${basicStats.totalResponses}件の回答` : "回答なし"}
         />
         <KpiSummaryCard
           icon={<PercentIcon />}
           label="回答率"
           value={basicStats.responseRate > 0 ? `${basicStats.responseRate}%` : "-"}
-          subText="送信数に対する回答数"
+          subText={basicStats.totalNotifications > 0
+            ? `${basicStats.totalNotifications}人中${basicStats.totalResponses}人が回答`
+            : "送信数に対する回答数"}
         />
         <KpiSummaryCard
           icon={<ListIcon />}
@@ -1150,9 +1216,27 @@ function SurveyAnalyticsTab({
         />
       </div>
 
-      {/* CSAT Score Bar */}
+      {/* 2. ひとことアドバイス */}
+      {advice && (
+        <section className="rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50 p-5 shadow-sm ring-1 ring-blue-100">
+          <div className="flex items-start gap-3">
+            <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-600">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+              </svg>
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="text-sm font-semibold text-foreground">ひとことアドバイス</h3>
+              <p className="mt-1.5 text-sm leading-relaxed text-foreground/80">{advice.main}</p>
+              <p className="mt-1 text-xs leading-relaxed text-muted">{advice.sub}</p>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* 3. 満足度スコア（ゲージバー）*/}
       {basicStats.totalResponses > 0 && (
-        <ChartCard title="CSATスコア" icon={<ThumbsUpIcon />}>
+        <ChartCard title="満足度スコア" icon={<ThumbsUpIcon />}>
           <div className="flex items-center gap-4">
             <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-background ring-1 ring-border/60">
               <div className="text-center">
@@ -1177,6 +1261,33 @@ function SurveyAnalyticsTab({
         </ChartCard>
       )}
 
+      {/* 4. 満足度の分布 */}
+      {basicStats.totalResponses > 0 && (
+        <ChartCard title="満足度の分布" icon={<BarChartIcon />}>
+          <div className="space-y-2.5">
+            {[5, 4, 3, 2, 1].map((score) => {
+              const item = basicStats.csatDistribution.find((d) => d.score === score);
+              const count = item?.count || 0;
+              const pct = maxDistCount > 0 ? (count / maxDistCount) * 100 : 0;
+              return (
+                <div key={score} className="flex items-center gap-3">
+                  <span className="w-8 shrink-0 text-right text-sm font-medium text-foreground">{score}点</span>
+                  <div className="flex-1 h-5 overflow-hidden rounded-md bg-border/20">
+                    <div
+                      className={`h-full rounded-md transition-all duration-700 ${
+                        score >= 4 ? "bg-emerald-400" : score === 3 ? "bg-amber-400" : "bg-red-300"
+                      }`}
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                  <span className="w-10 shrink-0 text-xs text-muted">{count}件</span>
+                </div>
+              );
+            })}
+          </div>
+        </ChartCard>
+      )}
+
       {/* Standard-only: Advanced Survey Analytics */}
       {isStandard ? (
         advancedLoading ? (
@@ -1186,8 +1297,8 @@ function SurveyAnalyticsTab({
           </div>
         ) : advancedStats ? (
           <>
-            {/* Driver Average Scores */}
-            <ChartCard title="ドライバー別平均スコア" icon={<BarChartIcon />}>
+            {/* 5. お客さんの評価の内訳（接客/品質/価格） */}
+            <ChartCard title="お客さんの評価の内訳" icon={<BarChartIcon />}>
               {advancedStats.driverAverages.service > 0 || advancedStats.driverAverages.quality > 0 || advancedStats.driverAverages.price > 0 ? (
                 <div className="space-y-4">
                   <DriverScoreBar label="接客・対応" score={advancedStats.driverAverages.service} color="#3b82f6" />
@@ -1199,20 +1310,20 @@ function SurveyAnalyticsTab({
               )}
             </ChartCard>
 
-            {/* Unified Trend Chart (AreaChart matching booking tab pattern) */}
+            {/* 6. 満足度の推移（タブ切替グラフ） */}
             {mergedTrendData.length > 0 && (
               <section className="rounded-2xl bg-card p-5 shadow-sm ring-1 ring-border/60">
                 <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex items-center gap-2">
                     <TrendIcon />
-                    <h3 className="text-sm font-semibold text-foreground">推移グラフ</h3>
+                    <h3 className="text-sm font-semibold text-foreground">満足度の推移</h3>
                   </div>
                 </div>
 
                 {/* Chart tab switcher */}
                 <div className="mb-4 flex gap-1 overflow-x-auto rounded-xl bg-background p-1 ring-1 ring-border">
                   {([
-                    { key: "csat" as const, label: "CSAT" },
+                    { key: "csat" as const, label: "総合" },
                     { key: "service" as const, label: "接客" },
                     { key: "quality" as const, label: "品質" },
                     { key: "price" as const, label: "価格" },
@@ -1243,7 +1354,7 @@ function SurveyAnalyticsTab({
                     surveyChartTab === "quality" ? "avgQuality" :
                     "avgPrice";
                   const tooltipName =
-                    surveyChartTab === "csat" ? "平均CSAT" :
+                    surveyChartTab === "csat" ? "平均満足度" :
                     surveyChartTab === "service" ? "接客" :
                     surveyChartTab === "quality" ? "品質" : "価格";
 
@@ -1298,9 +1409,9 @@ function SurveyAnalyticsTab({
               </section>
             )}
 
-            {/* Menu CSAT - Card layout with stars */}
+            {/* 7. メニュー別 満足度 - Card layout with stars */}
             {advancedStats.menuCsat.length > 0 && (
-              <ChartCard title="メニュー別CSAT" icon={<StarIcon />}>
+              <ChartCard title="メニュー別 満足度" icon={<StarIcon />}>
                 <div className="space-y-3">
                   {[...advancedStats.menuCsat]
                     .sort((a, b) => b.avgCsat - a.avgCsat)
@@ -1340,7 +1451,7 @@ function SurveyAnalyticsTab({
                                     <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
                                   </svg>
                                 ))}
-                                <span className={`ml-1.5 text-sm font-bold ${getCsatColor(menu.avgCsat)}`}>{menu.avgCsat}</span>
+                                <span className={`ml-1.5 text-sm font-bold ${getCsatColor(menu.avgCsat)}`}>{menu.avgCsat} / 5</span>
                               </div>
                             </div>
                             <div className="shrink-0 text-right">
@@ -1363,120 +1474,85 @@ function SurveyAnalyticsTab({
               </ChartCard>
             )}
 
-            {/* Segment CSAT */}
-            {segment === "all" && advancedStats.segmentCsat.length > 0 && (
-              <ChartCard title="顧客セグメント別CSAT" icon={<UsersIcon />}>
-                <div className="space-y-3">
-                  {advancedStats.segmentCsat.map((seg, i) => (
-                    <div key={seg.segment} className="flex items-center gap-3">
-                      <div className={`h-3 w-3 shrink-0 rounded-full ${SEGMENT_COLORS[i % SEGMENT_COLORS.length].bg}`} />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-baseline justify-between">
-                          <p className="text-sm font-medium">{seg.segmentLabel}</p>
-                          <div className="ml-2 flex items-center gap-2">
-                            <span className="text-xs text-muted">{seg.responseCount}件</span>
-                            <span className={`text-sm font-bold ${getCsatColor(seg.avgCsat)}`}>{seg.avgCsat}</span>
-                          </div>
+            {/* 8. メニュー診断（4象限） */}
+            {advancedStats.menuCsatMatrix.length > 0 && (
+              <ChartCard title="メニュー診断" icon={<GridIcon />}>
+                <p className="mb-4 text-xs text-muted">各メニューの人気度(予約数)と満足度を4象限で診断します</p>
+                {(() => {
+                  const matrix = advancedStats.menuCsatMatrix;
+                  const avgCsatAll = matrix.reduce((s, m) => s + m.avgCsat, 0) / matrix.length;
+                  const avgBookings = matrix.reduce((s, m) => s + m.bookingCount, 0) / matrix.length;
+
+                  return (
+                    <div className="space-y-4">
+                      {/* Quadrant labels */}
+                      <div className="grid grid-cols-2 gap-2 text-center text-[10px] text-muted">
+                        <div className="rounded-lg bg-amber-50 p-2">
+                          <p className="font-semibold text-amber-700">伸びしろメニュー</p>
+                          <p>人気だが改善余地あり</p>
                         </div>
-                        <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-border/30">
-                          <div
-                            className={`h-full rounded-full ${SEGMENT_COLORS[i % SEGMENT_COLORS.length].bg} transition-all duration-500`}
-                            style={{ width: `${(seg.avgCsat / 5) * 100}%` }}
-                          />
+                        <div className="rounded-lg bg-emerald-50 p-2">
+                          <p className="font-semibold text-emerald-700">看板メニュー</p>
+                          <p>人気+高評価</p>
                         </div>
+                        <div className="rounded-lg bg-red-50 p-2">
+                          <p className="font-semibold text-red-700">見直し候補</p>
+                          <p>予約も評価も低め</p>
+                        </div>
+                        <div className="rounded-lg bg-blue-50 p-2">
+                          <p className="font-semibold text-blue-700">隠れた良メニュー</p>
+                          <p>評価は高いが予約少なめ</p>
+                        </div>
+                      </div>
+
+                      {/* Menu items positioned in quadrants */}
+                      <div className="space-y-2">
+                        {matrix.map((m) => {
+                          const isHighCsat = m.avgCsat >= avgCsatAll;
+                          const isHighBooking = m.bookingCount >= avgBookings;
+                          const quadrantColor = isHighCsat && isHighBooking ? "border-emerald-300 bg-emerald-50"
+                            : isHighCsat && !isHighBooking ? "border-blue-300 bg-blue-50"
+                            : !isHighCsat && isHighBooking ? "border-amber-300 bg-amber-50"
+                            : "border-red-300 bg-red-50";
+                          const textColor = isHighCsat && isHighBooking ? "text-emerald-700"
+                            : isHighCsat && !isHighBooking ? "text-blue-700"
+                            : !isHighCsat && isHighBooking ? "text-amber-700"
+                            : "text-red-700";
+                          const quadrantLabel = isHighCsat && isHighBooking ? "看板メニュー"
+                            : isHighCsat && !isHighBooking ? "隠れた良メニュー"
+                            : !isHighCsat && isHighBooking ? "伸びしろメニュー"
+                            : "見直し候補";
+
+                          return (
+                            <div key={m.serviceId} className={`flex items-center justify-between rounded-xl border p-3 ${quadrantColor}`}>
+                              <div className="flex-1 min-w-0">
+                                <p className={`text-sm font-medium truncate ${textColor}`}>{m.serviceName}</p>
+                                <p className="text-[10px] text-muted mt-0.5">{quadrantLabel}</p>
+                              </div>
+                              <div className="flex items-center gap-4 shrink-0 ml-3">
+                                <div className="text-center">
+                                  <p className="text-xs text-muted">予約数</p>
+                                  <p className="text-sm font-bold">{m.bookingCount}</p>
+                                </div>
+                                <div className="text-center">
+                                  <p className="text-xs text-muted">満足度</p>
+                                  <p className={`text-sm font-bold ${getCsatColor(m.avgCsat)}`}>{m.avgCsat}</p>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
-                  ))}
-                </div>
+                  );
+                })()}
               </ChartCard>
             )}
 
-            {/* Gender CSAT */}
-            {advancedStats.genderCsat.length > 0 && (
-              <ChartCard title="性別CSAT" icon={<UsersIcon />}>
-                <div className="space-y-3">
-                  {advancedStats.genderCsat.map((g) => (
-                    <div key={g.gender} className="flex items-center gap-3">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-baseline justify-between">
-                          <p className="text-sm font-medium">{g.label}</p>
-                          <div className="ml-2 flex items-center gap-2">
-                            <span className="text-xs text-muted">{g.count}件</span>
-                            <span className={`text-sm font-bold ${getCsatColor(g.avgCsat)}`}>{g.avgCsat}</span>
-                          </div>
-                        </div>
-                        <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-border/30">
-                          <div className="h-full rounded-full bg-indigo-500 transition-all duration-500"
-                            style={{ width: `${(g.avgCsat / 5) * 100}%` }} />
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </ChartCard>
-            )}
-
-            {/* Age CSAT */}
-            {advancedStats.ageCsat.length > 0 && (
-              <ChartCard title="年代別CSAT" icon={<UsersIcon />}>
-                <ResponsiveContainer width="100%" height={Math.max(150, advancedStats.ageCsat.length * 50)}>
-                  <BarChart data={advancedStats.ageCsat} layout="vertical" margin={{ left: 10 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" opacity={0.5} horizontal={false} />
-                    <XAxis type="number" domain={[0, 5]} fontSize={12} stroke="var(--color-muted)" axisLine={false} tickLine={false} />
-                    <YAxis type="category" dataKey="ageGroup" fontSize={11} stroke="var(--color-muted)" axisLine={false} tickLine={false} width={50} />
-                    <Tooltip
-                      formatter={(value, _name, props) => [`${value} (${props.payload.count}件)`, "平均CSAT"]}
-                      contentStyle={{ borderRadius: "12px", border: "1px solid var(--border)", fontSize: "13px" }}
-                    />
-                    <Bar dataKey="avgCsat" fill="#8b5cf6" radius={[0, 4, 4, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </ChartCard>
-            )}
-
-            {/* ============================================================ */}
-            {/* Cross-Analysis: Booking x Survey */}
-            {/* ============================================================ */}
-
-            {/* a. Unit Price x CSAT */}
-            {advancedStats.unitPriceCsat.length > 0 && (
-              <ChartCard title="顧客単価 x CSAT分析" icon={<TagIcon />}>
-                <p className="mb-4 text-xs text-muted">顧客単価(高/中/低)ごとの平均CSATスコアを比較し、高単価顧客の満足度を可視化します</p>
-                <div className="grid gap-3 sm:grid-cols-3">
-                  {advancedStats.unitPriceCsat.map((tier) => {
-                    const tierColors: Record<string, { bg: string; text: string; icon: string }> = {
-                      high: { bg: "bg-emerald-50", text: "text-emerald-700", icon: "text-emerald-500" },
-                      mid: { bg: "bg-blue-50", text: "text-blue-700", icon: "text-blue-500" },
-                      low: { bg: "bg-amber-50", text: "text-amber-700", icon: "text-amber-500" },
-                    };
-                    const colors = tierColors[tier.tier] || tierColors.mid;
-                    return (
-                      <div key={tier.tier} className={`rounded-xl ${colors.bg} p-4`}>
-                        <div className="flex items-center justify-between">
-                          <p className={`text-sm font-semibold ${colors.text}`}>{tier.tierLabel}</p>
-                          <span className={`text-2xl font-bold ${getCsatColor(tier.avgCsat)}`}>{tier.avgCsat}</span>
-                        </div>
-                        <p className="mt-1 text-xs text-muted">
-                          平均単価: {tier.avgUnitPrice.toLocaleString()}円
-                        </p>
-                        <p className="text-xs text-muted">{tier.count}人</p>
-                        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/60">
-                          <div
-                            className="h-full rounded-full bg-gradient-to-r from-amber-400 to-emerald-500 transition-all duration-700"
-                            style={{ width: `${(tier.avgCsat / 5) * 100}%` }}
-                          />
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </ChartCard>
-            )}
-
-            {/* b. New vs Repeater x CSAT */}
+            {/* 9. 初めてのお客さん vs リピーターの満足度 */}
             {advancedStats.newVsRepeaterCsat.length > 0 && (
-              <ChartCard title="新規 vs リピーター x CSAT" icon={<UsersIcon />}>
-                <p className="mb-4 text-xs text-muted">初回来店客とリピーターの満足度を比較します</p>
+              <ChartCard title="初めてのお客さん vs リピーターの満足度" icon={<UsersIcon />}>
+                <p className="mb-4 text-xs text-muted">初回来店のお客さんとリピーターの満足度を比較します</p>
                 <div className="grid gap-3 sm:grid-cols-2">
                   {advancedStats.newVsRepeaterCsat.map((item) => {
                     const isNew = item.type === "new";
@@ -1519,255 +1595,55 @@ function SurveyAnalyticsTab({
               </ChartCard>
             )}
 
-            {/* c. Revenue x CSAT: Dual-axis chart + insight */}
-            {advancedStats.revenueCorrelation.length >= 2 && (
-              <ChartCard title="売上 x CSAT 推移比較" icon={<TrendIcon />}>
-                {/* Insight card */}
-                {advancedStats.revenueCsatInsight && (
-                  <div className={`mb-4 rounded-xl p-4 ${
-                    advancedStats.revenueCsatInsight.strength === "strong_positive"
-                      ? "bg-emerald-50"
-                      : advancedStats.revenueCsatInsight.strength === "strong_negative"
-                      ? "bg-red-50"
-                      : "bg-blue-50"
-                  }`}>
-                    <div className="flex items-start gap-3">
-                      <div className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
-                        advancedStats.revenueCsatInsight.strength === "strong_positive"
-                          ? "bg-emerald-100 text-emerald-600"
-                          : advancedStats.revenueCsatInsight.strength === "strong_negative"
-                          ? "bg-red-100 text-red-600"
-                          : "bg-blue-100 text-blue-600"
-                      }`}>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" />
-                        </svg>
+            {/* 10. お客さんのタイプ別 満足度 */}
+            {segment === "all" && advancedStats.segmentCsat.length > 0 && (
+              <ChartCard title="お客さんのタイプ別 満足度" icon={<UsersIcon />}>
+                <div className="space-y-3">
+                  {advancedStats.segmentCsat.map((seg, i) => {
+                    const desc = SEGMENT_DESCRIPTIONS[seg.segment] || "";
+                    return (
+                      <div key={seg.segment} className="flex items-center gap-3">
+                        <div className={`h-3 w-3 shrink-0 rounded-full ${SEGMENT_COLORS[i % SEGMENT_COLORS.length].bg}`} />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-baseline justify-between">
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium">{seg.segmentLabel}</p>
+                              {desc && <p className="text-[10px] text-muted">{desc}</p>}
+                            </div>
+                            <div className="ml-2 flex items-center gap-2 shrink-0">
+                              <span className="text-xs text-muted">{seg.responseCount}件</span>
+                              <span className={`text-sm font-bold ${getCsatColor(seg.avgCsat)}`}>{seg.avgCsat} / 5</span>
+                            </div>
+                          </div>
+                          <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-border/30">
+                            <div
+                              className={`h-full rounded-full ${SEGMENT_COLORS[i % SEGMENT_COLORS.length].bg} transition-all duration-500`}
+                              style={{ width: `${(seg.avgCsat / 5) * 100}%` }}
+                            />
+                          </div>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-xs font-semibold text-foreground">
-                          相関係数: {advancedStats.revenueCsatInsight.correlation > 0 ? "+" : ""}{advancedStats.revenueCsatInsight.correlation}
-                        </p>
-                        <p className="mt-1 text-xs text-muted leading-relaxed">
-                          {advancedStats.revenueCsatInsight.message}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-                {/* Dual-axis chart: left = revenue, right = CSAT */}
-                <ResponsiveContainer width="100%" height={250}>
-                  <ComposedChart data={advancedStats.revenueCorrelation} margin={{ top: 5, right: 10, bottom: 5, left: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" opacity={0.5} />
-                    <XAxis
-                      dataKey="month"
-                      fontSize={11}
-                      stroke="var(--color-muted)"
-                      axisLine={false}
-                      tickLine={false}
-                      tickFormatter={(v: string) => {
-                        const m = parseInt(v.slice(5, 7));
-                        return `${m}月`;
-                      }}
-                    />
-                    <YAxis
-                      yAxisId="revenue"
-                      orientation="left"
-                      fontSize={11}
-                      stroke="var(--color-muted)"
-                      axisLine={false}
-                      tickLine={false}
-                      tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}k`}
-                    />
-                    <YAxis
-                      yAxisId="csat"
-                      orientation="right"
-                      domain={[1, 5]}
-                      fontSize={11}
-                      stroke="#10b981"
-                      axisLine={false}
-                      tickLine={false}
-                    />
-                    <Tooltip
-                      formatter={(value, name) => {
-                        if (name === "売上") return [`${Number(value).toLocaleString()}円`, "売上"];
-                        return [`${value}`, "CSAT"];
-                      }}
-                      labelFormatter={(label) => {
-                        const str = String(label);
-                        return `${str.slice(0, 4)}年${parseInt(str.slice(5, 7))}月`;
-                      }}
-                      contentStyle={{ borderRadius: "12px", border: "1px solid var(--border)", fontSize: "13px" }}
-                    />
-                    <Bar yAxisId="revenue" dataKey="revenue" name="売上" fill="var(--accent)" opacity={0.3} radius={[4, 4, 0, 0]} />
-                    <Line yAxisId="csat" type="monotone" dataKey="avgCsat" name="CSAT" stroke="#10b981" strokeWidth={2.5} dot={{ r: 4, fill: "var(--card)", stroke: "#10b981", strokeWidth: 2 }} />
-                  </ComposedChart>
-                </ResponsiveContainer>
-                <div className="mt-2 flex items-center justify-center gap-4 text-[11px] text-muted">
-                  <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm bg-accent opacity-40" />売上（左軸）</span>
-                  <span className="flex items-center gap-1"><span className="inline-block h-0.5 w-4 rounded bg-emerald-500" />CSAT（右軸）</span>
+                    );
+                  })}
                 </div>
               </ChartCard>
             )}
 
-            {/* d. Menu CSAT x Booking Count Matrix */}
-            {advancedStats.menuCsatMatrix.length > 0 && (
-              <ChartCard title="メニュー別 CSAT x 予約数マトリクス" icon={<GridIcon />}>
-                <p className="mb-4 text-xs text-muted">各メニューの人気度(予約数)と満足度(CSAT)を4象限で表示します</p>
-                {(() => {
-                  const matrix = advancedStats.menuCsatMatrix;
-                  const avgCsatAll = matrix.reduce((s, m) => s + m.avgCsat, 0) / matrix.length;
-                  const avgBookings = matrix.reduce((s, m) => s + m.bookingCount, 0) / matrix.length;
-
-                  return (
-                    <div className="space-y-4">
-                      {/* Quadrant labels */}
-                      <div className="grid grid-cols-2 gap-2 text-center text-[10px] text-muted">
-                        <div className="rounded-lg bg-amber-50 p-2">
-                          <p className="font-semibold text-amber-700">要改善</p>
-                          <p>高人気 + 低CSAT</p>
-                        </div>
-                        <div className="rounded-lg bg-emerald-50 p-2">
-                          <p className="font-semibold text-emerald-700">優秀</p>
-                          <p>高人気 + 高CSAT</p>
-                        </div>
-                        <div className="rounded-lg bg-red-50 p-2">
-                          <p className="font-semibold text-red-700">見直し</p>
-                          <p>低人気 + 低CSAT</p>
-                        </div>
-                        <div className="rounded-lg bg-blue-50 p-2">
-                          <p className="font-semibold text-blue-700">ニッチ</p>
-                          <p>低人気 + 高CSAT</p>
-                        </div>
-                      </div>
-
-                      {/* Menu items positioned in quadrants */}
-                      <div className="space-y-2">
-                        {matrix.map((m) => {
-                          const isHighCsat = m.avgCsat >= avgCsatAll;
-                          const isHighBooking = m.bookingCount >= avgBookings;
-                          const quadrantColor = isHighCsat && isHighBooking ? "border-emerald-300 bg-emerald-50"
-                            : isHighCsat && !isHighBooking ? "border-blue-300 bg-blue-50"
-                            : !isHighCsat && isHighBooking ? "border-amber-300 bg-amber-50"
-                            : "border-red-300 bg-red-50";
-                          const textColor = isHighCsat && isHighBooking ? "text-emerald-700"
-                            : isHighCsat && !isHighBooking ? "text-blue-700"
-                            : !isHighCsat && isHighBooking ? "text-amber-700"
-                            : "text-red-700";
-
-                          return (
-                            <div key={m.serviceId} className={`flex items-center justify-between rounded-xl border p-3 ${quadrantColor}`}>
-                              <div className="flex-1 min-w-0">
-                                <p className={`text-sm font-medium truncate ${textColor}`}>{m.serviceName}</p>
-                              </div>
-                              <div className="flex items-center gap-4 shrink-0 ml-3">
-                                <div className="text-center">
-                                  <p className="text-xs text-muted">予約数</p>
-                                  <p className="text-sm font-bold">{m.bookingCount}</p>
-                                </div>
-                                <div className="text-center">
-                                  <p className="text-xs text-muted">CSAT</p>
-                                  <p className={`text-sm font-bold ${getCsatColor(m.avgCsat)}`}>{m.avgCsat}</p>
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })()}
-              </ChartCard>
-            )}
-
-            {/* e. Driver Regression Analysis */}
-            {advancedStats.driverRegression.length > 0 && advancedStats.driverRegression.some((d) => d.sampleCount >= 3) && (
-              <ChartCard title="CSAT影響度分析" icon={<BarChartIcon />}>
-                <p className="mb-4 text-xs text-muted">
-                  各ドライバー（接客・品質・価格）がCSATにどの程度影響しているかを分析しています
-                </p>
-                {(() => {
-                  const validDrivers = advancedStats.driverRegression.filter((d) => d.sampleCount >= 3);
-                  const topDriver = validDrivers.length > 0 ? validDrivers[0] : null;
-                  const maxAbsCorr = Math.max(...validDrivers.map((d) => Math.abs(d.correlation)), 0.01);
-
-                  return (
-                    <div className="space-y-4">
-                      {/* Insight message */}
-                      {topDriver && Math.abs(topDriver.correlation) >= 0.3 && (
-                        <div className="rounded-xl bg-blue-50 p-4">
-                          <div className="flex items-start gap-3">
-                            <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-600">
-                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" />
-                              </svg>
-                            </div>
-                            <div>
-                              <p className="text-xs font-semibold text-foreground">
-                                「{topDriver.label}」の評価がCSATに最も影響しています
-                              </p>
-                              <p className="mt-1 text-xs text-muted leading-relaxed">
-                                {topDriver.label}の品質向上に注力すると、総合満足度の改善が期待できます。
-                                {topDriver.regrSlope > 0 && (
-                                  <>このスコアを1点上げるとCSATが約{topDriver.regrSlope.toFixed(2)}点上がる見込みです。</>
-                                )}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Driver bars */}
-                      {validDrivers.map((d, i) => {
-                        const absCorr = Math.abs(d.correlation);
-                        const barPct = (absCorr / maxAbsCorr) * 100;
-                        const isTop = i === 0 && absCorr >= 0.3;
-                        const driverColors: Record<string, { bar: string; bg: string }> = {
-                          service: { bar: "bg-blue-500", bg: "bg-blue-50" },
-                          quality: { bar: "bg-emerald-500", bg: "bg-emerald-50" },
-                          price: { bar: "bg-amber-500", bg: "bg-amber-50" },
-                        };
-                        const colors = driverColors[d.driver] || driverColors.service;
-
-                        return (
-                          <div key={d.driver} className={`rounded-xl p-4 ${isTop ? colors.bg : "bg-background"} ${isTop ? "ring-2 ring-accent/20" : "ring-1 ring-border/40"}`}>
-                            <div className="flex items-center justify-between mb-2">
-                              <div className="flex items-center gap-2">
-                                <p className="text-sm font-semibold text-foreground">{d.label}</p>
-                                {isTop && (
-                                  <span className="rounded-full bg-accent/10 px-2 py-0.5 text-[10px] font-semibold text-accent">
-                                    最重要
-                                  </span>
-                                )}
-                              </div>
-                              <div className="text-right">
-                                <p className={`text-lg font-bold ${getCsatColor(d.avgScore)}`}>{d.avgScore > 0 ? d.avgScore : "-"}</p>
-                                <p className="text-[10px] text-muted">現在のスコア</p>
-                              </div>
-                            </div>
-                            {/* Correlation bar */}
-                            <div className="flex items-center gap-2">
-                              <p className="shrink-0 text-[11px] text-muted w-12">影響度</p>
-                              <div className="flex-1 h-3 overflow-hidden rounded-full bg-border/20">
-                                <div
-                                  className={`h-full rounded-full ${colors.bar} transition-all duration-700`}
-                                  style={{ width: `${barPct}%` }}
-                                />
-                              </div>
-                              <p className="shrink-0 text-xs font-semibold text-foreground w-10 text-right">
-                                {(absCorr * 100).toFixed(0)}%
-                              </p>
-                            </div>
-                            {d.regrSlope > 0 && (
-                              <p className="mt-1.5 text-[11px] text-muted">
-                                +1点で CSAT が約 +{d.regrSlope.toFixed(2)} 改善見込み
-                              </p>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  );
-                })()}
+            {/* 11. 年代別 満足度 */}
+            {advancedStats.ageCsat.length > 0 && (
+              <ChartCard title="年代別 満足度" icon={<UsersIcon />}>
+                <ResponsiveContainer width="100%" height={Math.max(150, advancedStats.ageCsat.length * 50)}>
+                  <BarChart data={advancedStats.ageCsat} layout="vertical" margin={{ left: 10 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" opacity={0.5} horizontal={false} />
+                    <XAxis type="number" domain={[0, 5]} fontSize={12} stroke="var(--color-muted)" axisLine={false} tickLine={false} />
+                    <YAxis type="category" dataKey="ageGroup" fontSize={11} stroke="var(--color-muted)" axisLine={false} tickLine={false} width={50} />
+                    <Tooltip
+                      formatter={(value, _name, props) => [`${value} / 5 (${props.payload.count}件)`, "平均満足度"]}
+                      contentStyle={{ borderRadius: "12px", border: "1px solid var(--border)", fontSize: "13px" }}
+                    />
+                    <Bar dataKey="avgCsat" fill="#8b5cf6" radius={[0, 4, 4, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
               </ChartCard>
             )}
           </>
@@ -1775,9 +1651,9 @@ function SurveyAnalyticsTab({
       ) : (
         /* Basic plan: show upgrade prompt for advanced features */
         <div className="rounded-2xl bg-card p-6 text-center ring-1 ring-border/60">
-          <p className="text-sm font-semibold">詳細なアンケート分析を見る</p>
+          <p className="text-sm font-semibold">スタンダードプランでさらに詳しい分析が見れます</p>
           <p className="mt-1 text-xs text-muted">
-            CSAT推移・ドライバー分析・メニュー別分析・予約実績との相関分析が利用できます
+            満足度の推移・評価の内訳分析・メニュー診断・お客さんのタイプ別分析が利用できます
           </p>
           <a
             href="/provider/billing"
