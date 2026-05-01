@@ -177,12 +177,12 @@ export async function getAnalyticsBySegment(
   ] = await Promise.all([
     supabase.rpc("get_monthly_stats_filtered", {
       p_provider_id: provider.id,
-      p_months: 24,
+      p_months: 120,
       p_customer_ids: customerIds,
     }),
     supabase.rpc("get_monthly_avg_interval_filtered", {
       p_provider_id: provider.id,
-      p_months: 24,
+      p_months: 120,
       p_customer_ids: customerIds,
     }),
     supabase.rpc("get_avg_booking_interval_filtered", {

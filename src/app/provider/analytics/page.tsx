@@ -47,9 +47,9 @@ export default async function AnalyticsPage() {
     );
   }
 
-  // 全データを並列取得（get_monthly_stats は24ヶ月分を1回だけ取得し、クライアントでスライス）
+  // 全データを並列取得（get_monthly_stats は120ヶ月分（実質全期間）を1回だけ取得し、クライアントでスライス）
   const [
-    monthly24Result,
+    monthly120Result,
     menusResult,
     heatmapResult,
     avgIntervalResult,
@@ -59,7 +59,7 @@ export default async function AnalyticsPage() {
   ] = await Promise.all([
     supabase.rpc("get_monthly_stats", {
       p_provider_id: provider.id,
-      p_months: 24,
+      p_months: 120,
     }),
     supabase.rpc("get_popular_menus", {
       p_provider_id: provider.id,
@@ -72,7 +72,7 @@ export default async function AnalyticsPage() {
     }),
     supabase.rpc("get_monthly_avg_interval", {
       p_provider_id: provider.id,
-      p_months: 24,
+      p_months: 120,
     }),
     supabase.rpc("get_ltv_stats", {
       p_provider_id: provider.id,
@@ -85,7 +85,7 @@ export default async function AnalyticsPage() {
   ]);
 
   // unique_customers が RPC から返されない場合（マイグレーション未適用時）のフォールバック
-  const allMonthlyData = (monthly24Result.data || []).map((row: Record<string, unknown>) => ({
+  const allMonthlyData = (monthly120Result.data || []).map((row: Record<string, unknown>) => ({
     month: row.month as string,
     booking_count: Number(row.booking_count ?? 0),
     revenue: Number(row.revenue ?? 0),
