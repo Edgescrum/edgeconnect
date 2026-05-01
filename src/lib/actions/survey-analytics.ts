@@ -23,7 +23,9 @@ async function getProviderWithPlan() {
 export interface SurveyBasicStats {
   avgCsat: number;
   totalResponses: number;
+  totalNotifications: number; // アンケート送信数（回答率の分母）
   responseRate: number; // 回答率 (%)
+  csatDistribution: { score: number; count: number }[]; // 1-5点の分布
 }
 
 export interface MonthlyCsatTrend {
@@ -162,10 +164,25 @@ export async function getSurveyBasicStats(): Promise<SurveyBasicStats> {
     ? avgData.reduce((sum, r) => sum + (r.csat as number), 0) / avgData.length
     : 0;
 
+  // 1-5点の分布を計算
+  const distributionMap: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+  if (avgData) {
+    for (const r of avgData) {
+      const score = Math.round(r.csat as number);
+      if (score >= 1 && score <= 5) distributionMap[score]++;
+    }
+  }
+  const csatDistribution = [1, 2, 3, 4, 5].map((score) => ({
+    score,
+    count: distributionMap[score],
+  }));
+
   return {
     avgCsat: Number(avgCsat.toFixed(1)),
     totalResponses,
+    totalNotifications,
     responseRate,
+    csatDistribution,
   };
 }
 
