@@ -116,7 +116,7 @@ export interface CsatRetentionItem {
 
 // 満足度 x 顧客単価
 export interface CsatVsUnitPrice {
-  scoreLabel: string;  // "1-2点" / "3点" / "4点" / "5点"
+  scoreLabel: string;  // "不満足" / "普通" / "満足"
   minScore: number;
   maxScore: number;
   avgUnitPrice: number;
@@ -892,10 +892,9 @@ export async function getSurveyAdvancedStats(
 
     // For each response, check if the customer has a confirmed booking AFTER the response date
     const scoreBuckets: { label: string; min: number; max: number; total: number; returned: number }[] = [
-      { label: "5", min: 5, max: 5, total: 0, returned: 0 },
-      { label: "4", min: 4, max: 4, total: 0, returned: 0 },
-      { label: "3", min: 3, max: 3, total: 0, returned: 0 },
-      { label: "2以下", min: 1, max: 2, total: 0, returned: 0 },
+      { label: "満足", min: 4, max: 5, total: 0, returned: 0 },
+      { label: "普通", min: 3, max: 3, total: 0, returned: 0 },
+      { label: "不満足", min: 1, max: 2, total: 0, returned: 0 },
     ];
 
     for (const r of responses) {
@@ -947,12 +946,11 @@ export async function getSurveyAdvancedStats(
       });
     }
 
-    // Score buckets: 1-2 / 3 / 4 / 5
+    // Score buckets: 不満足(1-2) / 普通(3) / 満足(4-5)
     const scoreBucketsForRevenue = [
-      { label: "1-2点", min: 1, max: 2.4 },
-      { label: "3点", min: 2.5, max: 3.4 },
-      { label: "4点", min: 3.5, max: 4.4 },
-      { label: "5点", min: 4.5, max: 5 },
+      { label: "不満足", min: 1, max: 2.4 },
+      { label: "普通", min: 2.5, max: 3.4 },
+      { label: "満足", min: 3.5, max: 5 },
     ];
 
     for (const bucket of scoreBucketsForRevenue) {
