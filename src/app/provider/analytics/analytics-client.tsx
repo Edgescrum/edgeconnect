@@ -405,17 +405,17 @@ export function AnalyticsClient({
       hasAny = true;
       const startH = parseInt(entry.open.split(":")[0], 10);
       const endH = parseInt(entry.close.split(":")[0], 10);
-      // close が "21:00" なら21時の列まで表示する
-      const endMin = parseInt(entry.close.split(":")[1], 10);
-      const effectiveEnd = endMin > 0 ? endH + 1 : endH;
+      // close が "21:00" → X軸に10~21を表示（21時台の列を含める）
+      const effectiveEnd = endH;
       if (startH < minStart) minStart = startH;
       if (effectiveEnd > maxEnd) maxEnd = effectiveEnd;
     }
     if (!hasAny) return { heatmapStartHour: 9, heatmapEndHour: 20 };
     return { heatmapStartHour: minStart, heatmapEndHour: maxEnd };
   })();
+  // heatmapEndHour を含む（例: start=10, end=21 → [10,11,...,21]）
   const heatmapHours = Array.from(
-    { length: heatmapEndHour - heatmapStartHour },
+    { length: heatmapEndHour - heatmapStartHour + 1 },
     (_, i) => i + heatmapStartHour
   );
 
