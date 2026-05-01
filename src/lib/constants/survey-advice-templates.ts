@@ -278,8 +278,8 @@ export function generateSurveyAdvice(params: {
     }
   }
 
-  // E: 新規 vs リピーター差
-  if (params.newCsat !== null && params.repeatCsat !== null) {
+  // E: 新規 vs リピーター差（両方にデータがある場合のみ）
+  if (params.newCsat !== null && params.repeatCsat !== null && params.newCsat > 0 && params.repeatCsat > 0) {
     const diff = Math.abs(params.newCsat - params.repeatCsat);
     if (diff >= 0.5) {
       const templates = NEW_VS_REPEAT_TEMPLATES;
@@ -297,10 +297,11 @@ export function generateSurveyAdvice(params: {
     }
   }
 
-  // F: メニュー間差
+  // F: メニュー間差（両方にデータがある場合のみ）
   if (
     params.menuHighName && params.menuLowName &&
     params.menuHighScore !== null && params.menuLowScore !== null &&
+    params.menuHighScore > 0 && params.menuLowScore > 0 &&
     params.menuHighScore - params.menuLowScore >= 1.0
   ) {
     const templates = MENU_GAP_TEMPLATES;

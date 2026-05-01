@@ -1245,14 +1245,14 @@ function SurveyAnalyticsTab({
       prevMonthLabel = `${m}月`;
     }
 
-    // New vs Repeat
+    // New vs Repeat - only use scores when there is actual data (count > 0)
     let newCsat: number | null = null;
     let repeatCsat: number | null = null;
     if (advancedStats?.newVsRepeaterCsat) {
       const newItem = advancedStats.newVsRepeaterCsat.find((x) => x.type === "new");
       const repeatItem = advancedStats.newVsRepeaterCsat.find((x) => x.type === "repeater");
-      if (newItem) newCsat = newItem.avgCsat;
-      if (repeatItem) repeatCsat = repeatItem.avgCsat;
+      if (newItem && newItem.count > 0 && newItem.avgCsat !== null) newCsat = newItem.avgCsat;
+      if (repeatItem && repeatItem.count > 0 && repeatItem.avgCsat !== null) repeatCsat = repeatItem.avgCsat;
     }
 
     // Menu gap
@@ -1602,15 +1602,15 @@ function SurveyAnalyticsTab({
                           </div>
                         </div>
                         <div className="mt-3 flex items-end gap-2">
-                          <span className={`text-3xl font-bold ${item.count > 0 ? getCsatColor(item.avgCsat) : "text-muted"}`}>
-                            {item.count > 0 ? item.avgCsat : "-"}
+                          <span className={`text-3xl font-bold ${item.count > 0 && item.avgCsat !== null ? getCsatColor(item.avgCsat) : "text-muted"}`}>
+                            {item.count > 0 && item.avgCsat !== null ? item.avgCsat : "-"}
                           </span>
                           <span className="mb-1 text-sm text-muted">/ 5.0</span>
                         </div>
                         <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/60">
                           <div
                             className={`h-full rounded-full transition-all duration-700 ${isNew ? "bg-blue-400" : "bg-emerald-400"}`}
-                            style={{ width: `${item.count > 0 ? (item.avgCsat / 5) * 100 : 0}%` }}
+                            style={{ width: `${item.count > 0 && item.avgCsat !== null ? (item.avgCsat / 5) * 100 : 0}%` }}
                           />
                         </div>
                       </div>

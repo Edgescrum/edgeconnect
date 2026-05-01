@@ -72,7 +72,7 @@ export interface UnitPriceCsat {
 export interface NewVsRepeaterCsat {
   type: "new" | "repeater";
   label: string;
-  avgCsat: number;
+  avgCsat: number | null;
   count: number;
 }
 
@@ -756,7 +756,7 @@ export async function getSurveyAdvancedStats(
       label: "新規",
       avgCsat: newCsatList.length > 0
         ? Number((newCsatList.reduce((s, c) => s + c, 0) / newCsatList.length).toFixed(1))
-        : 0,
+        : null,
       count: newCsatList.length,
     },
     {
@@ -764,7 +764,7 @@ export async function getSurveyAdvancedStats(
       label: "リピーター",
       avgCsat: repeaterCsatList.length > 0
         ? Number((repeaterCsatList.reduce((s, c) => s + c, 0) / repeaterCsatList.length).toFixed(1))
-        : 0,
+        : null,
       count: repeaterCsatList.length,
     },
   ];
