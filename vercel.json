@@ -12,6 +12,14 @@
     {
       "path": "/api/cron/cleanup-downgraded",
       "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/cron/survey-queue",
+      "schedule": "0 18 * * *"
+    },
+    {
+      "path": "/api/cron/survey-send",
+      "schedule": "0 1 * * *"
     }
   ]
 }
