@@ -106,6 +106,85 @@ export async function getCategoryBenchmark() {
   return data || { available: false, provider_count: 0 };
 }
 
+/** セグメント別フィルタリングデータ型 */
+export type SegmentKey = "all" | "excellent" | "normal" | "dormant" | "at_risk";
+
+export interface SegmentFilteredData {
+  allMonthlyData: {
+    month: string;
+    booking_count: number;
+    revenue: number;
+    cancel_count: number;
+    cancel_rate: number;
+    unique_customers: number;
+  }[];
+  monthlyAvgInterval: {
+    month: string;
+    avg_interval_days: number;
+  }[];
+  avgBookingInterval: {
+    avg_interval_days: number;
+    total_customers: number;
+    customers_with_interval: number;
+  };
+}
+
+/** セグメントでフィルタリングされた分析データを取得 */
+export async function getAnalyticsBySegment(
+  segment: SegmentKey
+): Promise<SegmentFilteredData> {
+  const provider = await requireStandardPlan();
+  const supabase = await createClient();
+
+  const segmentParam = segment === "all" ? null : segment;
+
+  const [monthly24Result, monthlyAvgIntervalResult, avgIntervalResult] =
+    await Promise.all([
+      supabase.rpc("get_monthly_stats", {
+        p_provider_id: provider.id,
+        p_months: 24,
+        p_segment: segmentParam,
+      }),
+      supabase.rpc("get_monthly_avg_interval", {
+        p_provider_id: provider.id,
+        p_months: 24,
+        p_segment: segmentParam,
+      }),
+      supabase.rpc("get_avg_booking_interval", {
+        p_provider_id: provider.id,
+        p_segment: segmentParam,
+      }),
+    ]);
+
+  const allMonthlyData = (monthly24Result.data || []).map(
+    (row: Record<string, unknown>) => ({
+      month: row.month as string,
+      booking_count: Number(row.booking_count ?? 0),
+      revenue: Number(row.revenue ?? 0),
+      cancel_count: Number(row.cancel_count ?? 0),
+      cancel_rate: Number(row.cancel_rate ?? 0),
+      unique_customers: Number(row.unique_customers ?? 0),
+    })
+  );
+
+  const monthlyAvgInterval = (monthlyAvgIntervalResult.data || []).map(
+    (row: Record<string, unknown>) => ({
+      month: row.month as string,
+      avg_interval_days: Number(row.avg_interval_days ?? 0),
+    })
+  );
+
+  return {
+    allMonthlyData,
+    monthlyAvgInterval,
+    avgBookingInterval: avgIntervalResult.data || {
+      avg_interval_days: 0,
+      total_customers: 0,
+      customers_with_interval: 0,
+    },
+  };
+}
+
 /** ダッシュボードサマリー（今月の予約数・売上見込み＋前月比） */
 export async function getDashboardSummary() {
   const provider = await getProvider();
