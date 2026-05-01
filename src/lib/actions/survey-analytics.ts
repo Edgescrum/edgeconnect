@@ -3,6 +3,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { getProviderId } from "@/lib/auth/provider-session";
+import type { SegmentKey, DateRangeKey } from "@/lib/actions/analytics";
 
 async function getProviderWithPlan() {
   const supabase = await createClient();
@@ -23,14 +24,6 @@ export interface SurveyBasicStats {
   avgCsat: number;
   totalResponses: number;
   responseRate: number; // 回答率 (%)
-  recentResponses: {
-    id: number;
-    csat: number;
-    serviceName: string | null;
-    bookingDate: string | null;
-    comment: string | null;
-    createdAt: string;
-  }[];
 }
 
 export interface MonthlyCsatTrend {
@@ -60,6 +53,41 @@ export interface SegmentCsat {
   responseCount: number;
 }
 
+// Cross-analysis types
+export interface UnitPriceCsat {
+  tier: string;
+  tierLabel: string;
+  avgCsat: number;
+  count: number;
+  avgUnitPrice: number;
+}
+
+export interface NewVsRepeaterCsat {
+  type: "new" | "repeater";
+  label: string;
+  avgCsat: number;
+  count: number;
+}
+
+export interface RevenueCorrelation {
+  month: string;
+  revenue: number;
+  avgCsat: number;
+}
+
+export interface MenuCsatMatrix {
+  serviceName: string;
+  serviceId: number;
+  avgCsat: number;
+  bookingCount: number;
+  responseCount: number;
+}
+
+export interface WordCloudItem {
+  word: string;
+  count: number;
+}
+
 export interface SurveyAdvancedStats {
   csatTrend: MonthlyCsatTrend[];
   driverTrend: DriverTrend[];
@@ -73,6 +101,12 @@ export interface SurveyAdvancedStats {
   // 属性別CSAT
   genderCsat: { gender: string; label: string; avgCsat: number; count: number }[];
   ageCsat: { ageGroup: string; avgCsat: number; count: number }[];
+  // Cross-analysis
+  unitPriceCsat: UnitPriceCsat[];
+  newVsRepeaterCsat: NewVsRepeaterCsat[];
+  revenueCorrelation: RevenueCorrelation[];
+  menuCsatMatrix: MenuCsatMatrix[];
+  wordCloud: WordCloudItem[];
 }
 
 // ============================================================
@@ -83,25 +117,11 @@ export async function getSurveyBasicStats(): Promise<SurveyBasicStats> {
   const provider = await getProviderWithPlan();
   const supabase = createAdminClient();
 
-  // 直近の回答（表示用）と集計を並列取得
   const [
-    { data: responses },
     { count: sentCount },
     { count: responseCount },
     { data: avgData },
   ] = await Promise.all([
-    supabase
-      .from("survey_responses")
-      .select(`
-        id, csat, comment, created_at,
-        bookings:booking_id (
-          start_at,
-          services:service_id ( name )
-        )
-      `)
-      .eq("provider_id", provider.id)
-      .order("created_at", { ascending: false })
-      .limit(10),
     supabase
       .from("pending_survey_notifications")
       .select("id", { count: "exact", head: true })
@@ -111,7 +131,6 @@ export async function getSurveyBasicStats(): Promise<SurveyBasicStats> {
       .from("survey_responses")
       .select("id", { count: "exact", head: true })
       .eq("provider_id", provider.id),
-    // 全回答の平均CSATを正確に算出（LIMIT 50の問題を回避）
     supabase
       .from("survey_responses")
       .select("csat")
@@ -128,66 +147,97 @@ export async function getSurveyBasicStats(): Promise<SurveyBasicStats> {
     ? avgData.reduce((sum, r) => sum + (r.csat as number), 0) / avgData.length
     : 0;
 
-  const recentResponses = (responses || []).slice(0, 10).map((r) => {
-    const booking = Array.isArray(r.bookings) ? r.bookings[0] : r.bookings;
-    const service = booking
-      ? Array.isArray((booking as Record<string, unknown>).services)
-        ? ((booking as Record<string, unknown>).services as Record<string, unknown>[])[0]
-        : (booking as Record<string, unknown>).services
-      : null;
-
-    return {
-      id: r.id as number,
-      csat: r.csat as number,
-      serviceName: (service as Record<string, unknown>)?.name as string | null,
-      bookingDate: (booking as Record<string, unknown>)?.start_at as string | null,
-      comment: r.comment as string | null,
-      createdAt: r.created_at as string,
-    };
-  });
-
   return {
     avgCsat: Number(avgCsat.toFixed(1)),
     totalResponses,
     responseRate,
-    recentResponses,
   };
 }
 
 // ============================================================
-// Advanced Stats (standard plan only)
+// Date range helper
 // ============================================================
 
-export async function getSurveyAdvancedStats(): Promise<SurveyAdvancedStats> {
+function computeDateRange(dateRange: DateRangeKey): { startDate: string | null; endDate: string | null } {
+  if (dateRange === "all") return { startDate: null, endDate: null };
+  const now = new Date();
+  if (dateRange === "this_month") {
+    return { startDate: new Date(now.getFullYear(), now.getMonth(), 1).toISOString(), endDate: now.toISOString() };
+  }
+  return { startDate: new Date(now.getFullYear(), 0, 1).toISOString(), endDate: now.toISOString() };
+}
+
+// ============================================================
+// Predefined keywords for word cloud (Japanese)
+// ============================================================
+
+const PREDEFINED_KEYWORDS = [
+  "丁寧", "満足", "待ち時間", "価格", "雰囲気", "清潔", "対応", "説明",
+  "技術", "仕上がり", "接客", "リラックス", "快適", "親切", "安心",
+  "予約", "時間", "スタッフ", "おすすめ", "感謝", "嬉しい", "良い",
+  "悪い", "遅い", "早い", "高い", "安い", "綺麗", "上手", "丁寧",
+  "また来たい", "気持ちいい", "居心地", "笑顔", "プロ", "信頼",
+];
+
+// ============================================================
+// Advanced Stats (standard plan only, with segment/date filters)
+// ============================================================
+
+export async function getSurveyAdvancedStats(
+  segment: SegmentKey = "all",
+  dateRange: DateRangeKey = "all"
+): Promise<SurveyAdvancedStats> {
   const provider = await getProviderWithPlan();
   if (provider.plan === "basic") {
     throw new Error("この機能はスタンダードプラン以上でご利用いただけます");
   }
 
   const supabase = createAdminClient();
+  const { startDate, endDate } = computeDateRange(dateRange);
 
-  // 全回答データを一括取得（過去12ヶ月）
-  const twelveMonthsAgo = new Date();
-  twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
+  // Get customer IDs for segment filter
+  let segmentCustomerIds: number[] | null = null;
+  if (segment !== "all") {
+    const { data: segData } = await supabase.rpc("get_segment_customer_ids", {
+      p_provider_id: provider.id,
+      p_segment: segment,
+    });
+    segmentCustomerIds = segData
+      ? (segData as { customer_user_id: number }[]).map((r) => r.customer_user_id)
+      : [];
+  }
 
-  const { data: allResponses } = await supabase
+  // Build query for survey responses
+  let query = supabase
     .from("survey_responses")
     .select(`
       id, csat, driver_service, driver_quality, driver_price,
+      comment, review_text,
       created_at, customer_user_id,
       bookings:booking_id (
         start_at,
         service_id,
-        services:service_id ( id, name )
+        services:service_id ( id, name, price )
       )
     `)
     .eq("provider_id", provider.id)
-    .gte("created_at", twelveMonthsAgo.toISOString())
     .order("created_at", { ascending: true });
 
+  if (startDate) query = query.gte("created_at", startDate);
+  if (endDate) query = query.lte("created_at", endDate);
+  if (segmentCustomerIds && segmentCustomerIds.length > 0) {
+    query = query.in("customer_user_id", segmentCustomerIds);
+  } else if (segmentCustomerIds && segmentCustomerIds.length === 0) {
+    // No customers in segment, return empty
+    return emptyAdvancedStats();
+  }
+
+  const { data: allResponses } = await query;
   const responses = allResponses || [];
 
-  // -- CSAT月次推移 --
+  if (responses.length === 0) return emptyAdvancedStats();
+
+  // -- CSAT monthly trend --
   const monthlyMap = new Map<string, { csatSum: number; count: number; serviceSum: number; qualitySum: number; priceSum: number; serviceCount: number; qualityCount: number; priceCount: number }>();
   for (const r of responses) {
     const month = (r.created_at as string).slice(0, 7);
@@ -216,7 +266,7 @@ export async function getSurveyAdvancedStats(): Promise<SurveyAdvancedStats> {
     });
   }
 
-  // -- ドライバー全体平均 --
+  // -- Driver averages --
   const driverServiceAll = responses.filter((r) => r.driver_service != null);
   const driverQualityAll = responses.filter((r) => r.driver_quality != null);
   const driverPriceAll = responses.filter((r) => r.driver_price != null);
@@ -233,7 +283,7 @@ export async function getSurveyAdvancedStats(): Promise<SurveyAdvancedStats> {
       : 0,
   };
 
-  // -- メニュー別CSAT --
+  // -- Menu CSAT --
   const menuMap = new Map<number, { name: string; csatSum: number; count: number }>();
   for (const r of responses) {
     const booking = Array.isArray(r.bookings) ? r.bookings[0] : r.bookings;
@@ -258,14 +308,13 @@ export async function getSurveyAdvancedStats(): Promise<SurveyAdvancedStats> {
     }))
     .sort((a, b) => b.avgCsat - a.avgCsat);
 
-  // -- セグメント別CSAT --
-  // 顧客のセグメント情報を取得
+  // -- Segment CSAT --
   const customerIds = [...new Set(responses.map((r) => r.customer_user_id as number))];
   let segmentCsat: SegmentCsat[] = [];
 
+  // Build segment map for cross-analysis
+  const segmentMapAll = new Map<number, string>();
   if (customerIds.length > 0) {
-    // セグメントIDマップ作成（全セグメントを並列取得）
-    const segmentMap = new Map<number, string>();
     const segmentNames = ["excellent", "normal", "dormant", "at_risk"];
     const segmentResults = await Promise.all(
       segmentNames.map((seg) =>
@@ -278,14 +327,14 @@ export async function getSurveyAdvancedStats(): Promise<SurveyAdvancedStats> {
     for (const { seg, data: segIds } of segmentResults) {
       if (segIds) {
         for (const row of segIds as { customer_user_id: number }[]) {
-          segmentMap.set(row.customer_user_id, seg);
+          segmentMapAll.set(row.customer_user_id, seg);
         }
       }
     }
 
     const segCsatMap = new Map<string, { csatSum: number; count: number }>();
     for (const r of responses) {
-      const seg = segmentMap.get(r.customer_user_id as number) || "unknown";
+      const seg = segmentMapAll.get(r.customer_user_id as number) || "unknown";
       const entry = segCsatMap.get(seg) || { csatSum: 0, count: 0 };
       entry.csatSum += r.csat as number;
       entry.count++;
@@ -309,7 +358,7 @@ export async function getSurveyAdvancedStats(): Promise<SurveyAdvancedStats> {
       }));
   }
 
-  // -- 属性別CSAT（性別 / 年代） --
+  // -- Gender/Age CSAT --
   let genderCsat: { gender: string; label: string; avgCsat: number; count: number }[] = [];
   let ageCsat: { ageGroup: string; avgCsat: number; count: number }[] = [];
 
@@ -322,7 +371,6 @@ export async function getSurveyAdvancedStats(): Promise<SurveyAdvancedStats> {
     if (users) {
       const userMap = new Map(users.map((u) => [u.id as number, u]));
 
-      // 性別別CSAT
       const genderMap = new Map<string, { csatSum: number; count: number }>();
       for (const r of responses) {
         const u = userMap.get(r.customer_user_id as number);
@@ -334,11 +382,8 @@ export async function getSurveyAdvancedStats(): Promise<SurveyAdvancedStats> {
       }
 
       const genderLabels: Record<string, string> = {
-        male: "男性",
-        female: "女性",
-        other: "その他",
-        prefer_not_to_say: "未回答",
-        unknown: "未設定",
+        male: "男性", female: "女性", other: "その他",
+        prefer_not_to_say: "未回答", unknown: "未設定",
       };
 
       genderCsat = Array.from(genderMap.entries())
@@ -350,7 +395,6 @@ export async function getSurveyAdvancedStats(): Promise<SurveyAdvancedStats> {
           count: entry.count,
         }));
 
-      // 年代別CSAT
       const ageGroupMap = new Map<string, { csatSum: number; count: number }>();
       const now = new Date();
       for (const r of responses) {
@@ -373,13 +417,202 @@ export async function getSurveyAdvancedStats(): Promise<SurveyAdvancedStats> {
           avgCsat: Number((entry.csatSum / entry.count).toFixed(1)),
           count: entry.count,
         }))
-        .sort((a, b) => {
-          const aNum = parseInt(a.ageGroup);
-          const bNum = parseInt(b.ageGroup);
-          return aNum - bNum;
-        });
+        .sort((a, b) => parseInt(a.ageGroup) - parseInt(b.ageGroup));
     }
   }
+
+  // ============================================================
+  // Cross-analysis: booking data x survey data
+  // ============================================================
+
+  // Get all bookings for this provider in the date range for cross-analysis
+  let bookingQuery = supabase
+    .from("bookings")
+    .select("id, customer_user_id, service_id, start_at, status, services:service_id ( id, name, price )")
+    .eq("provider_id", provider.id)
+    .eq("status", "confirmed");
+
+  if (startDate) bookingQuery = bookingQuery.gte("start_at", startDate);
+  if (endDate) bookingQuery = bookingQuery.lte("start_at", endDate);
+  if (segmentCustomerIds && segmentCustomerIds.length > 0) {
+    bookingQuery = bookingQuery.in("customer_user_id", segmentCustomerIds);
+  }
+
+  const { data: allBookings } = await bookingQuery;
+  const bookings = allBookings || [];
+
+  // -- a. Unit Price x CSAT --
+  // Calculate per-customer unit price, then cross with their avg CSAT
+  const customerSpend = new Map<number, { totalRevenue: number; bookingCount: number }>();
+  for (const b of bookings) {
+    const custId = b.customer_user_id as number;
+    const service = Array.isArray(b.services) ? b.services[0] : b.services;
+    const price = service ? Number((service as Record<string, unknown>).price ?? 0) : 0;
+    const entry = customerSpend.get(custId) || { totalRevenue: 0, bookingCount: 0 };
+    entry.totalRevenue += price;
+    entry.bookingCount++;
+    customerSpend.set(custId, entry);
+  }
+
+  const customerCsat = new Map<number, { csatSum: number; count: number }>();
+  for (const r of responses) {
+    const custId = r.customer_user_id as number;
+    const entry = customerCsat.get(custId) || { csatSum: 0, count: 0 };
+    entry.csatSum += r.csat as number;
+    entry.count++;
+    customerCsat.set(custId, entry);
+  }
+
+  // Classify customers into unit price tiers
+  const customerUnitPrices: { custId: number; unitPrice: number; avgCsat: number }[] = [];
+  for (const [custId, spend] of customerSpend) {
+    const csat = customerCsat.get(custId);
+    if (!csat) continue;
+    customerUnitPrices.push({
+      custId,
+      unitPrice: Math.round(spend.totalRevenue / spend.bookingCount),
+      avgCsat: Number((csat.csatSum / csat.count).toFixed(1)),
+    });
+  }
+
+  let unitPriceCsat: UnitPriceCsat[] = [];
+  if (customerUnitPrices.length > 0) {
+    const allPrices = customerUnitPrices.map((c) => c.unitPrice).sort((a, b) => a - b);
+    const p33 = allPrices[Math.floor(allPrices.length / 3)] || 0;
+    const p66 = allPrices[Math.floor((allPrices.length * 2) / 3)] || 0;
+
+    const tiers: { tier: string; tierLabel: string; customers: typeof customerUnitPrices }[] = [
+      { tier: "low", tierLabel: "低単価", customers: customerUnitPrices.filter((c) => c.unitPrice <= p33) },
+      { tier: "mid", tierLabel: "中単価", customers: customerUnitPrices.filter((c) => c.unitPrice > p33 && c.unitPrice <= p66) },
+      { tier: "high", tierLabel: "高単価", customers: customerUnitPrices.filter((c) => c.unitPrice > p66) },
+    ];
+
+    unitPriceCsat = tiers
+      .filter((t) => t.customers.length > 0)
+      .map((t) => ({
+        tier: t.tier,
+        tierLabel: t.tierLabel,
+        avgCsat: Number((t.customers.reduce((s, c) => s + c.avgCsat, 0) / t.customers.length).toFixed(1)),
+        count: t.customers.length,
+        avgUnitPrice: Math.round(t.customers.reduce((s, c) => s + c.unitPrice, 0) / t.customers.length),
+      }));
+  }
+
+  // -- b. New vs Repeater x CSAT --
+  // Count bookings per customer to determine new vs repeater
+  const customerBookingCounts = new Map<number, number>();
+  for (const b of bookings) {
+    const custId = b.customer_user_id as number;
+    customerBookingCounts.set(custId, (customerBookingCounts.get(custId) || 0) + 1);
+  }
+
+  const newCsatList: number[] = [];
+  const repeaterCsatList: number[] = [];
+  for (const r of responses) {
+    const custId = r.customer_user_id as number;
+    const count = customerBookingCounts.get(custId) || 0;
+    if (count <= 1) {
+      newCsatList.push(r.csat as number);
+    } else {
+      repeaterCsatList.push(r.csat as number);
+    }
+  }
+
+  const newVsRepeaterCsat: NewVsRepeaterCsat[] = [];
+  if (newCsatList.length > 0) {
+    newVsRepeaterCsat.push({
+      type: "new",
+      label: "新規",
+      avgCsat: Number((newCsatList.reduce((s, c) => s + c, 0) / newCsatList.length).toFixed(1)),
+      count: newCsatList.length,
+    });
+  }
+  if (repeaterCsatList.length > 0) {
+    newVsRepeaterCsat.push({
+      type: "repeater",
+      label: "リピーター",
+      avgCsat: Number((repeaterCsatList.reduce((s, c) => s + c, 0) / repeaterCsatList.length).toFixed(1)),
+      count: repeaterCsatList.length,
+    });
+  }
+
+  // -- c. Revenue x CSAT correlation (monthly) --
+  const monthlyRevenue = new Map<string, number>();
+  for (const b of bookings) {
+    const month = (b.start_at as string).slice(0, 7);
+    const service = Array.isArray(b.services) ? b.services[0] : b.services;
+    const price = service ? Number((service as Record<string, unknown>).price ?? 0) : 0;
+    monthlyRevenue.set(month, (monthlyRevenue.get(month) || 0) + price);
+  }
+
+  const revenueCorrelation: RevenueCorrelation[] = [];
+  for (const [month, entry] of monthlyMap) {
+    const revenue = monthlyRevenue.get(month) || 0;
+    if (revenue > 0) {
+      revenueCorrelation.push({
+        month,
+        revenue,
+        avgCsat: Number((entry.csatSum / entry.count).toFixed(1)),
+      });
+    }
+  }
+
+  // -- d. Menu CSAT x booking count matrix --
+  const menuBookingCounts = new Map<number, number>();
+  for (const b of bookings) {
+    const service = Array.isArray(b.services) ? b.services[0] : b.services;
+    if (!service) continue;
+    const sid = (service as Record<string, unknown>).id as number;
+    menuBookingCounts.set(sid, (menuBookingCounts.get(sid) || 0) + 1);
+  }
+
+  const menuCsatMatrix: MenuCsatMatrix[] = menuCsat.map((m) => ({
+    serviceName: m.serviceName,
+    serviceId: m.serviceId,
+    avgCsat: m.avgCsat,
+    bookingCount: menuBookingCounts.get(m.serviceId) || 0,
+    responseCount: m.responseCount,
+  }));
+
+  // -- e. Word cloud from comments --
+  const allComments: string[] = [];
+  for (const r of responses) {
+    if (r.comment) allComments.push(r.comment as string);
+    if (r.review_text) allComments.push(r.review_text as string);
+  }
+
+  const wordCounts = new Map<string, number>();
+  const fullText = allComments.join(" ");
+
+  // Predefined keyword matching
+  for (const keyword of PREDEFINED_KEYWORDS) {
+    const regex = new RegExp(keyword, "g");
+    const matches = fullText.match(regex);
+    if (matches && matches.length > 0) {
+      wordCounts.set(keyword, (wordCounts.get(keyword) || 0) + matches.length);
+    }
+  }
+
+  // N-gram extraction (2-4 chars) for additional words
+  for (const comment of allComments) {
+    for (let n = 2; n <= 4; n++) {
+      for (let i = 0; i <= comment.length - n; i++) {
+        const gram = comment.slice(i, i + n);
+        // Skip if contains space, punctuation, or numbers
+        if (/[\s\d.,!?、。！？\n\r\t()（）「」『』]/.test(gram)) continue;
+        // Skip if already covered by predefined keywords
+        if (PREDEFINED_KEYWORDS.includes(gram)) continue;
+        wordCounts.set(gram, (wordCounts.get(gram) || 0) + 1);
+      }
+    }
+  }
+
+  // Filter: min count 2, sort by count desc, top 30
+  const wordCloud: WordCloudItem[] = Array.from(wordCounts.entries())
+    .filter(([, count]) => count >= 2)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 30)
+    .map(([word, count]) => ({ word, count }));
 
   return {
     csatTrend,
@@ -389,5 +622,20 @@ export async function getSurveyAdvancedStats(): Promise<SurveyAdvancedStats> {
     driverAverages,
     genderCsat,
     ageCsat,
+    unitPriceCsat,
+    newVsRepeaterCsat,
+    revenueCorrelation,
+    menuCsatMatrix,
+    wordCloud,
+  };
+}
+
+function emptyAdvancedStats(): SurveyAdvancedStats {
+  return {
+    csatTrend: [], driverTrend: [], menuCsat: [], segmentCsat: [],
+    driverAverages: { service: 0, quality: 0, price: 0 },
+    genderCsat: [], ageCsat: [],
+    unitPriceCsat: [], newVsRepeaterCsat: [], revenueCorrelation: [],
+    menuCsatMatrix: [], wordCloud: [],
   };
 }

@@ -11,9 +11,10 @@ import {
   ResponsiveContainer,
   BarChart,
   Bar,
-  LineChart,
-  Line,
-  Legend,
+  ScatterChart,
+  Scatter,
+  ZAxis,
+  Cell,
 } from "recharts";
 import { getAnalyticsBySegment, type SegmentKey, type DateRangeKey } from "@/lib/actions/analytics";
 import { getSurveyAdvancedStats, type SurveyBasicStats, type SurveyAdvancedStats } from "@/lib/actions/survey-analytics";
@@ -140,8 +141,6 @@ export function AnalyticsClient({
   // Survey advanced stats (lazy loaded for standard plan)
   const [surveyAdvanced, setSurveyAdvanced] = useState<SurveyAdvancedStats | null>(null);
   const [surveyAdvancedLoading, setSurveyAdvancedLoading] = useState(false);
-  const surveyAdvancedFetched = useRef(false);
-
   // フィルターで変動するデータ（初期値はpropsから）
   const [segmentMonthlyData, setSegmentMonthlyData] = useState(allMonthlyData);
   const [segmentMonthlyAvgInterval, setSegmentMonthlyAvgInterval] = useState(monthlyAvgInterval);
@@ -150,17 +149,20 @@ export function AnalyticsClient({
   const [filteredHeatmapData, setFilteredHeatmapData] = useState(heatmapData);
   const [filteredLtvStats, setFilteredLtvStats] = useState(ltvStats);
 
-  // Load survey advanced stats when switching to survey tab
+  // Load survey advanced stats when switching to survey tab or when filters change
+  const lastSurveyFilter = useRef<string>("");
   useEffect(() => {
-    if (activeTab === "survey" && isStandard && !surveyAdvancedFetched.current) {
-      surveyAdvancedFetched.current = true;
+    if (activeTab === "survey" && isStandard) {
+      const filterKey = `${segment}-${dateRange}`;
+      if (lastSurveyFilter.current === filterKey && surveyAdvanced) return;
+      lastSurveyFilter.current = filterKey;
       setSurveyAdvancedLoading(true);
-      getSurveyAdvancedStats()
+      getSurveyAdvancedStats(segment, dateRange)
         .then(setSurveyAdvanced)
         .catch(console.error)
         .finally(() => setSurveyAdvancedLoading(false));
     }
-  }, [activeTab, isStandard]);
+  }, [activeTab, isStandard, segment, dateRange]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 期間フィルターのロジック: 月別データは月の文字列でクライアント側スライス
   const filterByDateRange = <T extends { month: string }>(data: T[]): T[] => {
@@ -516,72 +518,73 @@ export function AnalyticsClient({
         </button>
       </div>
 
+      {/* Shared Filter Area (standard only, visible for both tabs) */}
+      {isStandard && (
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-6">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 text-sm text-muted">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                <line x1="16" y1="2" x2="16" y2="6" />
+                <line x1="8" y1="2" x2="8" y2="6" />
+                <line x1="3" y1="10" x2="21" y2="10" />
+              </svg>
+              <span className="hidden sm:inline text-xs font-medium">期間</span>
+            </div>
+            <div className="flex gap-1.5">
+              {DATE_RANGE_OPTIONS.map((opt) => (
+                <button
+                  key={opt.key}
+                  onClick={() => handleDateRangeChange(opt.key)}
+                  disabled={isFilterLoading}
+                  className={`rounded-xl px-3 py-1.5 text-xs font-medium transition-all ${
+                    dateRange === opt.key
+                      ? "bg-accent text-white shadow-sm"
+                      : "bg-card text-muted ring-1 ring-border hover:text-foreground"
+                  } ${isFilterLoading ? "opacity-50" : ""}`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 text-sm text-muted">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                <circle cx="9" cy="7" r="4" />
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+              </svg>
+              <span className="hidden sm:inline text-xs font-medium">セグメント</span>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {SEGMENT_OPTIONS.map((opt) => (
+                <button
+                  key={opt.key}
+                  onClick={() => handleSegmentChange(opt.key)}
+                  disabled={isFilterLoading}
+                  className={`rounded-xl px-3 py-1.5 text-xs font-medium transition-all ${
+                    segment === opt.key
+                      ? "bg-accent text-white shadow-sm"
+                      : "bg-card text-muted ring-1 ring-border hover:text-foreground"
+                  } ${isFilterLoading ? "opacity-50" : ""}`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            {(isFilterLoading || surveyAdvancedLoading) && (
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Booking Tab */}
       {activeTab === "booking" && (
         <>
-          {/* フィルターエリア (standard only) */}
-          {isStandard && (
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-6">
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-2 text-sm text-muted">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-                    <line x1="16" y1="2" x2="16" y2="6" />
-                    <line x1="8" y1="2" x2="8" y2="6" />
-                    <line x1="3" y1="10" x2="21" y2="10" />
-                  </svg>
-                  <span className="hidden sm:inline text-xs font-medium">期間</span>
-                </div>
-                <div className="flex gap-1.5">
-                  {DATE_RANGE_OPTIONS.map((opt) => (
-                    <button
-                      key={opt.key}
-                      onClick={() => handleDateRangeChange(opt.key)}
-                      disabled={isFilterLoading}
-                      className={`rounded-xl px-3 py-1.5 text-xs font-medium transition-all ${
-                        dateRange === opt.key
-                          ? "bg-accent text-white shadow-sm"
-                          : "bg-card text-muted ring-1 ring-border hover:text-foreground"
-                      } ${isFilterLoading ? "opacity-50" : ""}`}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-2 text-sm text-muted">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                    <circle cx="9" cy="7" r="4" />
-                    <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-                    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                  </svg>
-                  <span className="hidden sm:inline text-xs font-medium">セグメント</span>
-                </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {SEGMENT_OPTIONS.map((opt) => (
-                    <button
-                      key={opt.key}
-                      onClick={() => handleSegmentChange(opt.key)}
-                      disabled={isFilterLoading}
-                      className={`rounded-xl px-3 py-1.5 text-xs font-medium transition-all ${
-                        segment === opt.key
-                          ? "bg-accent text-white shadow-sm"
-                          : "bg-card text-muted ring-1 ring-border hover:text-foreground"
-                      } ${isFilterLoading ? "opacity-50" : ""}`}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-                {isFilterLoading && (
-                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-accent border-t-transparent" />
-                )}
-              </div>
-            </div>
-          )}
 
           {/* KPI サマリーカード */}
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -1067,11 +1070,17 @@ export function AnalyticsClient({
           basicStats={surveyBasicStats}
           advancedStats={surveyAdvanced}
           advancedLoading={surveyAdvancedLoading}
+          segment={segment}
         />
       )}
     </div>
   );
 }
+
+// ============================================================
+// Survey trend chart tab type
+// ============================================================
+type SurveyChartTab = "csat" | "service" | "quality" | "price";
 
 // ============================================================
 // Survey Analytics Tab Component
@@ -1082,13 +1091,43 @@ function SurveyAnalyticsTab({
   basicStats,
   advancedStats,
   advancedLoading,
+  segment,
 }: {
   plan: "basic" | "standard";
   basicStats: SurveyBasicStats;
   advancedStats: SurveyAdvancedStats | null;
   advancedLoading: boolean;
+  segment: SegmentKey;
 }) {
   const isStandard = plan === "standard";
+  const [surveyChartTab, setSurveyChartTab] = useState<SurveyChartTab>("csat");
+
+  // Merge csatTrend and driverTrend into a single dataset for unified chart
+  const mergedTrendData = advancedStats?.csatTrend.map((ct) => {
+    const dt = advancedStats.driverTrend.find((d) => d.month === ct.month);
+    return {
+      month: ct.month,
+      avgCsat: ct.avgCsat,
+      responseCount: ct.responseCount,
+      avgService: dt?.avgService || 0,
+      avgQuality: dt?.avgQuality || 0,
+      avgPrice: dt?.avgPrice || 0,
+    };
+  }) || [];
+
+  const formatSurveyTick = (v: string, index: number) => {
+    const year = v.slice(0, 4);
+    const m = parseInt(v.slice(5, 7));
+    if (index === 0) return `${year}年${m}月`;
+    const prevEntry = mergedTrendData[index - 1];
+    if (prevEntry && prevEntry.month.slice(0, 4) !== year) return `${year}年${m}月`;
+    return `${m}月`;
+  };
+
+  const formatSurveyTooltipLabel = (label: unknown) => {
+    const str = String(label);
+    return `${str.slice(0, 4)}年${parseInt(str.slice(5, 7))}月`;
+  };
 
   return (
     <div className="space-y-6">
@@ -1113,7 +1152,7 @@ function SurveyAnalyticsTab({
         />
       </div>
 
-      {/* CSAT スコアバー */}
+      {/* CSAT Score Bar */}
       {basicStats.totalResponses > 0 && (
         <ChartCard title="CSATスコア" icon={<ThumbsUpIcon />}>
           <div className="flex items-center gap-4">
@@ -1140,38 +1179,6 @@ function SurveyAnalyticsTab({
         </ChartCard>
       )}
 
-      {/* 直近の回答一覧 */}
-      <ChartCard title="直近のアンケート回答" icon={<ListIcon />}>
-        {basicStats.recentResponses.length > 0 ? (
-          <div className="space-y-3">
-            {basicStats.recentResponses.map((r) => (
-              <div key={r.id} className="flex items-start gap-3 rounded-xl bg-background p-3">
-                <div className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-sm font-bold ${
-                  r.csat >= 4 ? "bg-emerald-100 text-emerald-700" :
-                  r.csat >= 3 ? "bg-amber-100 text-amber-700" :
-                  "bg-red-100 text-red-700"
-                }`}>
-                  {r.csat}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-baseline justify-between">
-                    <p className="text-sm font-medium truncate">{r.serviceName || "不明なメニュー"}</p>
-                    <span className="ml-2 shrink-0 text-[11px] text-muted">
-                      {r.bookingDate ? new Date(r.bookingDate).toLocaleDateString("ja-JP", { month: "short", day: "numeric" }) : ""}
-                    </span>
-                  </div>
-                  {r.comment && (
-                    <p className="mt-1 text-xs text-muted line-clamp-2">{r.comment}</p>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <EmptyState />
-        )}
-      </ChartCard>
-
       {/* Standard-only: Advanced Survey Analytics */}
       {isStandard ? (
         advancedLoading ? (
@@ -1181,7 +1188,7 @@ function SurveyAnalyticsTab({
           </div>
         ) : advancedStats ? (
           <>
-            {/* ドライバー別平均スコア */}
+            {/* Driver Average Scores */}
             <ChartCard title="ドライバー別平均スコア" icon={<BarChartIcon />}>
               {advancedStats.driverAverages.service > 0 || advancedStats.driverAverages.quality > 0 || advancedStats.driverAverages.price > 0 ? (
                 <div className="space-y-4">
@@ -1194,50 +1201,106 @@ function SurveyAnalyticsTab({
               )}
             </ChartCard>
 
-            {/* CSAT月次推移 */}
-            {advancedStats.csatTrend.length > 0 && (
-              <ChartCard title="CSAT月次推移" icon={<TrendIcon />}>
-                <ResponsiveContainer width="100%" height={220}>
-                  <LineChart data={advancedStats.csatTrend}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" opacity={0.5} />
-                    <XAxis dataKey="month" fontSize={12} stroke="var(--color-muted)" axisLine={false} tickLine={false}
-                      tickFormatter={(v) => { const m = parseInt(v.slice(5, 7)); return `${m}月`; }} />
-                    <YAxis domain={[1, 5]} fontSize={12} stroke="var(--color-muted)" axisLine={false} tickLine={false} />
-                    <Tooltip
-                      formatter={(value) => [`${value}`, "平均CSAT"]}
-                      labelFormatter={(label) => { const y = String(label).slice(0, 4); const m = parseInt(String(label).slice(5, 7)); return `${y}年${m}月`; }}
-                      contentStyle={{ borderRadius: "12px", border: "1px solid var(--border)", fontSize: "13px" }}
-                    />
-                    <Line type="monotone" dataKey="avgCsat" stroke="var(--accent)" strokeWidth={2.5}
-                      dot={{ r: 4, fill: "var(--card)", stroke: "var(--accent)", strokeWidth: 2 }} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </ChartCard>
+            {/* Unified Trend Chart (AreaChart matching booking tab pattern) */}
+            {mergedTrendData.length > 0 && (
+              <section className="rounded-2xl bg-card p-5 shadow-sm ring-1 ring-border/60">
+                <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-center gap-2">
+                    <TrendIcon />
+                    <h3 className="text-sm font-semibold text-foreground">推移グラフ</h3>
+                  </div>
+                </div>
+
+                {/* Chart tab switcher */}
+                <div className="mb-4 flex gap-1 overflow-x-auto rounded-xl bg-background p-1 ring-1 ring-border">
+                  {([
+                    { key: "csat" as const, label: "CSAT" },
+                    { key: "service" as const, label: "接客" },
+                    { key: "quality" as const, label: "品質" },
+                    { key: "price" as const, label: "価格" },
+                  ]).map((tab) => (
+                    <button
+                      key={tab.key}
+                      onClick={() => setSurveyChartTab(tab.key)}
+                      className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
+                        surveyChartTab === tab.key
+                          ? "bg-accent text-white shadow-sm"
+                          : "text-muted hover:text-foreground"
+                      }`}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+
+                {(() => {
+                  const chartColor =
+                    surveyChartTab === "csat" ? "var(--accent)" :
+                    surveyChartTab === "service" ? "#3b82f6" :
+                    surveyChartTab === "quality" ? "#10b981" :
+                    "#f59e0b";
+                  const chartDataKey =
+                    surveyChartTab === "csat" ? "avgCsat" :
+                    surveyChartTab === "service" ? "avgService" :
+                    surveyChartTab === "quality" ? "avgQuality" :
+                    "avgPrice";
+                  const tooltipName =
+                    surveyChartTab === "csat" ? "平均CSAT" :
+                    surveyChartTab === "service" ? "接客" :
+                    surveyChartTab === "quality" ? "品質" : "価格";
+
+                  return (
+                    <ResponsiveContainer width="100%" height={220}>
+                      <AreaChart data={mergedTrendData}>
+                        <defs>
+                          <linearGradient id="surveyChartGradient" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor={chartColor} stopOpacity={0.3} />
+                            <stop offset="95%" stopColor={chartColor} stopOpacity={0} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" opacity={0.5} />
+                        <XAxis
+                          dataKey="month"
+                          tickFormatter={formatSurveyTick}
+                          fontSize={12}
+                          stroke="var(--color-muted)"
+                          axisLine={false}
+                          tickLine={false}
+                        />
+                        <YAxis
+                          domain={[1, 5]}
+                          fontSize={12}
+                          stroke="var(--color-muted)"
+                          axisLine={false}
+                          tickLine={false}
+                        />
+                        <Tooltip
+                          formatter={(value) => [`${value}`, tooltipName]}
+                          labelFormatter={formatSurveyTooltipLabel}
+                          contentStyle={{
+                            borderRadius: "12px",
+                            border: "1px solid var(--border)",
+                            boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
+                            fontSize: "13px",
+                          }}
+                        />
+                        <Area
+                          type="monotone"
+                          dataKey={chartDataKey}
+                          stroke={chartColor}
+                          strokeWidth={2.5}
+                          fill="url(#surveyChartGradient)"
+                          dot={{ r: 4, fill: "var(--card)", stroke: chartColor, strokeWidth: 2 }}
+                          activeDot={{ r: 6, fill: chartColor, stroke: "var(--card)", strokeWidth: 2 }}
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  );
+                })()}
+              </section>
             )}
 
-            {/* ドライバー別月次推移 */}
-            {advancedStats.driverTrend.length > 0 && (
-              <ChartCard title="ドライバー別月次推移" icon={<TrendIcon />}>
-                <ResponsiveContainer width="100%" height={220}>
-                  <LineChart data={advancedStats.driverTrend}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" opacity={0.5} />
-                    <XAxis dataKey="month" fontSize={12} stroke="var(--color-muted)" axisLine={false} tickLine={false}
-                      tickFormatter={(v) => { const m = parseInt(v.slice(5, 7)); return `${m}月`; }} />
-                    <YAxis domain={[1, 5]} fontSize={12} stroke="var(--color-muted)" axisLine={false} tickLine={false} />
-                    <Tooltip
-                      contentStyle={{ borderRadius: "12px", border: "1px solid var(--border)", fontSize: "13px" }}
-                      labelFormatter={(label) => { const y = String(label).slice(0, 4); const m = parseInt(String(label).slice(5, 7)); return `${y}年${m}月`; }}
-                    />
-                    <Legend wrapperStyle={{ fontSize: "12px" }} />
-                    <Line type="monotone" dataKey="avgService" name="接客" stroke="#3b82f6" strokeWidth={2} dot={{ r: 3 }} />
-                    <Line type="monotone" dataKey="avgQuality" name="品質" stroke="#10b981" strokeWidth={2} dot={{ r: 3 }} />
-                    <Line type="monotone" dataKey="avgPrice" name="価格" stroke="#f59e0b" strokeWidth={2} dot={{ r: 3 }} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </ChartCard>
-            )}
-
-            {/* メニュー別CSAT */}
+            {/* Menu CSAT */}
             {advancedStats.menuCsat.length > 0 && (
               <ChartCard title="メニュー別CSAT" icon={<StarIcon />}>
                 <ResponsiveContainer width="100%" height={Math.max(150, advancedStats.menuCsat.length * 50)}>
@@ -1255,8 +1318,8 @@ function SurveyAnalyticsTab({
               </ChartCard>
             )}
 
-            {/* セグメント別CSAT */}
-            {advancedStats.segmentCsat.length > 0 && (
+            {/* Segment CSAT */}
+            {segment === "all" && advancedStats.segmentCsat.length > 0 && (
               <ChartCard title="顧客セグメント別CSAT" icon={<UsersIcon />}>
                 <div className="space-y-3">
                   {advancedStats.segmentCsat.map((seg, i) => (
@@ -1283,7 +1346,7 @@ function SurveyAnalyticsTab({
               </ChartCard>
             )}
 
-            {/* 属性別CSAT: 性別 */}
+            {/* Gender CSAT */}
             {advancedStats.genderCsat.length > 0 && (
               <ChartCard title="性別CSAT" icon={<UsersIcon />}>
                 <div className="space-y-3">
@@ -1308,7 +1371,7 @@ function SurveyAnalyticsTab({
               </ChartCard>
             )}
 
-            {/* 属性別CSAT: 年代 */}
+            {/* Age CSAT */}
             {advancedStats.ageCsat.length > 0 && (
               <ChartCard title="年代別CSAT" icon={<UsersIcon />}>
                 <ResponsiveContainer width="100%" height={Math.max(150, advancedStats.ageCsat.length * 50)}>
@@ -1325,6 +1388,250 @@ function SurveyAnalyticsTab({
                 </ResponsiveContainer>
               </ChartCard>
             )}
+
+            {/* ============================================================ */}
+            {/* Cross-Analysis: Booking x Survey */}
+            {/* ============================================================ */}
+
+            {/* a. Unit Price x CSAT */}
+            {advancedStats.unitPriceCsat.length > 0 && (
+              <ChartCard title="顧客単価 x CSAT分析" icon={<TagIcon />}>
+                <p className="mb-4 text-xs text-muted">顧客単価(高/中/低)ごとの平均CSATスコアを比較し、高単価顧客の満足度を可視化します</p>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  {advancedStats.unitPriceCsat.map((tier) => {
+                    const tierColors: Record<string, { bg: string; text: string; icon: string }> = {
+                      high: { bg: "bg-emerald-50", text: "text-emerald-700", icon: "text-emerald-500" },
+                      mid: { bg: "bg-blue-50", text: "text-blue-700", icon: "text-blue-500" },
+                      low: { bg: "bg-amber-50", text: "text-amber-700", icon: "text-amber-500" },
+                    };
+                    const colors = tierColors[tier.tier] || tierColors.mid;
+                    return (
+                      <div key={tier.tier} className={`rounded-xl ${colors.bg} p-4`}>
+                        <div className="flex items-center justify-between">
+                          <p className={`text-sm font-semibold ${colors.text}`}>{tier.tierLabel}</p>
+                          <span className={`text-2xl font-bold ${getCsatColor(tier.avgCsat)}`}>{tier.avgCsat}</span>
+                        </div>
+                        <p className="mt-1 text-xs text-muted">
+                          平均単価: {tier.avgUnitPrice.toLocaleString()}円
+                        </p>
+                        <p className="text-xs text-muted">{tier.count}人</p>
+                        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/60">
+                          <div
+                            className="h-full rounded-full bg-gradient-to-r from-amber-400 to-emerald-500 transition-all duration-700"
+                            style={{ width: `${(tier.avgCsat / 5) * 100}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </ChartCard>
+            )}
+
+            {/* b. New vs Repeater x CSAT */}
+            {advancedStats.newVsRepeaterCsat.length > 0 && (
+              <ChartCard title="新規 vs リピーター x CSAT" icon={<UsersIcon />}>
+                <p className="mb-4 text-xs text-muted">初回来店客とリピーターの満足度を比較します</p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {advancedStats.newVsRepeaterCsat.map((item) => {
+                    const isNew = item.type === "new";
+                    return (
+                      <div key={item.type} className={`rounded-xl p-5 ${isNew ? "bg-blue-50" : "bg-emerald-50"}`}>
+                        <div className="flex items-center gap-3">
+                          <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${isNew ? "bg-blue-100 text-blue-600" : "bg-emerald-100 text-emerald-600"}`}>
+                            {isNew ? (
+                              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                                <circle cx="9" cy="7" r="4" />
+                                <line x1="19" y1="8" x2="19" y2="14" /><line x1="22" y1="11" x2="16" y2="11" />
+                              </svg>
+                            ) : (
+                              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="17 1 21 5 17 9" /><path d="M3 11V9a4 4 0 0 1 4-4h14" />
+                                <polyline points="7 23 3 19 7 15" /><path d="M21 13v2a4 4 0 0 1-4 4H3" />
+                              </svg>
+                            )}
+                          </div>
+                          <div>
+                            <p className={`text-sm font-semibold ${isNew ? "text-blue-700" : "text-emerald-700"}`}>{item.label}</p>
+                            <p className="text-xs text-muted">{item.count}件の回答</p>
+                          </div>
+                        </div>
+                        <div className="mt-3 flex items-end gap-2">
+                          <span className={`text-3xl font-bold ${getCsatColor(item.avgCsat)}`}>{item.avgCsat}</span>
+                          <span className="mb-1 text-sm text-muted">/ 5.0</span>
+                        </div>
+                        <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/60">
+                          <div
+                            className={`h-full rounded-full transition-all duration-700 ${isNew ? "bg-blue-400" : "bg-emerald-400"}`}
+                            style={{ width: `${(item.avgCsat / 5) * 100}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </ChartCard>
+            )}
+
+            {/* c. Revenue x CSAT Correlation (Scatter) */}
+            {advancedStats.revenueCorrelation.length >= 2 && (
+              <ChartCard title="売上金額 x CSAT相関" icon={<TrendIcon />}>
+                <p className="mb-4 text-xs text-muted">月別の売上とCSATの相関を表示します。売上が上がると満足度も上がるかを可視化</p>
+                <ResponsiveContainer width="100%" height={250}>
+                  <ScatterChart margin={{ top: 10, right: 10, bottom: 10, left: 10 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" opacity={0.5} />
+                    <XAxis
+                      type="number"
+                      dataKey="revenue"
+                      name="売上"
+                      fontSize={11}
+                      stroke="var(--color-muted)"
+                      axisLine={false}
+                      tickLine={false}
+                      tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`}
+                    />
+                    <YAxis
+                      type="number"
+                      dataKey="avgCsat"
+                      name="CSAT"
+                      domain={[1, 5]}
+                      fontSize={11}
+                      stroke="var(--color-muted)"
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <ZAxis range={[80, 200]} />
+                    <Tooltip
+                      cursor={{ strokeDasharray: "3 3" }}
+                      formatter={(value, name) => {
+                        if (name === "売上") return [`${Number(value).toLocaleString()}円`, "売上"];
+                        return [`${value}`, "CSAT"];
+                      }}
+                      labelFormatter={(_, payload) => {
+                        if (payload && payload.length > 0) {
+                          const m = (payload[0].payload as { month: string }).month;
+                          return `${m.slice(0, 4)}年${parseInt(m.slice(5, 7))}月`;
+                        }
+                        return "";
+                      }}
+                      contentStyle={{ borderRadius: "12px", border: "1px solid var(--border)", fontSize: "13px" }}
+                    />
+                    <Scatter data={advancedStats.revenueCorrelation} fill="var(--accent)">
+                      {advancedStats.revenueCorrelation.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill="var(--accent)" />
+                      ))}
+                    </Scatter>
+                  </ScatterChart>
+                </ResponsiveContainer>
+              </ChartCard>
+            )}
+
+            {/* d. Menu CSAT x Booking Count Matrix */}
+            {advancedStats.menuCsatMatrix.length > 0 && (
+              <ChartCard title="メニュー別 CSAT x 予約数マトリクス" icon={<GridIcon />}>
+                <p className="mb-4 text-xs text-muted">各メニューの人気度(予約数)と満足度(CSAT)を4象限で表示します</p>
+                {(() => {
+                  const matrix = advancedStats.menuCsatMatrix;
+                  const avgCsatAll = matrix.reduce((s, m) => s + m.avgCsat, 0) / matrix.length;
+                  const avgBookings = matrix.reduce((s, m) => s + m.bookingCount, 0) / matrix.length;
+
+                  return (
+                    <div className="space-y-4">
+                      {/* Quadrant labels */}
+                      <div className="grid grid-cols-2 gap-2 text-center text-[10px] text-muted">
+                        <div className="rounded-lg bg-amber-50 p-2">
+                          <p className="font-semibold text-amber-700">要改善</p>
+                          <p>高人気 + 低CSAT</p>
+                        </div>
+                        <div className="rounded-lg bg-emerald-50 p-2">
+                          <p className="font-semibold text-emerald-700">優秀</p>
+                          <p>高人気 + 高CSAT</p>
+                        </div>
+                        <div className="rounded-lg bg-red-50 p-2">
+                          <p className="font-semibold text-red-700">見直し</p>
+                          <p>低人気 + 低CSAT</p>
+                        </div>
+                        <div className="rounded-lg bg-blue-50 p-2">
+                          <p className="font-semibold text-blue-700">ニッチ</p>
+                          <p>低人気 + 高CSAT</p>
+                        </div>
+                      </div>
+
+                      {/* Menu items positioned in quadrants */}
+                      <div className="space-y-2">
+                        {matrix.map((m) => {
+                          const isHighCsat = m.avgCsat >= avgCsatAll;
+                          const isHighBooking = m.bookingCount >= avgBookings;
+                          const quadrantColor = isHighCsat && isHighBooking ? "border-emerald-300 bg-emerald-50"
+                            : isHighCsat && !isHighBooking ? "border-blue-300 bg-blue-50"
+                            : !isHighCsat && isHighBooking ? "border-amber-300 bg-amber-50"
+                            : "border-red-300 bg-red-50";
+                          const textColor = isHighCsat && isHighBooking ? "text-emerald-700"
+                            : isHighCsat && !isHighBooking ? "text-blue-700"
+                            : !isHighCsat && isHighBooking ? "text-amber-700"
+                            : "text-red-700";
+
+                          return (
+                            <div key={m.serviceId} className={`flex items-center justify-between rounded-xl border p-3 ${quadrantColor}`}>
+                              <div className="flex-1 min-w-0">
+                                <p className={`text-sm font-medium truncate ${textColor}`}>{m.serviceName}</p>
+                              </div>
+                              <div className="flex items-center gap-4 shrink-0 ml-3">
+                                <div className="text-center">
+                                  <p className="text-xs text-muted">予約数</p>
+                                  <p className="text-sm font-bold">{m.bookingCount}</p>
+                                </div>
+                                <div className="text-center">
+                                  <p className="text-xs text-muted">CSAT</p>
+                                  <p className={`text-sm font-bold ${getCsatColor(m.avgCsat)}`}>{m.avgCsat}</p>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })()}
+              </ChartCard>
+            )}
+
+            {/* e. Word Cloud */}
+            {advancedStats.wordCloud.length > 0 && (
+              <ChartCard title="コメント ワードクラウド" icon={<ListIcon />}>
+                <p className="mb-4 text-xs text-muted">アンケートの自由記述から頻出キーワードを抽出しています</p>
+                <div className="flex flex-wrap items-center justify-center gap-2 rounded-xl bg-background p-6">
+                  {(() => {
+                    const maxCount = Math.max(...advancedStats.wordCloud.map((w) => w.count));
+                    const minCount = Math.min(...advancedStats.wordCloud.map((w) => w.count));
+                    const range = maxCount - minCount || 1;
+                    const colors = [
+                      "text-blue-600", "text-emerald-600", "text-purple-600",
+                      "text-amber-600", "text-rose-600", "text-indigo-600",
+                      "text-teal-600", "text-orange-600",
+                    ];
+
+                    return advancedStats.wordCloud.map((w, i) => {
+                      const normalized = (w.count - minCount) / range;
+                      const fontSize = 12 + normalized * 20; // 12px to 32px
+                      const opacity = 0.5 + normalized * 0.5;
+                      const color = colors[i % colors.length];
+                      return (
+                        <span
+                          key={w.word}
+                          className={`inline-block font-semibold ${color} transition-all hover:scale-110`}
+                          style={{ fontSize: `${fontSize}px`, opacity }}
+                          title={`${w.word}: ${w.count}回`}
+                        >
+                          {w.word}
+                        </span>
+                      );
+                    });
+                  })()}
+                </div>
+              </ChartCard>
+            )}
           </>
         ) : null
       ) : (
@@ -1332,7 +1639,7 @@ function SurveyAnalyticsTab({
         <div className="rounded-2xl bg-card p-6 text-center ring-1 ring-border/60">
           <p className="text-sm font-semibold">詳細なアンケート分析を見る</p>
           <p className="mt-1 text-xs text-muted">
-            CSAT推移・ドライバー分析・メニュー別分析・属性別分析が利用できます
+            CSAT推移・ドライバー分析・メニュー別分析・予約実績との相関分析が利用できます
           </p>
           <a
             href="/provider/billing"
