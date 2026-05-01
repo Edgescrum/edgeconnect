@@ -108,6 +108,7 @@ export async function getCategoryBenchmark() {
 
 /** セグメント別フィルタリングデータ型 */
 export type SegmentKey = "all" | "excellent" | "normal" | "dormant" | "at_risk";
+export type DateRangeKey = "this_month" | "this_year" | "all";
 
 export interface SegmentFilteredData {
   allMonthlyData: {
@@ -137,18 +138,44 @@ export interface SegmentFilteredData {
     hour_of_day: number;
     booking_count: number;
   }[];
+  ltvStats: {
+    avg_ltv: number;
+    segments: {
+      excellent: number;
+      normal: number;
+      dormant: number;
+      at_risk: number;
+    };
+  };
 }
 
-/** セグメントでフィルタリングされた分析データを取得 */
+/** 期間フィルターからRPC用の日付範囲を算出 */
+function computeDateRange(dateRange: DateRangeKey): { startDate: string | null; endDate: string | null } {
+  if (dateRange === "all") {
+    return { startDate: null, endDate: null };
+  }
+  const now = new Date();
+  if (dateRange === "this_month") {
+    const startDate = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+    return { startDate, endDate: now.toISOString() };
+  }
+  // this_year
+  const startDate = new Date(now.getFullYear(), 0, 1).toISOString();
+  return { startDate, endDate: now.toISOString() };
+}
+
+/** セグメント + 期間でフィルタリングされた分析データを取得 */
 export async function getAnalyticsBySegment(
-  segment: SegmentKey
+  segment: SegmentKey,
+  dateRange: DateRangeKey = "all"
 ): Promise<SegmentFilteredData> {
   const provider = await requireStandardPlan();
   const supabase = await createClient();
 
   const segmentParam = segment === "all" ? null : segment;
+  const { startDate, endDate } = computeDateRange(dateRange);
 
-  // Critical 2: セグメントの顧客IDリストを1回だけ取得し、各RPCに渡す
+  // セグメントの顧客IDリストを1回だけ取得し、各RPCに渡す
   let customerIds: number[] | null = null;
   if (segmentParam) {
     const { data: segmentData, error: segmentError } = await supabase.rpc(
@@ -174,6 +201,7 @@ export async function getAnalyticsBySegment(
     avgIntervalResult,
     menusResult,
     heatmapResult,
+    ltvResult,
   ] = await Promise.all([
     supabase.rpc("get_monthly_stats_filtered", {
       p_provider_id: provider.id,
@@ -188,14 +216,26 @@ export async function getAnalyticsBySegment(
     supabase.rpc("get_avg_booking_interval_filtered", {
       p_provider_id: provider.id,
       p_customer_ids: customerIds,
+      p_start_date: startDate,
+      p_end_date: endDate,
     }),
     supabase.rpc("get_popular_menus_filtered", {
       p_provider_id: provider.id,
       p_customer_ids: customerIds,
+      p_start_date: startDate,
+      p_end_date: endDate,
     }),
     supabase.rpc("get_booking_heatmap_filtered", {
       p_provider_id: provider.id,
       p_customer_ids: customerIds,
+      p_start_date: startDate,
+      p_end_date: endDate,
+    }),
+    supabase.rpc("get_ltv_stats_filtered", {
+      p_provider_id: provider.id,
+      p_customer_ids: customerIds,
+      p_start_date: startDate,
+      p_end_date: endDate,
     }),
   ]);
 
@@ -214,6 +254,9 @@ export async function getAnalyticsBySegment(
   }
   if (heatmapResult.error) {
     console.error("[getAnalyticsBySegment] get_booking_heatmap error:", heatmapResult.error);
+  }
+  if (ltvResult.error) {
+    console.error("[getAnalyticsBySegment] get_ltv_stats_filtered error:", ltvResult.error);
   }
 
   const allMonthlyData = (monthly24Result.data || []).map(
@@ -253,6 +296,10 @@ export async function getAnalyticsBySegment(
   // avgBookingInterval は JSON を返す RPC なので data がオブジェクト
   const avgData = avgIntervalResult.data as Record<string, unknown> | null;
 
+  // ltvStats は JSON を返す RPC
+  const ltvData = ltvResult.data as Record<string, unknown> | null;
+  const ltvSegments = (ltvData?.segments ?? {}) as Record<string, unknown>;
+
   return {
     allMonthlyData,
     monthlyAvgInterval,
@@ -269,6 +316,17 @@ export async function getAnalyticsBySegment(
         },
     popularMenus,
     heatmapData,
+    ltvStats: ltvData
+      ? {
+          avg_ltv: Number(ltvData.avg_ltv ?? 0),
+          segments: {
+            excellent: Number(ltvSegments.excellent ?? 0),
+            normal: Number(ltvSegments.normal ?? 0),
+            dormant: Number(ltvSegments.dormant ?? 0),
+            at_risk: Number(ltvSegments.at_risk ?? 0),
+          },
+        }
+      : { avg_ltv: 0, segments: { excellent: 0, normal: 0, dormant: 0, at_risk: 0 } },
   };
 }
 
