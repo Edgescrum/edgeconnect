@@ -14,7 +14,7 @@ export default async function ProviderPage() {
   const supabase = await createClient();
   const { data: provider } = await supabase
     .from("providers")
-    .select("id, slug, name, icon_url")
+    .select("id, slug, name, icon_url, plan")
     .eq("user_id", user.id)
     .single();
 
@@ -30,11 +30,14 @@ export default async function ProviderPage() {
   const tomorrowStart = new Date(Date.UTC(jstYear, jstMonth, jstDate + 1) - 9 * 60 * 60 * 1000).toISOString();
   const weekEnd = new Date(Date.UTC(jstYear, jstMonth, jstDate + 7) - 9 * 60 * 60 * 1000).toISOString();
 
+  const isStandard = provider.plan !== "basic";
+
   const [
     { count: todayCount },
     { count: weekCount },
     { count: serviceCount },
     { data: settings },
+    monthlyStatsResult,
   ] = await Promise.all([
     supabase
       .from("bookings")
@@ -59,6 +62,13 @@ export default async function ProviderPage() {
       .select("business_hours, profile_completed, schedule_completed, qrcode_viewed")
       .eq("provider_id", provider.id)
       .single(),
+    isStandard
+      ? supabase.rpc("get_monthly_stats_filtered", {
+          p_provider_id: provider.id,
+          p_months: 2,
+          p_customer_ids: null,
+        })
+      : Promise.resolve(null),
   ]);
 
   const onboarding = {
@@ -68,12 +78,32 @@ export default async function ProviderPage() {
     hasQrcode: settings?.qrcode_viewed ?? false,
   };
 
+  // ダッシュボードサマリーの計算
+  let dashboardSummary = null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const statsData = (monthlyStatsResult as any)?.data;
+  if (isStandard && statsData && statsData.length > 0) {
+    const thisMonth = statsData[statsData.length - 1];
+    const lastMonth = statsData.length > 1 ? statsData[statsData.length - 2] : null;
+    dashboardSummary = {
+      bookingCount: thisMonth.booking_count || 0,
+      revenue: thisMonth.revenue || 0,
+      bookingCountDiff: lastMonth
+        ? (thisMonth.booking_count || 0) - (lastMonth.booking_count || 0)
+        : null,
+      revenueDiff: lastMonth
+        ? (thisMonth.revenue || 0) - (lastMonth.revenue || 0)
+        : null,
+    };
+  }
+
   return (
     <ProviderDashboard
       provider={provider}
       todayCount={todayCount || 0}
       weekCount={weekCount || 0}
       onboarding={onboarding}
+      dashboardSummary={dashboardSummary}
     />
   );
 }
