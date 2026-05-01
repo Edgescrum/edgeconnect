@@ -33,27 +33,6 @@ function formatFullDate(dateStr: string) {
   return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}(${days[d.getDay()]})`;
 }
 
-function CategoryScoreRow({ label, value }: { label: string; value: number }) {
-  const pct = (value / 5) * 100;
-  return (
-    <div className="flex items-center gap-2.5 text-xs">
-      <span className="w-7 shrink-0 font-medium text-foreground">{label}</span>
-      <span className="text-amber-500">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" stroke="none">
-          <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-        </svg>
-      </span>
-      <span className="w-6 shrink-0 font-bold text-foreground">{value}</span>
-      <div className="h-1 flex-1 rounded-full bg-gray-100">
-        <div
-          className="h-1 rounded-full bg-amber-400/70 transition-all"
-          style={{ width: `${pct}%` }}
-        />
-      </div>
-    </div>
-  );
-}
-
 function DriverBadge({ label, value }: { label: string; value: number }) {
   const colorMap: Record<number, string> = {
     1: "bg-red-50 text-red-600 border-red-100",
@@ -120,12 +99,6 @@ export function ReviewManagementClient({ reviews: initialReviews }: { reviews: P
 
   const avgCsat = (reviews.reduce((sum, r) => sum + r.csat, 0) / reviews.length).toFixed(1);
 
-  // Distribution for star chart
-  const distribution = [0, 0, 0, 0, 0];
-  for (const r of reviews) {
-    if (r.csat >= 1 && r.csat <= 5) distribution[r.csat - 1]++;
-  }
-
   return (
     <div className="mt-4 space-y-5 sm:mt-6">
       {/* Summary cards */}
@@ -146,71 +119,6 @@ export function ReviewManagementClient({ reviews: initialReviews }: { reviews: P
         <div className="rounded-2xl border border-border bg-card p-4 text-center shadow-sm">
           <p className="text-3xl font-bold tracking-tight">{publicReviewCount}</p>
           <p className="mt-1 text-xs text-muted">公開口コミ</p>
-        </div>
-      </div>
-
-      {/* Driver averages */}
-      {(() => {
-        const driverServiceAvg = reviews.filter(r => r.driverService != null).length > 0
-          ? (reviews.filter(r => r.driverService != null).reduce((sum, r) => sum + (r.driverService || 0), 0) / reviews.filter(r => r.driverService != null).length)
-          : null;
-        const driverQualityAvg = reviews.filter(r => r.driverQuality != null).length > 0
-          ? (reviews.filter(r => r.driverQuality != null).reduce((sum, r) => sum + (r.driverQuality || 0), 0) / reviews.filter(r => r.driverQuality != null).length)
-          : null;
-        const driverPriceAvg = reviews.filter(r => r.driverPrice != null).length > 0
-          ? (reviews.filter(r => r.driverPrice != null).reduce((sum, r) => sum + (r.driverPrice || 0), 0) / reviews.filter(r => r.driverPrice != null).length)
-          : null;
-
-        if (driverServiceAvg == null && driverQualityAvg == null && driverPriceAvg == null) return null;
-
-        return (
-          <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
-            <p className="mb-3 text-xs font-semibold text-muted">カテゴリ別平均スコア</p>
-            <div className="space-y-1.5">
-              {driverServiceAvg != null && (
-                <CategoryScoreRow label="接客" value={Number(driverServiceAvg.toFixed(1))} />
-              )}
-              {driverQualityAvg != null && (
-                <CategoryScoreRow label="品質" value={Number(driverQualityAvg.toFixed(1))} />
-              )}
-              {driverPriceAvg != null && (
-                <CategoryScoreRow label="価格" value={Number(driverPriceAvg.toFixed(1))} />
-              )}
-            </div>
-          </div>
-        );
-      })()}
-
-      {/* Star distribution */}
-      <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
-        <p className="mb-2.5 text-xs font-semibold text-muted">スコア分布</p>
-        <div className="space-y-1">
-          {[5, 4, 3, 2, 1].map((star) => {
-            const count = distribution[star - 1];
-            const maxCount = Math.max(...distribution, 1);
-            const pct = (count / maxCount) * 100;
-            return (
-              <div key={star} className="flex items-center gap-1.5 text-[11px]">
-                <span className="flex w-8 shrink-0 items-center gap-0.5 text-muted">
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="#f59e0b" stroke="none">
-                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-                  </svg>
-                  {star}
-                </span>
-                <div className="h-3 flex-1 overflow-hidden rounded bg-gray-50">
-                  <div
-                    className={`h-3 rounded transition-all ${
-                      star >= 4 ? "bg-emerald-400" : star === 3 ? "bg-amber-400" : "bg-orange-300"
-                    }`}
-                    style={{ width: count > 0 ? `${pct}%` : "0%" }}
-                  />
-                </div>
-                <span className="w-7 shrink-0 text-right font-medium text-foreground">
-                  {count}<span className="text-muted">件</span>
-                </span>
-              </div>
-            );
-          })}
         </div>
       </div>
 
