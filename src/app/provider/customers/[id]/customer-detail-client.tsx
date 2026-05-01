@@ -4,6 +4,7 @@ import { useState, useTransition, useCallback } from "react";
 import Link from "next/link";
 import { saveCustomerNotes } from "@/lib/actions/customer";
 import { MonthlyVisitsChart } from "./monthly-visits-chart";
+import type { CustomerSurveyResponse, CustomerSurveyKpi } from "@/lib/actions/survey";
 
 interface CustomerDetail {
   user_id: number;
@@ -72,6 +73,8 @@ export function CustomerDetailClient({
   customerUserId,
   customerAverages,
   menuBreakdown,
+  surveyResponses,
+  surveyKpi,
 }: {
   detail: CustomerDetail;
   monthlyVisits: MonthlyVisit[];
@@ -81,6 +84,8 @@ export function CustomerDetailClient({
   customerUserId: number;
   customerAverages?: CustomerAverages | null;
   menuBreakdown: MenuBreakdown[];
+  surveyResponses: CustomerSurveyResponse[];
+  surveyKpi: CustomerSurveyKpi | null;
 }) {
   const [memo, setMemo] = useState(notes.memo || "");
   const [customFields, setCustomFields] = useState<Record<string, string>>(
@@ -89,6 +94,7 @@ export function CustomerDetailClient({
   const [isPending, startTransition] = useTransition();
   const [saved, setSaved] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [surveyPage, setSurveyPage] = useState(1);
 
   const handleSave = useCallback(() => {
     startTransition(async () => {
@@ -163,6 +169,15 @@ export function CustomerDetailClient({
   // メニュー内訳の合計
   const totalMenuBookings = menuBreakdown.reduce((s, m) => s + m.booking_count, 0);
   const totalMenuRevenue = menuBreakdown.reduce((s, m) => s + m.total_revenue, 0);
+
+  // アンケートページネーション
+  const SURVEY_PER_PAGE = 5;
+  const surveyTotalPages = Math.ceil(surveyResponses.length / SURVEY_PER_PAGE);
+  const paginatedSurveys = surveyResponses.slice(
+    (surveyPage - 1) * SURVEY_PER_PAGE,
+    surveyPage * SURVEY_PER_PAGE
+  );
+  const showSurveyPagination = surveyResponses.length > SURVEY_PER_PAGE;
 
   return (
     <div className="space-y-6">
@@ -415,6 +430,159 @@ export function CustomerDetailClient({
         </section>
       )}
 
+      {/* アンケートKPI */}
+      {surveyKpi && (
+        <section className="rounded-2xl bg-card p-5 ring-1 ring-border/60 shadow-sm">
+          <div className="flex items-center gap-2 mb-4">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+            </svg>
+            <h3 className="text-sm font-semibold text-foreground">アンケート評価</h3>
+            <span className="ml-auto text-xs text-muted">{surveyKpi.totalResponses}件の回答</span>
+          </div>
+
+          {/* 平均CSAT */}
+          <div className="mb-4 flex items-center gap-3">
+            <div className="flex items-center gap-1">
+              <span className="text-2xl font-bold tracking-tight">{surveyKpi.avgCsat}</span>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="#f59e0b" stroke="none" className="mt-0.5">
+                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+              </svg>
+            </div>
+            <span className="text-xs text-muted">平均スコア</span>
+          </div>
+
+          {/* カテゴリ別平均 */}
+          {(surveyKpi.avgDriverService != null || surveyKpi.avgDriverQuality != null || surveyKpi.avgDriverPrice != null) && (
+            <div className="space-y-1.5">
+              <p className="mb-2 text-xs font-semibold text-muted">カテゴリ別平均スコア</p>
+              {surveyKpi.avgDriverService != null && (
+                <SurveyCategoryRow label="接客" value={surveyKpi.avgDriverService} />
+              )}
+              {surveyKpi.avgDriverQuality != null && (
+                <SurveyCategoryRow label="品質" value={surveyKpi.avgDriverQuality} />
+              )}
+              {surveyKpi.avgDriverPrice != null && (
+                <SurveyCategoryRow label="価格" value={surveyKpi.avgDriverPrice} />
+              )}
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* アンケート回答一覧 */}
+      {surveyResponses.length > 0 && (
+        <section className="rounded-2xl bg-card p-5 ring-1 ring-border/60 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+              </svg>
+              <h3 className="text-sm font-semibold text-foreground">アンケート回答一覧</h3>
+            </div>
+            <span className="text-xs text-muted">{surveyResponses.length}件</span>
+          </div>
+
+          <div className="space-y-3">
+            {paginatedSurveys.map((survey) => (
+              <div key={survey.id} className="rounded-xl border border-border bg-background p-4 space-y-2.5">
+                {/* ヘッダー: サービス名 + 日付 */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    {survey.serviceName && (
+                      <span className="text-xs text-muted">{survey.serviceName}</span>
+                    )}
+                    {survey.bookingDate && (
+                      <span className="text-xs text-muted">{formatDate(survey.bookingDate)}</span>
+                    )}
+                  </div>
+                  <span className="text-[11px] text-muted">{formatDate(survey.createdAt)}</span>
+                </div>
+
+                {/* CSAT */}
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center gap-0.5">
+                    {[1, 2, 3, 4, 5].map((i) => (
+                      <svg key={i} width="14" height="14" viewBox="0 0 24 24" fill={i <= survey.csat ? "#f59e0b" : "#e5e7eb"} stroke="none">
+                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                      </svg>
+                    ))}
+                  </span>
+                  <span className="text-sm font-semibold">{survey.csat}.0</span>
+                </div>
+
+                {/* ドライバーバッジ */}
+                {(survey.driverService != null || survey.driverQuality != null || survey.driverPrice != null) && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {survey.driverService != null && (
+                      <SurveyDriverBadge label="接客" value={survey.driverService} />
+                    )}
+                    {survey.driverQuality != null && (
+                      <SurveyDriverBadge label="品質" value={survey.driverQuality} />
+                    )}
+                    {survey.driverPrice != null && (
+                      <SurveyDriverBadge label="価格" value={survey.driverPrice} />
+                    )}
+                  </div>
+                )}
+
+                {/* コメント */}
+                {survey.comment && (
+                  <div>
+                    <p className="mb-0.5 text-[10px] font-medium uppercase tracking-wider text-muted">感想</p>
+                    <p className="text-sm leading-relaxed text-foreground">{survey.comment}</p>
+                  </div>
+                )}
+
+                {/* 口コミ */}
+                {survey.reviewText && (
+                  <div className="rounded-lg bg-accent/5 p-2.5">
+                    <div className="mb-0.5 flex items-center gap-1.5">
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-accent">
+                        <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+                      </svg>
+                      <span className="text-[10px] font-medium uppercase tracking-wider text-accent">
+                        口コミ ({survey.reviewPublic ? "公開" : "非公開"})
+                      </span>
+                    </div>
+                    <p className="text-sm leading-relaxed">{survey.reviewText}</p>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* ページネーション */}
+          {showSurveyPagination && (
+            <div className="mt-4 flex items-center justify-between border-t border-border/50 pt-4">
+              <button
+                onClick={() => setSurveyPage((p) => Math.max(1, p - 1))}
+                disabled={surveyPage === 1}
+                className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium text-muted hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="15 18 9 12 15 6" />
+                </svg>
+                前へ
+              </button>
+              <span className="text-xs text-muted">
+                {surveyPage} / {surveyTotalPages}
+              </span>
+              <button
+                onClick={() => setSurveyPage((p) => Math.min(surveyTotalPages, p + 1))}
+                disabled={surveyPage === surveyTotalPages}
+                className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium text-muted hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              >
+                次へ
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="9 6 15 12 9 18" />
+                </svg>
+              </button>
+            </div>
+          )}
+        </section>
+      )}
+
       {/* 月別来店頻度 */}
       <section className="rounded-2xl bg-card p-5 ring-1 ring-border/60 shadow-sm">
         <div className="flex items-center gap-2 mb-4">
@@ -644,6 +812,44 @@ export function CustomerDetailClient({
         </div>
       </section>
     </div>
+  );
+}
+
+function SurveyCategoryRow({ label, value }: { label: string; value: number }) {
+  const pct = (value / 5) * 100;
+  return (
+    <div className="flex items-center gap-2.5 text-xs">
+      <span className="w-7 shrink-0 font-medium text-foreground">{label}</span>
+      <span className="text-amber-500">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+          <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+        </svg>
+      </span>
+      <span className="w-6 shrink-0 font-bold text-foreground">{value}</span>
+      <div className="h-1 flex-1 rounded-full bg-gray-100">
+        <div
+          className="h-1 rounded-full bg-amber-400/70 transition-all"
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function SurveyDriverBadge({ label, value }: { label: string; value: number }) {
+  const colorMap: Record<number, string> = {
+    1: "bg-red-50 text-red-600 border-red-100",
+    2: "bg-orange-50 text-orange-600 border-orange-100",
+    3: "bg-yellow-50 text-yellow-700 border-yellow-100",
+    4: "bg-emerald-50 text-emerald-600 border-emerald-100",
+    5: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  };
+  const cls = colorMap[value] || "bg-gray-50 text-gray-600 border-gray-100";
+  return (
+    <span className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-medium ${cls}`}>
+      {label}
+      <span className="font-bold">{value}</span>
+    </span>
   );
 }
 

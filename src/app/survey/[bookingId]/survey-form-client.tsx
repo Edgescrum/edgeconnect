@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { submitSurvey, type SurveyBookingDetail } from "@/lib/actions/survey";
+import { submitSurvey, type SurveyBookingDetail, type SurveyResponseData } from "@/lib/actions/survey";
 import { SURVEY_QUESTIONS, getQ2Text, getQ3Text, RATING_LABELS } from "@/lib/constants/survey-questions";
 import { ProviderAvatar } from "@/components/ProviderAvatar";
 
@@ -11,10 +11,12 @@ function RatingSlider({
   label,
   value,
   onChange,
+  disabled,
 }: {
   label: string;
   value: number;
   onChange: (v: number) => void;
+  disabled?: boolean;
 }) {
   return (
     <div className="space-y-3">
@@ -24,8 +26,9 @@ function RatingSlider({
           <button
             key={n}
             type="button"
-            onClick={() => onChange(n)}
-            className="flex flex-col items-center gap-1"
+            onClick={() => !disabled && onChange(n)}
+            disabled={disabled}
+            className={`flex flex-col items-center gap-1 ${disabled ? "cursor-default" : ""}`}
           >
             <span className={`text-[10px] leading-tight ${value === n ? "text-accent font-semibold" : "text-muted"}`}>
               {RATING_LABELS[n]}
@@ -34,7 +37,7 @@ function RatingSlider({
               className={`flex h-11 sm:h-12 w-full items-center justify-center rounded-xl text-sm sm:text-base font-bold transition-all ${
                 value === n
                   ? "bg-accent text-white shadow-md scale-105"
-                  : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+                  : "bg-gray-100 text-gray-500" + (disabled ? "" : " hover:bg-gray-200")
               }`}
             >
               {n}
@@ -52,15 +55,16 @@ function formatDate(dateStr: string) {
   return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}(${days[d.getDay()]}) ${d.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })}`;
 }
 
-export function SurveyFormClient({ detail }: { detail: SurveyBookingDetail }) {
+export function SurveyFormClient({ detail, readOnly = false }: { detail: SurveyBookingDetail; readOnly?: boolean }) {
   const router = useRouter();
-  const [csat, setCsat] = useState(0);
-  const [driverService, setDriverService] = useState(0);
-  const [driverQuality, setDriverQuality] = useState(0);
-  const [driverPrice, setDriverPrice] = useState(0);
-  const [comment, setComment] = useState("");
-  const [reviewText, setReviewText] = useState("");
-  const [reviewPublic, setReviewPublic] = useState(false);
+  const rd = detail.responseData;
+  const [csat, setCsat] = useState(rd?.csat ?? 0);
+  const [driverService, setDriverService] = useState(rd?.driverService ?? 0);
+  const [driverQuality, setDriverQuality] = useState(rd?.driverQuality ?? 0);
+  const [driverPrice, setDriverPrice] = useState(rd?.driverPrice ?? 0);
+  const [comment, setComment] = useState(rd?.comment ?? "");
+  const [reviewText, setReviewText] = useState(rd?.reviewText ?? "");
+  const [reviewPublic, setReviewPublic] = useState(rd?.reviewPublic ?? false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -156,6 +160,48 @@ export function SurveyFormClient({ detail }: { detail: SurveyBookingDetail }) {
           </div>
         </div>
 
+        {/* readOnly モード: 回答済みメッセージ */}
+        {readOnly && (
+          <div className="rounded-xl border border-emerald-100 bg-emerald-50/60 p-4">
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-100">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-emerald-600" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-emerald-900">回答済みです</p>
+                <p className="text-xs leading-relaxed text-emerald-700">
+                  ご回答ありがとうございました。以下は回答内容の確認です。
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 目的・データ取り扱いメッセージ (未回答時のみ表示) */}
+        {!readOnly && (
+          <div className="rounded-xl border border-sky-100 bg-sky-50/60 p-4">
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-sky-100">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-sky-600" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="12" y1="16" x2="12" y2="12" />
+                  <line x1="12" y1="8" x2="12.01" y2="8" />
+                </svg>
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-sky-900">
+                  このアンケートはサービス品質の向上のために活用させていただきます
+                </p>
+                <p className="text-xs leading-relaxed text-sky-700">
+                  回答データはサービス改善以外の目的で使用することはありません。率直なご意見をお聞かせください。
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-8">
           {/* Q1: CSAT */}
           <div className="rounded-xl border border-border bg-card p-4 sm:p-6">
@@ -164,6 +210,7 @@ export function SurveyFormClient({ detail }: { detail: SurveyBookingDetail }) {
               label={SURVEY_QUESTIONS.q1}
               value={csat}
               onChange={setCsat}
+              disabled={readOnly}
             />
           </div>
 
@@ -174,6 +221,7 @@ export function SurveyFormClient({ detail }: { detail: SurveyBookingDetail }) {
               label={getQ2Text(detail.providerCategory)}
               value={driverService}
               onChange={setDriverService}
+              disabled={readOnly}
             />
           </div>
 
@@ -184,6 +232,7 @@ export function SurveyFormClient({ detail }: { detail: SurveyBookingDetail }) {
               label={getQ3Text(detail.providerCategory)}
               value={driverQuality}
               onChange={setDriverQuality}
+              disabled={readOnly}
             />
           </div>
 
@@ -194,6 +243,7 @@ export function SurveyFormClient({ detail }: { detail: SurveyBookingDetail }) {
               label={SURVEY_QUESTIONS.q4}
               value={driverPrice}
               onChange={setDriverPrice}
+              disabled={readOnly}
             />
           </div>
 
@@ -203,10 +253,11 @@ export function SurveyFormClient({ detail }: { detail: SurveyBookingDetail }) {
             <p className="text-sm font-medium leading-relaxed">{SURVEY_QUESTIONS.q5}</p>
             <textarea
               value={comment}
-              onChange={(e) => setComment(e.target.value)}
+              onChange={(e) => !readOnly && setComment(e.target.value)}
+              readOnly={readOnly}
               placeholder="任意: ご意見・ご感想をお聞かせください"
               rows={3}
-              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm placeholder:text-muted focus:border-accent focus:outline-none"
+              className={`w-full rounded-lg border border-border bg-background px-3 py-2 text-sm placeholder:text-muted focus:border-accent focus:outline-none ${readOnly ? "cursor-default opacity-80" : ""}`}
             />
           </div>
 
@@ -216,12 +267,13 @@ export function SurveyFormClient({ detail }: { detail: SurveyBookingDetail }) {
             <p className="text-sm font-medium leading-relaxed">{SURVEY_QUESTIONS.q6}</p>
             <textarea
               value={reviewText}
-              onChange={(e) => setReviewText(e.target.value)}
+              onChange={(e) => !readOnly && setReviewText(e.target.value)}
+              readOnly={readOnly}
               placeholder="任意: おすすめコメントをお願いします"
               rows={3}
-              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm placeholder:text-muted focus:border-accent focus:outline-none"
+              className={`w-full rounded-lg border border-border bg-background px-3 py-2 text-sm placeholder:text-muted focus:border-accent focus:outline-none ${readOnly ? "cursor-default opacity-80" : ""}`}
             />
-            {reviewText && (
+            {reviewText && !readOnly && (
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
@@ -232,26 +284,41 @@ export function SurveyFormClient({ detail }: { detail: SurveyBookingDetail }) {
                 <span className="text-sm">このコメントを公開してもよいですか？</span>
               </label>
             )}
-            {reviewPublic && reviewText && (
+            {reviewText && readOnly && reviewPublic && (
+              <p className="text-xs text-muted">公開許可済み</p>
+            )}
+            {reviewPublic && reviewText && !readOnly && (
               <p className="text-xs text-muted">
                 公開された口コミはプロフィールページに匿名で表示されます。お名前は公開されません。
               </p>
             )}
           </div>
 
-          {error && (
+          {error && !readOnly && (
             <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600">
               {error}
             </div>
           )}
 
-          <button
-            type="submit"
-            disabled={!isValid || submitting}
-            className="w-full rounded-xl bg-accent py-3 text-sm font-semibold text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {submitting ? "送信中..." : "回答を送信する"}
-          </button>
+          {!readOnly && (
+            <button
+              type="submit"
+              disabled={!isValid || submitting}
+              className="w-full rounded-xl bg-accent py-3 text-sm font-semibold text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {submitting ? "送信中..." : "回答を送信する"}
+            </button>
+          )}
+
+          {readOnly && (
+            <button
+              type="button"
+              onClick={() => router.push("/surveys")}
+              className="w-full rounded-xl bg-gray-100 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-gray-200"
+            >
+              アンケート一覧に戻る
+            </button>
+          )}
         </form>
       </div>
     </main>

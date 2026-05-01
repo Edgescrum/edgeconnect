@@ -196,6 +196,16 @@ export async function getPendingSurveyCount(): Promise<number> {
   return count;
 }
 
+export interface SurveyResponseData {
+  csat: number;
+  driverService: number;
+  driverQuality: number;
+  driverPrice: number;
+  comment: string | null;
+  reviewText: string | null;
+  reviewPublic: boolean;
+}
+
 export interface SurveyBookingDetail {
   bookingId: string;
   providerName: string;
@@ -209,6 +219,7 @@ export interface SurveyBookingDetail {
   expiresAt: string;
   isExpired: boolean;
   isResponded: boolean;
+  responseData: SurveyResponseData | null;
 }
 
 /**
@@ -242,12 +253,25 @@ export async function getSurveyDetail(bookingId: string): Promise<SurveyBookingD
   const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
   const expiresAt = new Date(endAt.getTime() + sevenDaysMs);
 
-  // 回答済みチェック
+  // 回答済みチェック + 回答データ取得
   const { data: existingResponse } = await supabase
     .from("survey_responses")
-    .select("id")
+    .select("id, csat, driver_service, driver_quality, driver_price, comment, review_text, review_public")
     .eq("booking_id", bookingId)
     .single();
+
+  let responseData: SurveyResponseData | null = null;
+  if (existingResponse) {
+    responseData = {
+      csat: existingResponse.csat as number,
+      driverService: existingResponse.driver_service as number,
+      driverQuality: existingResponse.driver_quality as number,
+      driverPrice: existingResponse.driver_price as number,
+      comment: existingResponse.comment as string | null,
+      reviewText: existingResponse.review_text as string | null,
+      reviewPublic: existingResponse.review_public as boolean,
+    };
+  }
 
   return {
     bookingId: booking.id as string,
@@ -262,6 +286,7 @@ export async function getSurveyDetail(bookingId: string): Promise<SurveyBookingD
     expiresAt: expiresAt.toISOString(),
     isExpired: new Date() > expiresAt,
     isResponded: !!existingResponse,
+    responseData,
   };
 }
 
@@ -432,6 +457,7 @@ export async function getProviderReviews(): Promise<ProviderReviewItem[]> {
       id, csat, review_text, comment,
       driver_service, driver_quality, driver_price,
       review_public, review_visible, created_at,
+      customer_user_id,
       users:customer_user_id ( display_name ),
       bookings:booking_id (
         start_at,
@@ -443,6 +469,18 @@ export async function getProviderReviews(): Promise<ProviderReviewItem[]> {
 
   if (!reviews) return [];
 
+  // customer_notes から customer_name を一括取得
+  const customerUserIds = [...new Set(reviews.map((r) => r.customer_user_id as number))];
+  const { data: customerNotes } = await supabase
+    .from("customer_notes")
+    .select("customer_user_id, customer_name")
+    .eq("provider_id", provider.id)
+    .in("customer_user_id", customerUserIds);
+
+  const customerNameMap = new Map<number, string | null>(
+    (customerNotes || []).map((n) => [n.customer_user_id as number, n.customer_name as string | null])
+  );
+
   return reviews.map((r) => {
     const customerUser = Array.isArray(r.users) ? r.users[0] : r.users;
     const booking = Array.isArray(r.bookings) ? r.bookings[0] : r.bookings;
@@ -451,6 +489,9 @@ export async function getProviderReviews(): Promise<ProviderReviewItem[]> {
         ? ((booking as Record<string, unknown>).services as Record<string, unknown>[])[0]
         : (booking as Record<string, unknown>).services
       : null;
+
+    const displayName = (customerUser as Record<string, unknown>)?.display_name as string | null;
+    const customerName = customerNameMap.get(r.customer_user_id as number) || null;
 
     return {
       id: r.id as number,
@@ -462,10 +503,107 @@ export async function getProviderReviews(): Promise<ProviderReviewItem[]> {
       driverPrice: r.driver_price as number | null,
       reviewPublic: r.review_public as boolean,
       reviewVisible: r.review_visible as boolean,
-      customerName: (customerUser as Record<string, unknown>)?.display_name as string | null,
+      customerName: customerName || displayName,
       serviceName: (service as Record<string, unknown>)?.name as string | null,
       bookingDate: (booking as Record<string, unknown>)?.start_at as string | null,
       createdAt: r.created_at as string,
     };
   });
+}
+
+export interface CustomerSurveyResponse {
+  id: number;
+  csat: number;
+  driverService: number | null;
+  driverQuality: number | null;
+  driverPrice: number | null;
+  comment: string | null;
+  reviewText: string | null;
+  reviewPublic: boolean;
+  serviceName: string | null;
+  bookingDate: string | null;
+  createdAt: string;
+}
+
+export interface CustomerSurveyKpi {
+  avgCsat: number;
+  avgDriverService: number | null;
+  avgDriverQuality: number | null;
+  avgDriverPrice: number | null;
+  totalResponses: number;
+}
+
+/**
+ * 顧客詳細ページ用: 特定顧客のアンケート回答一覧 + KPI を取得
+ */
+export async function getCustomerSurveyData(
+  providerId: number,
+  customerUserId: number
+): Promise<{ responses: CustomerSurveyResponse[]; kpi: CustomerSurveyKpi | null }> {
+  const supabase = createAdminClient();
+
+  const { data: responses } = await supabase
+    .from("survey_responses")
+    .select(`
+      id, csat, driver_service, driver_quality, driver_price,
+      comment, review_text, review_public, created_at,
+      bookings:booking_id (
+        start_at,
+        services:service_id ( name )
+      )
+    `)
+    .eq("provider_id", providerId)
+    .eq("customer_user_id", customerUserId)
+    .order("created_at", { ascending: false });
+
+  if (!responses || responses.length === 0) {
+    return { responses: [], kpi: null };
+  }
+
+  const mapped: CustomerSurveyResponse[] = responses.map((r) => {
+    const booking = Array.isArray(r.bookings) ? r.bookings[0] : r.bookings;
+    const service = booking
+      ? Array.isArray((booking as Record<string, unknown>).services)
+        ? ((booking as Record<string, unknown>).services as Record<string, unknown>[])[0]
+        : (booking as Record<string, unknown>).services
+      : null;
+
+    return {
+      id: r.id as number,
+      csat: r.csat as number,
+      driverService: r.driver_service as number | null,
+      driverQuality: r.driver_quality as number | null,
+      driverPrice: r.driver_price as number | null,
+      comment: r.comment as string | null,
+      reviewText: r.review_text as string | null,
+      reviewPublic: r.review_public as boolean,
+      serviceName: (service as Record<string, unknown>)?.name as string | null,
+      bookingDate: (booking as Record<string, unknown>)?.start_at as string | null,
+      createdAt: r.created_at as string,
+    };
+  });
+
+  // KPI 計算
+  const totalResponses = mapped.length;
+  const avgCsat = mapped.reduce((sum, r) => sum + r.csat, 0) / totalResponses;
+
+  const serviceScores = mapped.filter((r) => r.driverService != null);
+  const qualityScores = mapped.filter((r) => r.driverQuality != null);
+  const priceScores = mapped.filter((r) => r.driverPrice != null);
+
+  const kpi: CustomerSurveyKpi = {
+    avgCsat: Number(avgCsat.toFixed(1)),
+    avgDriverService: serviceScores.length > 0
+      ? Number((serviceScores.reduce((sum, r) => sum + (r.driverService || 0), 0) / serviceScores.length).toFixed(1))
+      : null,
+    avgDriverQuality: qualityScores.length > 0
+      ? Number((qualityScores.reduce((sum, r) => sum + (r.driverQuality || 0), 0) / qualityScores.length).toFixed(1))
+      : null,
+    avgDriverPrice: priceScores.length > 0
+      ? Number((priceScores.reduce((sum, r) => sum + (r.driverPrice || 0), 0) / priceScores.length).toFixed(1))
+      : null,
+    totalResponses,
+  };
+
+  return { responses: mapped, kpi };
 }
