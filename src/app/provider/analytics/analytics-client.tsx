@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect, useRef } from "react";
 import {
   AreaChart,
   Area,
@@ -10,7 +10,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import { getAnalyticsBySegment, type SegmentKey } from "@/lib/actions/analytics";
+import { getAnalyticsBySegment, type SegmentKey, type DateRangeKey } from "@/lib/actions/analytics";
 
 interface MonthlyStat {
   month: string;
@@ -78,8 +78,6 @@ const PERIOD_OPTIONS: { key: PeriodKey; label: string; months: number }[] = [
   { key: "year", label: "年", months: 24 },
 ];
 
-type DateRangeKey = "this_month" | "this_year" | "all";
-
 const DATE_RANGE_OPTIONS: { key: DateRangeKey; label: string }[] = [
   { key: "this_month", label: "今月" },
   { key: "this_year", label: "今年" },
@@ -115,16 +113,17 @@ export function AnalyticsClient({
   const [chartTab, setChartTab] = useState<"bookings" | "revenue" | "interval" | "unitPrice">("bookings");
   const [segment, setSegment] = useState<SegmentKey>("all");
   const [dateRange, setDateRange] = useState<DateRangeKey>("this_year");
-  const [isSegmentLoading, startSegmentTransition] = useTransition();
+  const [isFilterLoading, startFilterTransition] = useTransition();
 
-  // セグメントフィルターで変動するデータ（初期値はpropsから）
+  // フィルターで変動するデータ（初期値はpropsから）
   const [segmentMonthlyData, setSegmentMonthlyData] = useState(allMonthlyData);
   const [segmentMonthlyAvgInterval, setSegmentMonthlyAvgInterval] = useState(monthlyAvgInterval);
   const [filteredAvgBookingInterval, setFilteredAvgBookingInterval] = useState(avgBookingInterval);
-  const [segmentPopularMenus, setSegmentPopularMenus] = useState(popularMenus);
-  const [segmentHeatmapData, setSegmentHeatmapData] = useState(heatmapData);
+  const [filteredPopularMenus, setFilteredPopularMenus] = useState(popularMenus);
+  const [filteredHeatmapData, setFilteredHeatmapData] = useState(heatmapData);
+  const [filteredLtvStats, setFilteredLtvStats] = useState(ltvStats);
 
-  // 期間フィルターのロジック: セグメントフィルター済みデータを期間でスライス
+  // 期間フィルターのロジック: 月別データは月の文字列でクライアント側スライス
   const filterByDateRange = <T extends { month: string }>(data: T[]): T[] => {
     const now = new Date();
     const currentYear = now.getFullYear().toString();
@@ -142,40 +141,72 @@ export function AnalyticsClient({
 
   const filteredMonthlyData = filterByDateRange(segmentMonthlyData);
   const filteredMonthlyAvgInterval = filterByDateRange(segmentMonthlyAvgInterval);
-  const filteredPopularMenus = segmentPopularMenus; // メニューは期間フィルター不要（全期間集計）
-  const filteredHeatmapData = segmentHeatmapData; // ヒートマップも同様
 
-  function handleSegmentChange(newSegment: SegmentKey) {
-    setSegment(newSegment);
-    if (newSegment === "all") {
-      // 全体の場合は初期データに戻す
-      setSegmentMonthlyData(allMonthlyData);
-      setSegmentMonthlyAvgInterval(monthlyAvgInterval);
-      setFilteredAvgBookingInterval(avgBookingInterval);
-      setSegmentPopularMenus(popularMenus);
-      setSegmentHeatmapData(heatmapData);
-      return;
-    }
-    startSegmentTransition(async () => {
+  // サーバーにフィルター条件を送信して全セクションのデータを再取得
+  function fetchFilteredData(newSegment: SegmentKey, newDateRange: DateRangeKey) {
+    startFilterTransition(async () => {
       try {
-        const data = await getAnalyticsBySegment(newSegment);
+        const data = await getAnalyticsBySegment(newSegment, newDateRange);
         setSegmentMonthlyData(data.allMonthlyData);
         setSegmentMonthlyAvgInterval(data.monthlyAvgInterval);
         setFilteredAvgBookingInterval(data.avgBookingInterval);
-        setSegmentPopularMenus(data.popularMenus);
-        setSegmentHeatmapData(data.heatmapData);
+        setFilteredPopularMenus(data.popularMenus);
+        setFilteredHeatmapData(data.heatmapData);
+        setFilteredLtvStats(data.ltvStats);
       } catch (err) {
-        console.error("[AnalyticsClient] セグメントフィルター エラー:", err);
-        // エラー時はセグメントを「全体」に戻し、初期データを復元
+        console.error("[AnalyticsClient] フィルター エラー:", err);
+        // エラー時は「全体」「全期間」に戻し、初期データ（全期間）を復元
         setSegment("all");
+        setDateRange("all");
         setSegmentMonthlyData(allMonthlyData);
         setSegmentMonthlyAvgInterval(monthlyAvgInterval);
         setFilteredAvgBookingInterval(avgBookingInterval);
-        setSegmentPopularMenus(popularMenus);
-        setSegmentHeatmapData(heatmapData);
+        setFilteredPopularMenus(popularMenus);
+        setFilteredHeatmapData(heatmapData);
+        setFilteredLtvStats(ltvStats);
       }
     });
   }
+
+  function handleSegmentChange(newSegment: SegmentKey) {
+    setSegment(newSegment);
+    if (newSegment === "all" && dateRange === "all") {
+      // 全体 + 全期間の場合は初期データに戻す（サーバーコール不要）
+      setSegmentMonthlyData(allMonthlyData);
+      setSegmentMonthlyAvgInterval(monthlyAvgInterval);
+      setFilteredAvgBookingInterval(avgBookingInterval);
+      setFilteredPopularMenus(popularMenus);
+      setFilteredHeatmapData(heatmapData);
+      setFilteredLtvStats(ltvStats);
+      return;
+    }
+    fetchFilteredData(newSegment, dateRange);
+  }
+
+  function handleDateRangeChange(newDateRange: DateRangeKey) {
+    setDateRange(newDateRange);
+    if (segment === "all" && newDateRange === "all") {
+      // 全体 + 全期間の場合は初期データに戻す
+      setSegmentMonthlyData(allMonthlyData);
+      setSegmentMonthlyAvgInterval(monthlyAvgInterval);
+      setFilteredAvgBookingInterval(avgBookingInterval);
+      setFilteredPopularMenus(popularMenus);
+      setFilteredHeatmapData(heatmapData);
+      setFilteredLtvStats(ltvStats);
+      return;
+    }
+    fetchFilteredData(segment, newDateRange);
+  }
+
+  // 初回マウント時: デフォルト dateRange が "all" でなければフィルター適用済みデータを取得
+  const initialFetchDone = useRef(false);
+  useEffect(() => {
+    if (!initialFetchDone.current && dateRange !== "all") {
+      initialFetchDone.current = true;
+      fetchFilteredData(segment, dateRange);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // 24ヶ月分のデータから期間に応じてスライス（末尾N件を取得）
   const getStatsForPeriod = (): MonthlyStat[] => {
@@ -190,12 +221,12 @@ export function AnalyticsClient({
   const cumulativeRevenue = filteredMonthlyData.reduce((sum, d) => sum + d.revenue, 0);
 
   // 顧客単価 = 累計売上 / ユニーク顧客数
-  // 累計ユニーク顧客数: ltvStats のセグメント合計を使用（月別 unique_customers の合算は重複する）
+  // フィルター適用済みの ltvStats からセグメント合計を計算（セグメント+期間フィルター適用済み）
   const totalSegments =
-    ltvStats.segments.excellent +
-    ltvStats.segments.normal +
-    ltvStats.segments.dormant +
-    ltvStats.segments.at_risk;
+    filteredLtvStats.segments.excellent +
+    filteredLtvStats.segments.normal +
+    filteredLtvStats.segments.dormant +
+    filteredLtvStats.segments.at_risk;
   const cumulativeUnitPrice = totalSegments > 0
     ? Math.round(cumulativeRevenue / totalSegments)
     : null;
@@ -424,18 +455,18 @@ export function AnalyticsClient({
               <button
                 key={opt.key}
                 onClick={() => handleSegmentChange(opt.key)}
-                disabled={isSegmentLoading}
+                disabled={isFilterLoading}
                 className={`rounded-xl px-3 py-1.5 text-xs font-medium transition-all ${
                   segment === opt.key
                     ? "bg-accent text-white shadow-sm"
                     : "bg-card text-muted ring-1 ring-border hover:text-foreground"
-                } ${isSegmentLoading ? "opacity-50" : ""}`}
+                } ${isFilterLoading ? "opacity-50" : ""}`}
               >
                 {opt.label}
               </button>
             ))}
           </div>
-          {isSegmentLoading && (
+          {isFilterLoading && (
             <div className="h-4 w-4 animate-spin rounded-full border-2 border-accent border-t-transparent" />
           )}
         </div>
@@ -455,12 +486,13 @@ export function AnalyticsClient({
             {DATE_RANGE_OPTIONS.map((opt) => (
               <button
                 key={opt.key}
-                onClick={() => setDateRange(opt.key)}
+                onClick={() => handleDateRangeChange(opt.key)}
+                disabled={isFilterLoading}
                 className={`rounded-xl px-3 py-1.5 text-xs font-medium transition-all ${
                   dateRange === opt.key
                     ? "bg-accent text-white shadow-sm"
                     : "bg-card text-muted ring-1 ring-border hover:text-foreground"
-                }`}
+                } ${isFilterLoading ? "opacity-50" : ""}`}
               >
                 {opt.label}
               </button>
@@ -823,7 +855,7 @@ export function AnalyticsClient({
             <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-accent/20 to-accent/5">
               <div className="text-center">
                 <span className="text-2xl font-bold text-accent">
-                  {Math.round(ltvStats.avg_ltv).toLocaleString()}
+                  {Math.round(filteredLtvStats.avg_ltv).toLocaleString()}
                 </span>
                 <span className="block text-xs font-medium text-accent/70">円</span>
               </div>
@@ -854,10 +886,10 @@ export function AnalyticsClient({
       >
         {totalSegments > 0 ? (() => {
           const segmentData = [
-            { key: "excellent", label: "優良", count: ltvStats.segments.excellent, desc: "5回以上来店、定期的に来店" },
-            { key: "normal", label: "通常", count: ltvStats.segments.normal, desc: "2-4回来店、定期的に来店" },
-            { key: "dormant", label: "休眠", count: ltvStats.segments.dormant, desc: "来店間隔が空いている" },
-            { key: "at_risk", label: "離脱リスク", count: ltvStats.segments.at_risk, desc: "1回のみ or 長期間未来店" },
+            { key: "excellent", label: "優良", count: filteredLtvStats.segments.excellent, desc: "5回以上来店、定期的に来店" },
+            { key: "normal", label: "通常", count: filteredLtvStats.segments.normal, desc: "2-4回来店、定期的に来店" },
+            { key: "dormant", label: "休眠", count: filteredLtvStats.segments.dormant, desc: "来店間隔が空いている" },
+            { key: "at_risk", label: "離脱リスク", count: filteredLtvStats.segments.at_risk, desc: "1回のみ or 長期間未来店" },
           ];
           return (
             <div className="flex flex-col sm:flex-row items-center gap-6">
