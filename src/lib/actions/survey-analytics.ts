@@ -83,31 +83,40 @@ export async function getSurveyBasicStats(): Promise<SurveyBasicStats> {
   const provider = await getProviderWithPlan();
   const supabase = createAdminClient();
 
-  // 全アンケート回答を取得
-  const { data: responses } = await supabase
-    .from("survey_responses")
-    .select(`
-      id, csat, comment, created_at,
-      bookings:booking_id (
-        start_at,
-        services:service_id ( name )
-      )
-    `)
-    .eq("provider_id", provider.id)
-    .order("created_at", { ascending: false })
-    .limit(50);
-
-  // 回答率計算: 送信済み通知数 vs 回答数
-  const { count: sentCount } = await supabase
-    .from("pending_survey_notifications")
-    .select("id", { count: "exact", head: true })
-    .eq("provider_id", provider.id)
-    .eq("status", "sent");
-
-  const { count: responseCount } = await supabase
-    .from("survey_responses")
-    .select("id", { count: "exact", head: true })
-    .eq("provider_id", provider.id);
+  // 直近の回答（表示用）と集計を並列取得
+  const [
+    { data: responses },
+    { count: sentCount },
+    { count: responseCount },
+    { data: avgData },
+  ] = await Promise.all([
+    supabase
+      .from("survey_responses")
+      .select(`
+        id, csat, comment, created_at,
+        bookings:booking_id (
+          start_at,
+          services:service_id ( name )
+        )
+      `)
+      .eq("provider_id", provider.id)
+      .order("created_at", { ascending: false })
+      .limit(10),
+    supabase
+      .from("pending_survey_notifications")
+      .select("id", { count: "exact", head: true })
+      .eq("provider_id", provider.id)
+      .eq("status", "sent"),
+    supabase
+      .from("survey_responses")
+      .select("id", { count: "exact", head: true })
+      .eq("provider_id", provider.id),
+    // 全回答の平均CSATを正確に算出（LIMIT 50の問題を回避）
+    supabase
+      .from("survey_responses")
+      .select("csat")
+      .eq("provider_id", provider.id),
+  ]);
 
   const totalResponses = responseCount || 0;
   const totalSent = sentCount || 0;
@@ -115,8 +124,8 @@ export async function getSurveyBasicStats(): Promise<SurveyBasicStats> {
     ? Math.round((totalResponses / totalSent) * 1000) / 10
     : 0;
 
-  const avgCsat = totalResponses > 0
-    ? (responses || []).reduce((sum, r) => sum + (r.csat as number), 0) / Math.min(totalResponses, (responses || []).length)
+  const avgCsat = (avgData && avgData.length > 0)
+    ? avgData.reduce((sum, r) => sum + (r.csat as number), 0) / avgData.length
     : 0;
 
   const recentResponses = (responses || []).slice(0, 10).map((r) => {
@@ -255,18 +264,18 @@ export async function getSurveyAdvancedStats(): Promise<SurveyAdvancedStats> {
   let segmentCsat: SegmentCsat[] = [];
 
   if (customerIds.length > 0) {
-    const { data: segmentData } = await supabase.rpc("get_segment_customer_ids", {
-      p_provider_id: provider.id,
-      p_segment: null,
-    });
-
-    // セグメントIDマップ作成（全セグメントを取得して分類）
+    // セグメントIDマップ作成（全セグメントを並列取得）
     const segmentMap = new Map<number, string>();
-    for (const seg of ["excellent", "normal", "dormant", "at_risk"]) {
-      const { data: segIds } = await supabase.rpc("get_segment_customer_ids", {
-        p_provider_id: provider.id,
-        p_segment: seg,
-      });
+    const segmentNames = ["excellent", "normal", "dormant", "at_risk"];
+    const segmentResults = await Promise.all(
+      segmentNames.map((seg) =>
+        supabase.rpc("get_segment_customer_ids", {
+          p_provider_id: provider.id,
+          p_segment: seg,
+        }).then(({ data }) => ({ seg, data }))
+      )
+    );
+    for (const { seg, data: segIds } of segmentResults) {
       if (segIds) {
         for (const row of segIds as { customer_user_id: number }[]) {
           segmentMap.set(row.customer_user_id, seg);
