@@ -17,5 +17,5 @@ DROP FUNCTION IF EXISTS get_booking_heatmap(bigint);
 DROP FUNCTION IF EXISTS get_ltv_stats(bigint);
 DROP FUNCTION IF EXISTS get_repeat_rate(bigint);
 
--- Helper function no longer needed
-DROP FUNCTION IF EXISTS get_segment_customer_ids(bigint, text);
+-- Note: get_segment_customer_ids is still used by getAnalyticsBySegment Server Action
+-- DO NOT DROP get_segment_customer_ids(bigint, text)
