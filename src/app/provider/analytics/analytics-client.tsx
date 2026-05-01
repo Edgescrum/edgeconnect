@@ -844,9 +844,9 @@ export function AnalyticsClient({
       </ChartCard>
 
       {/* 6+7. 新規 vs リピーター比率 + キャンセル率 */}
-      <div className="grid gap-4 sm:grid-cols-2">
-        {/* 新規 vs リピーター比率 */}
-        <ChartCard
+      <div className={`grid gap-4 ${segment === "all" ? "sm:grid-cols-2" : "sm:grid-cols-1"}`}>
+        {/* 新規 vs リピーター比率（「全体」選択時のみ表示） */}
+        {segment === "all" && <ChartCard
           title="新規 vs リピーター比率"
           icon={
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -954,7 +954,7 @@ export function AnalyticsClient({
               </div>
             );
           })()}
-        </ChartCard>
+        </ChartCard>}
 
         {/* キャンセル率 */}
         <ChartCard
