@@ -12,7 +12,7 @@ import {
   BarChart,
   Bar,
 } from "recharts";
-import { getAnalyticsBySegment, type SegmentKey, type DateRangeKey } from "@/lib/actions/analytics";
+import { getAnalyticsBySegment, getCategoryBenchmark, type SegmentKey, type DateRangeKey } from "@/lib/actions/analytics";
 import { getSurveyAdvancedStats, getSurveyBasicStats as fetchSurveyBasicStats, type SurveyBasicStats, type SurveyAdvancedStats } from "@/lib/actions/survey-analytics";
 import { generateSurveyAdvice } from "@/lib/constants/survey-advice-templates";
 import { TabFilter } from "@/components/TabFilter";
@@ -65,6 +65,11 @@ interface Benchmark {
   avg_monthly_bookings?: number;
   avg_monthly_revenue?: number;
   avg_booking_interval?: number;
+  avg_unit_price?: number;
+  my_monthly_bookings?: number;
+  my_monthly_revenue?: number;
+  my_avg_interval?: number | null;
+  my_unit_price?: number | null;
 }
 
 // 顧客セグメントの色パレット
@@ -147,6 +152,7 @@ export function AnalyticsClient({
   const [filteredPopularMenus, setFilteredPopularMenus] = useState(popularMenus);
   const [filteredHeatmapData, setFilteredHeatmapData] = useState(heatmapData);
   const [filteredLtvStats, setFilteredLtvStats] = useState(ltvStats);
+  const [filteredBenchmark, setFilteredBenchmark] = useState(benchmark);
 
   // Load survey stats when switching to survey tab or when filters change
   const lastSurveyFilter = useRef<string>("");
@@ -195,13 +201,17 @@ export function AnalyticsClient({
   function fetchFilteredData(newSegment: SegmentKey, newDateRange: DateRangeKey) {
     startFilterTransition(async () => {
       try {
-        const data = await getAnalyticsBySegment(newSegment, newDateRange);
+        const [data, benchmarkData] = await Promise.all([
+          getAnalyticsBySegment(newSegment, newDateRange),
+          isStandard ? getCategoryBenchmark(newSegment, newDateRange) : Promise.resolve(benchmark),
+        ]);
         setSegmentMonthlyData(data.allMonthlyData);
         setSegmentMonthlyAvgInterval(data.monthlyAvgInterval);
         setFilteredAvgBookingInterval(data.avgBookingInterval);
         setFilteredPopularMenus(data.popularMenus);
         setFilteredHeatmapData(data.heatmapData);
         setFilteredLtvStats(data.ltvStats);
+        setFilteredBenchmark(benchmarkData);
       } catch (err) {
         console.error("[AnalyticsClient] フィルター エラー:", err);
         setSegment("all");
@@ -212,6 +222,7 @@ export function AnalyticsClient({
         setFilteredPopularMenus(popularMenus);
         setFilteredHeatmapData(heatmapData);
         setFilteredLtvStats(ltvStats);
+        setFilteredBenchmark(benchmark);
       }
     });
   }
@@ -225,6 +236,7 @@ export function AnalyticsClient({
       setFilteredPopularMenus(popularMenus);
       setFilteredHeatmapData(heatmapData);
       setFilteredLtvStats(ltvStats);
+      setFilteredBenchmark(benchmark);
       return;
     }
     fetchFilteredData(newSegment, dateRange);
@@ -239,6 +251,7 @@ export function AnalyticsClient({
       setFilteredPopularMenus(popularMenus);
       setFilteredHeatmapData(heatmapData);
       setFilteredLtvStats(ltvStats);
+      setFilteredBenchmark(benchmark);
       return;
     }
     fetchFilteredData(segment, newDateRange);
@@ -1016,13 +1029,37 @@ export function AnalyticsClient({
 
               {/* ベンチマーク */}
               <ChartCard title="業界ベンチマーク比較" icon={<BarChartIcon />}>
-                {benchmark.available ? (
+                {filteredBenchmark.available ? (
                   <div className="space-y-4">
-                    <p className="text-xs text-muted">同カテゴリ {benchmark.provider_count}事業者の平均との比較</p>
-                    <div className="grid gap-3 sm:grid-cols-3">
-                      <BenchmarkCard label="月間予約実績" value={`${benchmark.avg_monthly_bookings}件`} />
-                      <BenchmarkCard label="月間売上" value={`${(benchmark.avg_monthly_revenue || 0).toLocaleString()}円`} />
-                      <BenchmarkCard label="平均予約間隔" value={benchmark.avg_booking_interval ? `${benchmark.avg_booking_interval}日` : "-"} />
+                    <p className="text-xs text-muted">同カテゴリ {filteredBenchmark.provider_count}事業者の平均との比較</p>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <BenchmarkComparisonCard
+                        label="月間予約実績"
+                        industryValue={filteredBenchmark.avg_monthly_bookings ?? 0}
+                        myValue={filteredBenchmark.my_monthly_bookings ?? 0}
+                        unit="件"
+                      />
+                      <BenchmarkComparisonCard
+                        label="月間売上"
+                        industryValue={filteredBenchmark.avg_monthly_revenue ?? 0}
+                        myValue={filteredBenchmark.my_monthly_revenue ?? 0}
+                        unit="円"
+                        isCurrency
+                      />
+                      <BenchmarkComparisonCard
+                        label="平均予約間隔"
+                        industryValue={filteredBenchmark.avg_booking_interval ?? null}
+                        myValue={filteredBenchmark.my_avg_interval ?? null}
+                        unit="日"
+                        invertComparison
+                      />
+                      <BenchmarkComparisonCard
+                        label="顧客単価"
+                        industryValue={filteredBenchmark.avg_unit_price ?? 0}
+                        myValue={filteredBenchmark.my_unit_price ?? null}
+                        unit="円"
+                        isCurrency
+                      />
                     </div>
                   </div>
                 ) : (
@@ -1034,7 +1071,7 @@ export function AnalyticsClient({
                     </svg>
                     <p className="text-sm text-muted">
                       同カテゴリの事業者が5件以上になると、ベンチマーク比較が表示されます
-                      {benchmark.provider_count > 0 && `（現在 ${benchmark.provider_count}件）`}
+                      {filteredBenchmark.provider_count > 0 && `（現在 ${filteredBenchmark.provider_count}件）`}
                     </p>
                   </div>
                 )}
@@ -1834,28 +1871,47 @@ function SurveyAnalyticsTab({
                 <div className="space-y-4">
                   <p className="text-xs text-muted">同カテゴリ {advancedStats.surveyBenchmark.providerCount}事業者の平均との比較</p>
                   <div className="grid gap-3 sm:grid-cols-2">
-                    <BenchmarkCard label="平均満足度（業界）" value={`${advancedStats.surveyBenchmark.avgCsat} / 5`} />
-                    <BenchmarkCard label="平均回答率（業界）" value={`${advancedStats.surveyBenchmark.avgResponseRate}%`} />
+                    <BenchmarkComparisonCard
+                      label="平均満足度"
+                      industryValue={advancedStats.surveyBenchmark.avgCsat ?? 0}
+                      myValue={basicStats.avgCsat}
+                      unit="/ 5"
+                      decimals={1}
+                    />
+                    <BenchmarkComparisonCard
+                      label="回答率"
+                      industryValue={advancedStats.surveyBenchmark.avgResponseRate ?? 0}
+                      myValue={basicStats.responseRate}
+                      unit="%"
+                      decimals={1}
+                    />
                   </div>
-                  {basicStats.totalResponses > 0 && (
-                    <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                      <div className="rounded-xl bg-background p-3.5">
-                        <p className="text-xs text-muted">あなたの満足度</p>
-                        <p className={`mt-1.5 text-lg font-bold ${getCsatColor(basicStats.avgCsat)}`}>{basicStats.avgCsat} / 5</p>
-                        {advancedStats.surveyBenchmark.avgCsat !== undefined && (
-                          <p className={`mt-0.5 text-xs font-medium ${basicStats.avgCsat >= advancedStats.surveyBenchmark.avgCsat ? "text-emerald-600" : "text-red-500"}`}>
-                            {basicStats.avgCsat >= advancedStats.surveyBenchmark.avgCsat ? "業界平均以上" : "業界平均以下"}
-                          </p>
-                        )}
-                      </div>
-                      <div className="rounded-xl bg-background p-3.5">
-                        <p className="text-xs text-muted">あなたの回答率</p>
-                        <p className="mt-1.5 text-lg font-bold">{basicStats.responseRate}%</p>
-                        {advancedStats.surveyBenchmark.avgResponseRate !== undefined && (
-                          <p className={`mt-0.5 text-xs font-medium ${basicStats.responseRate >= advancedStats.surveyBenchmark.avgResponseRate ? "text-emerald-600" : "text-red-500"}`}>
-                            {basicStats.responseRate >= advancedStats.surveyBenchmark.avgResponseRate ? "業界平均以上" : "業界平均以下"}
-                          </p>
-                        )}
+                  {/* ドライバー別比較 */}
+                  {advancedStats.driverAverages && (advancedStats.driverAverages.service > 0 || advancedStats.driverAverages.quality > 0 || advancedStats.driverAverages.price > 0) && (
+                    <div className="mt-2">
+                      <p className="mb-2 text-xs font-medium text-muted">ドライバー別</p>
+                      <div className="grid gap-3 sm:grid-cols-3">
+                        <BenchmarkComparisonCard
+                          label="接客・対応"
+                          industryValue={advancedStats.surveyBenchmark.avgDriverService ?? 0}
+                          myValue={advancedStats.driverAverages.service}
+                          unit="/ 5"
+                          decimals={1}
+                        />
+                        <BenchmarkComparisonCard
+                          label="品質・仕上がり"
+                          industryValue={advancedStats.surveyBenchmark.avgDriverQuality ?? 0}
+                          myValue={advancedStats.driverAverages.quality}
+                          unit="/ 5"
+                          decimals={1}
+                        />
+                        <BenchmarkComparisonCard
+                          label="価格"
+                          industryValue={advancedStats.surveyBenchmark.avgDriverPrice ?? 0}
+                          myValue={advancedStats.driverAverages.price}
+                          unit="/ 5"
+                          decimals={1}
+                        />
                       </div>
                     </div>
                   )}
@@ -2007,11 +2063,79 @@ function KpiSummaryCard({
   );
 }
 
-function BenchmarkCard({ label, value }: { label: string; value: string }) {
+function BenchmarkComparisonCard({
+  label,
+  industryValue,
+  myValue,
+  unit,
+  isCurrency = false,
+  invertComparison = false,
+  decimals = 0,
+}: {
+  label: string;
+  industryValue: number | null;
+  myValue: number | null;
+  unit: string;
+  isCurrency?: boolean;
+  invertComparison?: boolean; // true = lower is better (e.g. interval)
+  decimals?: number;
+}) {
+  const formatValue = (v: number | null): string => {
+    if (v === null || v === 0) return "-";
+    if (isCurrency) return `${Math.round(v).toLocaleString()}${unit}`;
+    if (decimals > 0) return `${v.toFixed(decimals)} ${unit}`;
+    return `${v}${unit}`;
+  };
+
+  const diff = industryValue != null && myValue != null && industryValue !== 0 && myValue !== 0
+    ? myValue - industryValue
+    : null;
+
+  const isPositive = diff !== null
+    ? invertComparison ? diff <= 0 : diff >= 0
+    : null;
+
+  const formatDiff = (): string => {
+    if (diff === null) return "";
+    const absDiff = Math.abs(diff);
+    const sign = diff >= 0 ? "+" : "-";
+    if (isCurrency) return `${sign}${Math.round(absDiff).toLocaleString()}${unit}`;
+    if (decimals > 0) return `${sign}${absDiff.toFixed(decimals)} ${unit}`;
+    return `${sign}${Math.round(absDiff * 10) / 10}${unit}`;
+  };
+
+  const arrow = diff === null ? "" : diff > 0 ? " ↑" : diff < 0 ? " ↓" : " →";
+  const diffColor = isPositive === null
+    ? "text-gray-500"
+    : isPositive
+    ? "text-emerald-600"
+    : "text-red-500";
+  const diffBg = isPositive === null
+    ? "bg-gray-100"
+    : isPositive
+    ? "bg-emerald-50"
+    : "bg-red-50";
+
   return (
     <div className="rounded-xl bg-background p-3.5">
-      <p className="text-xs text-muted">{label}</p>
-      <p className="mt-1.5 text-lg font-bold">{value}</p>
+      <p className="text-xs font-medium text-muted">{label}</p>
+      <div className="mt-2 space-y-1.5">
+        <div className="flex items-baseline justify-between">
+          <span className="text-[11px] text-muted">業界平均</span>
+          <span className="text-sm font-semibold">{formatValue(industryValue)}</span>
+        </div>
+        <div className="flex items-baseline justify-between">
+          <span className="text-[11px] text-muted">あなた</span>
+          <span className="text-sm font-bold">{formatValue(myValue)}</span>
+        </div>
+      </div>
+      {diff !== null && (
+        <div className={`mt-2 inline-flex items-center rounded-full px-2 py-0.5 ${diffBg}`}>
+          <span className={`text-[11px] font-medium ${diffColor}`}>
+            {formatDiff()}{arrow}
+          </span>
+        </div>
+      )}
     </div>
   );
 }
