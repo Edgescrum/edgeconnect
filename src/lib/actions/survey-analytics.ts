@@ -100,6 +100,15 @@ export interface RevenueCsatInsight {
   strength: "strong_positive" | "weak" | "strong_negative";
 }
 
+export interface CsatRetentionItem {
+  scoreLabel: string;  // e.g. "5" or "2以下"
+  minScore: number;
+  maxScore: number;
+  totalCount: number;
+  returnedCount: number;
+  retentionRate: number; // 0-100
+}
+
 export interface SurveyAdvancedStats {
   csatTrend: MonthlyCsatTrend[];
   driverTrend: DriverTrend[];
@@ -121,6 +130,8 @@ export interface SurveyAdvancedStats {
   menuCsatMatrix: MenuCsatMatrix[];
   // Driver regression analysis
   driverRegression: DriverRegressionResult[];
+  // 満足度x再来店率
+  csatRetentionRate: CsatRetentionItem[];
 }
 
 // ============================================================
@@ -699,6 +710,58 @@ export async function getSurveyAdvancedStats(
     };
   }
 
+  // -- g. CSAT x Retention Rate --
+  // 各回答者の CSAT スコア別に、回答日以降に再来店(confirmed予約)があるかチェック
+  const csatRetentionRate: CsatRetentionItem[] = [];
+  if (responses.length > 0) {
+    // Get ALL confirmed bookings for this provider (no date filter) to check future bookings
+    const { data: allProviderBookings } = await supabase
+      .from("bookings")
+      .select("customer_user_id, start_at")
+      .eq("provider_id", provider.id)
+      .eq("status", "confirmed");
+
+    const providerBookings = allProviderBookings || [];
+
+    // For each response, check if the customer has a confirmed booking AFTER the response date
+    const scoreBuckets: { label: string; min: number; max: number; total: number; returned: number }[] = [
+      { label: "5", min: 5, max: 5, total: 0, returned: 0 },
+      { label: "4", min: 4, max: 4, total: 0, returned: 0 },
+      { label: "3", min: 3, max: 3, total: 0, returned: 0 },
+      { label: "2以下", min: 1, max: 2, total: 0, returned: 0 },
+    ];
+
+    for (const r of responses) {
+      const csat = r.csat as number;
+      const responseDate = r.created_at as string;
+      const custId = r.customer_user_id as number;
+
+      const bucket = scoreBuckets.find((b) => csat >= b.min && csat <= b.max);
+      if (!bucket) continue;
+
+      bucket.total++;
+
+      // Check if this customer has a confirmed booking after response date
+      const hasReturn = providerBookings.some(
+        (b) => (b.customer_user_id as number) === custId && (b.start_at as string) > responseDate
+      );
+      if (hasReturn) bucket.returned++;
+    }
+
+    for (const bucket of scoreBuckets) {
+      if (bucket.total > 0) {
+        csatRetentionRate.push({
+          scoreLabel: bucket.label,
+          minScore: bucket.min,
+          maxScore: bucket.max,
+          totalCount: bucket.total,
+          returnedCount: bucket.returned,
+          retentionRate: Math.round((bucket.returned / bucket.total) * 100),
+        });
+      }
+    }
+  }
+
   return {
     csatTrend,
     driverTrend,
@@ -713,6 +776,7 @@ export async function getSurveyAdvancedStats(
     revenueCsatInsight,
     menuCsatMatrix,
     driverRegression,
+    csatRetentionRate,
   };
 }
 
@@ -724,5 +788,6 @@ function emptyAdvancedStats(): SurveyAdvancedStats {
     unitPriceCsat: [], newVsRepeaterCsat: [], revenueCorrelation: [],
     revenueCsatInsight: null,
     menuCsatMatrix: [], driverRegression: [],
+    csatRetentionRate: [],
   };
 }
