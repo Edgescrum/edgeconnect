@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { requireActiveSubscription } from "@/lib/auth/provider-session";
 import { CustomerDetailClient } from "./customer-detail-client";
+import { getCustomerSurveyData } from "@/lib/actions/survey";
 
 export default async function CustomerDetailPage({
   params,
@@ -31,7 +32,7 @@ export default async function CustomerDetailPage({
   if (provider.plan === "basic") redirect("/provider/customers");
 
   // 並列でデータ取得
-  const [detailResult, monthlyResult, bookingsResult, notesResult, settingsResult, avgResult, menuBreakdownResult] = await Promise.all([
+  const [detailResult, monthlyResult, bookingsResult, notesResult, settingsResult, avgResult, menuBreakdownResult, surveyData] = await Promise.all([
     supabase.rpc("get_customer_detail", {
       p_provider_id: provider.id,
       p_customer_user_id: customerUserId,
@@ -64,6 +65,7 @@ export default async function CustomerDetailPage({
       p_provider_id: provider.id,
       p_customer_user_id: customerUserId,
     }),
+    getCustomerSurveyData(provider.id, customerUserId),
   ]);
 
   if (!detailResult.data) redirect("/provider/customers");
@@ -80,6 +82,8 @@ export default async function CustomerDetailPage({
           customerUserId={customerUserId}
           customerAverages={avgResult.data || null}
           menuBreakdown={menuBreakdownResult.data || []}
+          surveyResponses={surveyData.responses}
+          surveyKpi={surveyData.kpi}
         />
       </div>
     </main>

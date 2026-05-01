@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { DashboardClient } from "../dashboard-client";
 import { PublicFooter } from "@/components/PublicFooter";
+import { getPendingSurveyCount } from "@/lib/actions/survey";
 
 export default async function HomePage() {
   const user = await resolveUser();
@@ -10,7 +11,7 @@ export default async function HomePage() {
 
   const supabase = await createClient();
 
-  const [providerResult, bookingsResult] = await Promise.all([
+  const [providerResult, bookingsResult, pendingSurveyCount] = await Promise.all([
     user.role === "provider"
       ? supabase
           .from("providers")
@@ -26,6 +27,7 @@ export default async function HomePage() {
       .eq("customer_user_id", user.id)
       .order("created_at", { ascending: false })
       .limit(10),
+    getPendingSurveyCount(),
   ]);
 
   const provider = providerResult.data as {
@@ -66,6 +68,7 @@ export default async function HomePage() {
           role={user.role}
           provider={provider}
           recentProviders={recentProviders}
+          pendingSurveyCount={pendingSurveyCount}
         />
       </div>
       <PublicFooter maxWidth="max-w-5xl" />

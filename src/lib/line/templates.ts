@@ -478,6 +478,73 @@ export function bookingCancelledProvider(info: BookingInfo): Record<string, unkn
 
 // ── リマインダー → お客さん向け ──
 
+// ── アンケート案内 → お客さん向け ──
+
+export interface SurveyNotificationInfo {
+  providerName: string;
+  serviceName: string;
+  dateStr: string;
+  liffId: string;
+  brandColor: string;
+}
+
+export function surveyNotification(info: SurveyNotificationInfo): Record<string, unknown> {
+  const color = info.brandColor;
+
+  return {
+    type: "bubble",
+    size: "mega",
+    body: {
+      type: "box",
+      layout: "vertical",
+      spacing: "lg",
+      paddingAll: "20px",
+      contents: [
+        badgeRow("アンケート", "#8b5cf6"),
+        {
+          type: "text",
+          text: "サービスのご感想をお聞かせください",
+          size: "lg",
+          weight: "bold",
+          color: "#333333",
+          wrap: true,
+        },
+        {
+          type: "text",
+          text: info.providerName,
+          size: "sm",
+          color: "#888888",
+        },
+        separator(),
+        {
+          type: "box",
+          layout: "vertical",
+          spacing: "sm",
+          contents: [
+            detailRow("ご利用日", info.dateStr),
+            detailRow("メニュー", info.serviceName),
+          ],
+        },
+        {
+          type: "text",
+          text: "所要時間: 1〜2分",
+          size: "xs",
+          color: "#888888",
+          align: "center",
+          margin: "lg",
+        },
+        separator(),
+        primaryButton(
+          "アンケートに回答する",
+          `https://liff.line.me/${info.liffId}/surveys`,
+          color
+        ),
+        footerBrand(),
+      ],
+    },
+  };
+}
+
 export function bookingReminder(info: BookingInfo): Record<string, unknown> {
   const color = info.brandColor;
 
