@@ -1631,7 +1631,7 @@ function SurveyAnalyticsTab({
                       ? "bg-amber-400" : "bg-red-400";
                     return (
                       <div key={item.scoreLabel} className="flex items-center gap-3">
-                        <span className="w-12 shrink-0 text-sm font-medium text-foreground">{item.scoreLabel}</span>
+                        <span className="w-24 shrink-0 text-sm font-medium text-foreground">{item.scoreLabel}</span>
                         <div className="flex-1 h-5 overflow-hidden rounded-md bg-border/20">
                           <div
                             className={`h-full rounded-md transition-all duration-700 ${barColor}`}
