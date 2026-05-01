@@ -892,9 +892,9 @@ export async function getSurveyAdvancedStats(
 
     // For each response, check if the customer has a confirmed booking AFTER the response date
     const scoreBuckets: { label: string; min: number; max: number; total: number; returned: number }[] = [
-      { label: "満足", min: 4, max: 5, total: 0, returned: 0 },
-      { label: "普通", min: 3, max: 3, total: 0, returned: 0 },
-      { label: "不満足", min: 1, max: 2, total: 0, returned: 0 },
+      { label: "満足（4, 5）", min: 4, max: 5, total: 0, returned: 0 },
+      { label: "普通（3）", min: 3, max: 3, total: 0, returned: 0 },
+      { label: "不満足（1, 2）", min: 1, max: 2, total: 0, returned: 0 },
     ];
 
     for (const r of responses) {
@@ -946,11 +946,11 @@ export async function getSurveyAdvancedStats(
       });
     }
 
-    // Score buckets: 不満足(1-2) / 普通(3) / 満足(4-5)
+    // Score buckets: 満足(4-5) / 普通(3) / 不満足(1-2)
     const scoreBucketsForRevenue = [
-      { label: "不満足", min: 1, max: 2.4 },
-      { label: "普通", min: 2.5, max: 3.4 },
-      { label: "満足", min: 3.5, max: 5 },
+      { label: "満足（4, 5）", min: 3.5, max: 5 },
+      { label: "普通（3）", min: 2.5, max: 3.4 },
+      { label: "不満足（1, 2）", min: 1, max: 2.4 },
     ];
 
     for (const bucket of scoreBucketsForRevenue) {
