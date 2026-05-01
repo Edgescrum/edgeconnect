@@ -127,6 +127,16 @@ export interface SegmentFilteredData {
     total_customers: number;
     customers_with_interval: number;
   };
+  popularMenus: {
+    service_id: number;
+    service_name: string;
+    booking_count: number;
+  }[];
+  heatmapData: {
+    day_of_week: number;
+    hour_of_day: number;
+    booking_count: number;
+  }[];
 }
 
 /** セグメントでフィルタリングされた分析データを取得 */
@@ -138,23 +148,53 @@ export async function getAnalyticsBySegment(
 
   const segmentParam = segment === "all" ? null : segment;
 
-  const [monthly24Result, monthlyAvgIntervalResult, avgIntervalResult] =
-    await Promise.all([
-      supabase.rpc("get_monthly_stats", {
-        p_provider_id: provider.id,
-        p_months: 24,
-        p_segment: segmentParam,
-      }),
-      supabase.rpc("get_monthly_avg_interval", {
-        p_provider_id: provider.id,
-        p_months: 24,
-        p_segment: segmentParam,
-      }),
-      supabase.rpc("get_avg_booking_interval", {
-        p_provider_id: provider.id,
-        p_segment: segmentParam,
-      }),
-    ]);
+  const [
+    monthly24Result,
+    monthlyAvgIntervalResult,
+    avgIntervalResult,
+    menusResult,
+    heatmapResult,
+  ] = await Promise.all([
+    supabase.rpc("get_monthly_stats", {
+      p_provider_id: provider.id,
+      p_months: 24,
+      p_segment: segmentParam,
+    }),
+    supabase.rpc("get_monthly_avg_interval", {
+      p_provider_id: provider.id,
+      p_months: 24,
+      p_segment: segmentParam,
+    }),
+    supabase.rpc("get_avg_booking_interval", {
+      p_provider_id: provider.id,
+      p_segment: segmentParam,
+    }),
+    supabase.rpc("get_popular_menus", {
+      p_provider_id: provider.id,
+      p_segment: segmentParam,
+    }),
+    supabase.rpc("get_booking_heatmap", {
+      p_provider_id: provider.id,
+      p_segment: segmentParam,
+    }),
+  ]);
+
+  // エラーログ出力（デバッグ用）
+  if (monthly24Result.error) {
+    console.error("[getAnalyticsBySegment] get_monthly_stats error:", monthly24Result.error);
+  }
+  if (monthlyAvgIntervalResult.error) {
+    console.error("[getAnalyticsBySegment] get_monthly_avg_interval error:", monthlyAvgIntervalResult.error);
+  }
+  if (avgIntervalResult.error) {
+    console.error("[getAnalyticsBySegment] get_avg_booking_interval error:", avgIntervalResult.error);
+  }
+  if (menusResult.error) {
+    console.error("[getAnalyticsBySegment] get_popular_menus error:", menusResult.error);
+  }
+  if (heatmapResult.error) {
+    console.error("[getAnalyticsBySegment] get_booking_heatmap error:", heatmapResult.error);
+  }
 
   const allMonthlyData = (monthly24Result.data || []).map(
     (row: Record<string, unknown>) => ({
@@ -174,14 +214,41 @@ export async function getAnalyticsBySegment(
     })
   );
 
+  const popularMenus = (menusResult.data || []).map(
+    (row: Record<string, unknown>) => ({
+      service_id: Number(row.service_id ?? 0),
+      service_name: String(row.service_name ?? ""),
+      booking_count: Number(row.booking_count ?? 0),
+    })
+  );
+
+  const heatmapData = (heatmapResult.data || []).map(
+    (row: Record<string, unknown>) => ({
+      day_of_week: Number(row.day_of_week ?? 0),
+      hour_of_day: Number(row.hour_of_day ?? 0),
+      booking_count: Number(row.booking_count ?? 0),
+    })
+  );
+
+  // avgBookingInterval は JSON を返す RPC なので data がオブジェクト
+  const avgData = avgIntervalResult.data as Record<string, unknown> | null;
+
   return {
     allMonthlyData,
     monthlyAvgInterval,
-    avgBookingInterval: avgIntervalResult.data || {
-      avg_interval_days: 0,
-      total_customers: 0,
-      customers_with_interval: 0,
-    },
+    avgBookingInterval: avgData
+      ? {
+          avg_interval_days: Number(avgData.avg_interval_days ?? 0),
+          total_customers: Number(avgData.total_customers ?? 0),
+          customers_with_interval: Number(avgData.customers_with_interval ?? 0),
+        }
+      : {
+          avg_interval_days: 0,
+          total_customers: 0,
+          customers_with_interval: 0,
+        },
+    popularMenus,
+    heatmapData,
   };
 }
 
