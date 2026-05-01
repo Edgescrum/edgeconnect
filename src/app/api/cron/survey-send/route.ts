@@ -32,13 +32,7 @@ export async function GET(request: Request) {
     // pending かつ scheduled_at <= now のレコードを取得
     const { data: notifications, error: queryError } = await supabase
       .from("pending_survey_notifications")
-      .select(`
-        id, booking_id, customer_user_id, provider_id,
-        bookings:booking_id (
-          start_at, end_at,
-          services:service_id ( name )
-        )
-      `)
+      .select("id, booking_id, customer_user_id, provider_id")
       .eq("status", "pending")
       .lte("scheduled_at", now.toISOString());
 
@@ -51,6 +45,17 @@ export async function GET(request: Request) {
       log("cron-survey-send", "No pending notifications to send");
       return NextResponse.json({ sent: 0, failed: 0 });
     }
+
+    // 予約情報を一括取得
+    const bookingIds = [...new Set(notifications.map((n) => n.booking_id))];
+    const { data: bookings } = await supabase
+      .from("bookings")
+      .select("id, start_at, end_at, services:service_id ( name )")
+      .in("id", bookingIds);
+
+    const bookingMap = new Map(
+      (bookings || []).map((b) => [b.id as string, b])
+    );
 
     // 事業主情報を一括取得
     const providerIds = [...new Set(notifications.map((n) => n.provider_id))];
@@ -91,22 +96,20 @@ export async function GET(request: Request) {
         }
 
         const provider = providerMap.get(notification.provider_id);
-        const booking = Array.isArray(notification.bookings)
-          ? notification.bookings[0]
-          : notification.bookings;
+        const booking = bookingMap.get(notification.booking_id);
         const service = booking
-          ? Array.isArray((booking as Record<string, unknown>).services)
-            ? ((booking as Record<string, unknown>).services as Record<string, unknown>[])[0]
-            : (booking as Record<string, unknown>).services
+          ? Array.isArray(booking.services)
+            ? booking.services[0]
+            : booking.services
           : null;
 
-        const startAt = booking ? new Date((booking as Record<string, unknown>).start_at as string) : new Date();
+        const startAt = booking ? new Date(booking.start_at as string) : new Date();
         const days = ["日", "月", "火", "水", "木", "金", "土"];
         const dateStr = `${startAt.getMonth() + 1}月${startAt.getDate()}日(${days[startAt.getDay()]})`;
 
         const flexContent = surveyNotification({
           providerName: (provider?.name as string) || "",
-          serviceName: (service as Record<string, unknown>)?.name as string || "",
+          serviceName: ((service as Record<string, unknown> | null)?.name as string) || "",
           dateStr,
           liffId: LIFF_ID,
           brandColor: (provider?.brand_color as string) || brand.primary,

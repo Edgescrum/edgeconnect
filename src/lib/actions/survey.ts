@@ -35,25 +35,32 @@ export async function getSurveyPortalData(): Promise<SurveyGroup[]> {
   const now = new Date();
   const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
 
-  // アンケート送信済みの予約（pending_survey_notifications経由）を取得
+  // アンケート送信済みの通知を取得
   const { data: notifications } = await supabase
     .from("pending_survey_notifications")
-    .select(`
-      booking_id,
-      provider_id,
-      bookings:booking_id (
-        id, start_at, end_at, status,
-        services:service_id ( name ),
-        providers:provider_id ( name, icon_url, slug )
-      )
-    `)
+    .select("booking_id, provider_id")
     .eq("customer_user_id", user.id)
     .eq("status", "sent");
 
   if (!notifications || notifications.length === 0) return [];
 
-  // 回答済みのbooking_idリストを取得
   const bookingIds = notifications.map((n) => n.booking_id);
+
+  // 予約情報を取得
+  const { data: bookings } = await supabase
+    .from("bookings")
+    .select(`
+      id, start_at, end_at, status,
+      services:service_id ( name ),
+      providers:provider_id ( name, icon_url, slug )
+    `)
+    .in("id", bookingIds);
+
+  const bookingMap = new Map(
+    (bookings || []).map((b) => [b.id as string, b])
+  );
+
+  // 回答済みのbooking_idリストを取得
   const { data: responses } = await supabase
     .from("survey_responses")
     .select("booking_id")
@@ -66,9 +73,7 @@ export async function getSurveyPortalData(): Promise<SurveyGroup[]> {
   const groupMap = new Map<string, SurveyGroup>();
 
   for (const notification of notifications) {
-    const booking = Array.isArray(notification.bookings)
-      ? notification.bookings[0]
-      : notification.bookings;
+    const booking = bookingMap.get(notification.booking_id);
     if (!booking) continue;
 
     const service = Array.isArray(booking.services)
@@ -79,7 +84,7 @@ export async function getSurveyPortalData(): Promise<SurveyGroup[]> {
       : booking.providers;
     if (!provider) continue;
 
-    const endAt = new Date(booking.end_at);
+    const endAt = new Date(booking.end_at as string);
     const expiresAt = new Date(endAt.getTime() + sevenDaysMs);
     const isExpired = now > expiresAt;
     const isCompleted = respondedBookingIds.has(notification.booking_id);

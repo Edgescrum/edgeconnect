@@ -23,41 +23,28 @@ export async function GET(request: Request) {
   const now = new Date();
 
   try {
-    // 終了済みの confirmed 予約を取得（既にキュー登録済みのものを除く）
-    const { data: completedBookings, error: bookingsError } = await supabase
+    // 既にキュー登録済みのbooking_idを取得
+    const { data: existingQueue } = await supabase
+      .from("pending_survey_notifications")
+      .select("booking_id");
+
+    const existingIds = new Set((existingQueue || []).map((q) => q.booking_id));
+
+    // 終了済みの confirmed 予約を取得
+    const { data: allCompleted, error: bookingsError } = await supabase
       .from("bookings")
       .select("id, customer_user_id, provider_id")
       .eq("status", "confirmed")
-      .lt("end_at", now.toISOString())
-      .not("id", "in", `(select booking_id from pending_survey_notifications)`);
+      .lt("end_at", now.toISOString());
 
     if (bookingsError) {
-      // サブクエリが使えない場合のフォールバック
-      logError("cron-survey-queue", "bookings query with subquery failed, using fallback", bookingsError.message);
-
-      // フォールバック: 全キュー登録済みIDを取得して除外
-      const { data: existingQueue } = await supabase
-        .from("pending_survey_notifications")
-        .select("booking_id");
-
-      const existingIds = new Set((existingQueue || []).map((q) => q.booking_id));
-
-      const { data: allCompleted, error: allError } = await supabase
-        .from("bookings")
-        .select("id, customer_user_id, provider_id")
-        .eq("status", "confirmed")
-        .lt("end_at", now.toISOString());
-
-      if (allError) {
-        logError("cron-survey-queue", "fallback bookings query failed", allError.message);
-        return NextResponse.json({ error: "Failed to query bookings" }, { status: 500 });
-      }
-
-      const filtered = (allCompleted || []).filter((b) => !existingIds.has(b.id));
-      return await processBookings(supabase, filtered, now);
+      logError("cron-survey-queue", "bookings query failed", bookingsError.message);
+      return NextResponse.json({ error: "Failed to query bookings" }, { status: 500 });
     }
 
-    return await processBookings(supabase, completedBookings || [], now);
+    // キュー登録済みを除外
+    const newBookings = (allCompleted || []).filter((b) => !existingIds.has(b.id));
+    return await processBookings(supabase, newBookings, now);
   } catch (e) {
     logError("cron-survey-queue", "unexpected error", e);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
