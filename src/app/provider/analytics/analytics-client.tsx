@@ -15,6 +15,7 @@ import {
 import { getAnalyticsBySegment, getCategoryBenchmark, type SegmentKey, type DateRangeKey } from "@/lib/actions/analytics";
 import { getSurveyAdvancedStats, getSurveyBasicStats as fetchSurveyBasicStats, type SurveyBasicStats, type SurveyAdvancedStats } from "@/lib/actions/survey-analytics";
 import { generateSurveyAdvice } from "@/lib/constants/survey-advice-templates";
+import { generateBookingAdvice } from "@/lib/constants/booking-advice-templates";
 import { TabFilter } from "@/components/TabFilter";
 
 interface MonthlyStat {
@@ -620,7 +621,40 @@ export function AnalyticsClient({
             )}
           </div>
 
-          {/* 推移グラフ */}
+          {/* ひとことアドバイス（予約実績） */}
+          {(() => {
+            const bookingAdvice = generateBookingAdvice({
+              cumulativeBookingCount,
+              lastMonthBookings: momLastMonth?.booking_count ?? null,
+              prevMonthBookings: momPrevMonth?.booking_count ?? null,
+              lastMonthRevenue: momLastMonth?.revenue ?? null,
+              prevMonthRevenue: momPrevMonth?.revenue ?? null,
+              lastMonthCancelRate: momLastMonth?.cancel_rate ?? null,
+              lastMonthCancelCount: momLastMonth?.cancel_count ?? null,
+              lastMonthTotalBookings: momLastMonth ? momLastMonth.booking_count + momLastMonth.cancel_count : null,
+              ltvSegments: filteredLtvStats.segments,
+              lastMonthUnitPrice: momLastUnitPrice,
+              prevMonthUnitPrice: momPrevUnitPrice,
+            });
+            return (
+              <section className="rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50 p-5 shadow-sm ring-1 ring-blue-100">
+                <div className="flex items-start gap-3">
+                  <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-600">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                    </svg>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-sm font-semibold text-foreground">ひとことアドバイス</h3>
+                    <p className="mt-1.5 text-sm leading-relaxed text-foreground/80">{bookingAdvice.main}</p>
+                    {bookingAdvice.sub && <p className="mt-1 text-xs leading-relaxed text-muted">{bookingAdvice.sub}</p>}
+                  </div>
+                </div>
+              </section>
+            );
+          })()}
+
+          {/* ���移グラフ */}
           <section className="rounded-2xl bg-card p-5 shadow-sm ring-1 ring-border/60">
             <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-2">
@@ -1668,18 +1702,6 @@ function SurveyAnalyticsTab({
                           );
                         })}
                       </div>
-                      {(() => {
-                        const satisfiedItem = items.find((i) => i.scoreLabel.startsWith("満足"));
-                        const dissatisfiedItem = items.find((i) => i.scoreLabel.startsWith("不満足"));
-                        if (!satisfiedItem || !dissatisfiedItem) return null;
-                        const diff = dissatisfiedItem.avgIntervalDays - satisfiedItem.avgIntervalDays;
-                        if (diff <= 0) return null;
-                        return (
-                          <p className="mt-4 rounded-xl bg-emerald-50 p-3 text-xs leading-relaxed text-emerald-700">
-                            満足のお客さんは不満足のお客さんより平均{diff}日早く再来店しています。
-                          </p>
-                        );
-                      })()}
                     </>
                   );
                 })()}
@@ -1718,18 +1740,6 @@ function SurveyAnalyticsTab({
                           );
                         })}
                       </div>
-                      {(() => {
-                        const satisfiedItem = items.find((i) => i.scoreLabel.startsWith("満足"));
-                        const dissatisfiedItem = items.find((i) => i.scoreLabel.startsWith("不満足"));
-                        if (!satisfiedItem || !dissatisfiedItem) return null;
-                        const diff = satisfiedItem.avgUnitPrice - dissatisfiedItem.avgUnitPrice;
-                        if (diff <= 0) return null;
-                        return (
-                          <p className="mt-4 rounded-xl bg-emerald-50 p-3 text-xs leading-relaxed text-emerald-700">
-                            満足のお客さんは不満足のお客さんより平均{diff.toLocaleString()}円高い顧客単価です。満足度向上が客単価アップにつながります。
-                          </p>
-                        );
-                      })()}
                     </>
                   );
                 })()}
@@ -1768,18 +1778,6 @@ function SurveyAnalyticsTab({
                           );
                         })}
                       </div>
-                      {(() => {
-                        const satisfiedItem = items.find((i) => i.scoreLabel.startsWith("満足"));
-                        const dissatisfiedItem = items.find((i) => i.scoreLabel.startsWith("不満足"));
-                        if (!satisfiedItem || !dissatisfiedItem) return null;
-                        const diff = satisfiedItem.avgLtv - dissatisfiedItem.avgLtv;
-                        if (diff <= 0) return null;
-                        return (
-                          <p className="mt-4 rounded-xl bg-emerald-50 p-3 text-xs leading-relaxed text-emerald-700">
-                            満足のお客さんは不満足のお客さんより平均{diff.toLocaleString()}円多く利用しています。満足度向上が長期的な売上につながります。
-                          </p>
-                        );
-                      })()}
                     </>
                   );
                 })()}
@@ -1828,7 +1826,6 @@ function SurveyAnalyticsTab({
                             平均{diff >= 0 ? "+" : ""}{diff}
                           </span>
                         )}
-                        <p className="mt-2 text-[11px] leading-relaxed text-muted">{config.action}</p>
                       </div>
                     );
                   })}
