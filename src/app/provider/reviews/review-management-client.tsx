@@ -1,8 +1,19 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { toggleReviewVisibility, type ProviderReviewItem } from "@/lib/actions/survey";
 import { TabFilter } from "@/components/TabFilter";
+
+const SEGMENT_OPTIONS = [
+  { key: "all", label: "全体" },
+  { key: "excellent", label: "優良" },
+  { key: "normal", label: "通常" },
+  { key: "dormant", label: "休眠" },
+  { key: "at_risk", label: "離脱リスク" },
+] as const;
+
+type SegmentKey = (typeof SEGMENT_OPTIONS)[number]["key"];
 
 function StarDisplay({ rating, size = 14 }: { rating: number; size?: number }) {
   return (
@@ -51,10 +62,21 @@ function DriverBadge({ label, value }: { label: string; value: number }) {
   );
 }
 
-export function ReviewManagementClient({ reviews: initialReviews }: { reviews: ProviderReviewItem[] }) {
+export function ReviewManagementClient({ reviews: initialReviews, initialSegment = "all" }: { reviews: ProviderReviewItem[]; initialSegment?: string }) {
   const [reviews, setReviews] = useState(initialReviews);
   const [filter, setFilter] = useState<"all" | "visible" | "hidden">("all");
+  const [segment, setSegment] = useState<SegmentKey>(initialSegment as SegmentKey);
   const [isPending, startTransition] = useTransition();
+  const router = useRouter();
+
+  function handleSegmentChange(newSegment: SegmentKey) {
+    setSegment(newSegment);
+    startTransition(() => {
+      const params = new URLSearchParams();
+      if (newSegment !== "all") params.set("segment", newSegment);
+      router.push(`/provider/reviews${params.toString() ? `?${params.toString()}` : ""}`);
+    });
+  }
 
   // 口コミテキストがあり、公開設定かつ表示中のもののみ「公開中」とする
   const hasReviewText = (r: ProviderReviewItem) => !!r.reviewText && r.reviewText.trim() !== "";
@@ -121,6 +143,24 @@ export function ReviewManagementClient({ reviews: initialReviews }: { reviews: P
           <p className="text-3xl font-bold tracking-tight">{publicReviewCount}</p>
           <p className="mt-1 text-xs text-muted">公開口コミ</p>
         </div>
+      </div>
+
+      {/* Segment filter */}
+      <div className="flex flex-wrap gap-2">
+        {SEGMENT_OPTIONS.map((opt) => (
+          <button
+            key={opt.key}
+            onClick={() => handleSegmentChange(opt.key)}
+            disabled={isPending}
+            className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+              segment === opt.key
+                ? "border-accent bg-accent/10 text-accent"
+                : "border-border bg-card text-muted hover:border-accent/40 hover:text-foreground"
+            }`}
+          >
+            {opt.label}
+          </button>
+        ))}
       </div>
 
       {/* Filter tabs */}

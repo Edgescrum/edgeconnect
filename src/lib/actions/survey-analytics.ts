@@ -193,13 +193,16 @@ export async function getSurveyBasicStats(
       : [];
   }
 
-  // 分母: pending_survey_notifications で status = 'sent' の件数（配信数）
+  // 分母: アンケート対象の予約数（end_at < now() の confirmed 予約）
   // 分子: survey_responses の件数（回答数）
-  let notifQuery = supabase
-    .from("pending_survey_notifications")
+  const now = new Date().toISOString();
+
+  let bookingCountQuery = supabase
+    .from("bookings")
     .select("id", { count: "exact", head: true })
     .eq("provider_id", provider.id)
-    .eq("status", "sent");
+    .eq("status", "confirmed")
+    .lt("end_at", now);
 
   let responseQuery = supabase
     .from("survey_responses")
@@ -207,28 +210,28 @@ export async function getSurveyBasicStats(
     .eq("provider_id", provider.id);
 
   if (startDate) {
-    notifQuery = notifQuery.gte("created_at", startDate);
+    bookingCountQuery = bookingCountQuery.gte("end_at", startDate);
     responseQuery = responseQuery.gte("created_at", startDate);
   }
   if (endDate) {
-    notifQuery = notifQuery.lte("created_at", endDate);
+    bookingCountQuery = bookingCountQuery.lte("end_at", endDate);
     responseQuery = responseQuery.lte("created_at", endDate);
   }
   if (segmentCustomerIds && segmentCustomerIds.length > 0) {
-    notifQuery = notifQuery.in("customer_user_id", segmentCustomerIds);
+    bookingCountQuery = bookingCountQuery.in("customer_user_id", segmentCustomerIds);
     responseQuery = responseQuery.in("customer_user_id", segmentCustomerIds);
   } else if (segmentCustomerIds && segmentCustomerIds.length === 0) {
     return emptySurveyBasicStats();
   }
 
-  const [{ count: notificationCount }, { data: avgData }] = await Promise.all([
-    notifQuery,
+  const [{ count: bookingCount }, { data: avgData }] = await Promise.all([
+    bookingCountQuery,
     responseQuery,
   ]);
 
   const totalResponses = avgData?.length || 0;
-  const totalNotifications = notificationCount || 0;
-  // 回答率: 件数単位（回答数 / 配信数）
+  const totalNotifications = bookingCount || 0; // 分母 = アンケート対象予約数
+  // 回答率: 件数単位（回答数 / 対象予約数）
   const responseRate = totalNotifications > 0
     ? Math.min(100, Math.round((totalResponses / totalNotifications) * 1000) / 10)
     : 0;
@@ -251,18 +254,19 @@ export async function getSurveyBasicStats(
   }));
 
   // 前月比の計算
-  const now = new Date();
-  const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-  const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
-  const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59).toISOString();
+  const nowDate = new Date();
+  const thisMonthStart = new Date(nowDate.getFullYear(), nowDate.getMonth(), 1).toISOString();
+  const lastMonthStart = new Date(nowDate.getFullYear(), nowDate.getMonth() - 1, 1).toISOString();
+  const lastMonthEnd = new Date(nowDate.getFullYear(), nowDate.getMonth(), 0, 23, 59, 59).toISOString();
 
-  let prevNotifQuery = supabase
-    .from("pending_survey_notifications")
+  let prevBookingQuery = supabase
+    .from("bookings")
     .select("id", { count: "exact", head: true })
     .eq("provider_id", provider.id)
-    .eq("status", "sent")
-    .gte("created_at", lastMonthStart)
-    .lte("created_at", lastMonthEnd);
+    .eq("status", "confirmed")
+    .gte("end_at", lastMonthStart)
+    .lte("end_at", lastMonthEnd)
+    .lt("end_at", now);
 
   let prevResponseQuery = supabase
     .from("survey_responses")
@@ -277,30 +281,31 @@ export async function getSurveyBasicStats(
     .eq("provider_id", provider.id)
     .gte("created_at", thisMonthStart);
 
-  let currNotifQuery = supabase
-    .from("pending_survey_notifications")
+  let currBookingQuery = supabase
+    .from("bookings")
     .select("id", { count: "exact", head: true })
     .eq("provider_id", provider.id)
-    .eq("status", "sent")
-    .gte("created_at", thisMonthStart);
+    .eq("status", "confirmed")
+    .gte("end_at", thisMonthStart)
+    .lt("end_at", now);
 
   if (segmentCustomerIds && segmentCustomerIds.length > 0) {
-    prevNotifQuery = prevNotifQuery.in("customer_user_id", segmentCustomerIds);
+    prevBookingQuery = prevBookingQuery.in("customer_user_id", segmentCustomerIds);
     prevResponseQuery = prevResponseQuery.in("customer_user_id", segmentCustomerIds);
     currResponseQuery = currResponseQuery.in("customer_user_id", segmentCustomerIds);
-    currNotifQuery = currNotifQuery.in("customer_user_id", segmentCustomerIds);
+    currBookingQuery = currBookingQuery.in("customer_user_id", segmentCustomerIds);
   }
 
   const [
-    { count: prevNotifCount },
+    { count: prevBookingCount },
     { data: prevResponseData },
     { data: currResponseData },
-    { count: currNotifCount },
+    { count: currBookingCount },
   ] = await Promise.all([
-    prevNotifQuery,
+    prevBookingQuery,
     prevResponseQuery,
     currResponseQuery,
-    currNotifQuery,
+    currBookingQuery,
   ]);
 
   let prevMonthAvgCsat: number | null = null;
@@ -320,14 +325,14 @@ export async function getSurveyBasicStats(
     }
   }
 
-  const prevNotifications = prevNotifCount || 0;
+  const prevBookings = prevBookingCount || 0;
   const prevResponses = prevResponseData?.length || 0;
-  if (prevNotifications > 0) {
-    prevMonthResponseRate = Math.min(100, Math.round((prevResponses / prevNotifications) * 1000) / 10);
-    const currNotifications = currNotifCount || 0;
+  if (prevBookings > 0) {
+    prevMonthResponseRate = Math.min(100, Math.round((prevResponses / prevBookings) * 1000) / 10);
+    const currBookings = currBookingCount || 0;
     const currResponses = currResponseData?.length || 0;
-    if (currNotifications > 0) {
-      const currRate = Math.min(100, Math.round((currResponses / currNotifications) * 1000) / 10);
+    if (currBookings > 0) {
+      const currRate = Math.min(100, Math.round((currResponses / currBookings) * 1000) / 10);
       responseRateDiff = Number((currRate - prevMonthResponseRate).toFixed(1));
     }
   }
