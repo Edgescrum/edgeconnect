@@ -20,14 +20,14 @@ export default async function SurveyPage({
     return (
       <main className="min-h-screen bg-background">
         <header className="sticky top-0 z-40 border-b border-border bg-card/80 backdrop-blur-lg">
-          <div className="mx-auto flex max-w-lg items-center gap-3 px-4 py-3">
+          <div className="mx-auto flex max-w-2xl items-center gap-3 px-4 py-3">
             <Link href="/surveys" className="flex h-8 w-8 items-center justify-center rounded-lg active:bg-accent-bg">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m15 18-6-6 6-6" /></svg>
             </Link>
             <h1 className="text-base font-semibold">アンケート</h1>
           </div>
         </header>
-        <div className="mx-auto max-w-lg px-4 py-16 text-center">
+        <div className="mx-auto max-w-2xl px-4 py-16 text-center">
           <div className="mb-4 text-4xl">&#x2705;</div>
           <p className="text-lg font-semibold">回答済みです</p>
           <p className="mt-2 text-sm text-muted">このアンケートは既に回答済みです。</p>
@@ -43,14 +43,14 @@ export default async function SurveyPage({
     return (
       <main className="min-h-screen bg-background">
         <header className="sticky top-0 z-40 border-b border-border bg-card/80 backdrop-blur-lg">
-          <div className="mx-auto flex max-w-lg items-center gap-3 px-4 py-3">
+          <div className="mx-auto flex max-w-2xl items-center gap-3 px-4 py-3">
             <Link href="/surveys" className="flex h-8 w-8 items-center justify-center rounded-lg active:bg-accent-bg">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m15 18-6-6 6-6" /></svg>
             </Link>
             <h1 className="text-base font-semibold">アンケート</h1>
           </div>
         </header>
-        <div className="mx-auto max-w-lg px-4 py-16 text-center">
+        <div className="mx-auto max-w-2xl px-4 py-16 text-center">
           <div className="mb-4 text-4xl">&#x23F0;</div>
           <p className="text-lg font-semibold">回答期限を過ぎました</p>
           <p className="mt-2 text-sm text-muted">このアンケートの回答期限は終了しました。</p>

@@ -19,7 +19,7 @@ function RatingSlider({
   return (
     <div className="space-y-3">
       <p className="text-sm font-medium leading-relaxed">{label}</p>
-      <div className="grid grid-cols-5 gap-1.5">
+      <div className="grid grid-cols-5 gap-1.5 sm:gap-3">
         {[1, 2, 3, 4, 5].map((n) => (
           <button
             key={n}
@@ -31,7 +31,7 @@ function RatingSlider({
               {RATING_LABELS[n]}
             </span>
             <span
-              className={`flex h-11 w-full items-center justify-center rounded-xl text-sm font-bold transition-all ${
+              className={`flex h-11 sm:h-12 w-full items-center justify-center rounded-xl text-sm sm:text-base font-bold transition-all ${
                 value === n
                   ? "bg-accent text-white shadow-md scale-105"
                   : "bg-gray-100 text-gray-500 hover:bg-gray-200"
@@ -97,11 +97,11 @@ export function SurveyFormClient({ detail }: { detail: SurveyBookingDetail }) {
     return (
       <main className="min-h-screen bg-background">
         <header className="sticky top-0 z-40 border-b border-border bg-card/80 backdrop-blur-lg">
-          <div className="mx-auto flex max-w-lg items-center gap-3 px-4 py-3">
+          <div className="mx-auto flex max-w-2xl items-center gap-3 px-4 py-3">
             <h1 className="text-base font-semibold">アンケート</h1>
           </div>
         </header>
-        <div className="mx-auto max-w-lg px-4 py-16 text-center">
+        <div className="mx-auto max-w-2xl px-4 py-16 text-center">
           <div className="mb-4 text-5xl">&#x1F389;</div>
           <p className="text-lg font-semibold">ご回答ありがとうございました</p>
           <p className="mt-2 text-sm text-muted">
@@ -121,7 +121,7 @@ export function SurveyFormClient({ detail }: { detail: SurveyBookingDetail }) {
   return (
     <main className="min-h-screen bg-background">
       <header className="sticky top-0 z-40 border-b border-border bg-card/80 backdrop-blur-lg">
-        <div className="mx-auto flex max-w-lg items-center gap-3 px-4 py-3">
+        <div className="mx-auto flex max-w-2xl items-center gap-3 px-4 py-3">
           <Link href="/surveys" className="flex h-8 w-8 items-center justify-center rounded-lg active:bg-accent-bg">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m15 18-6-6 6-6" /></svg>
           </Link>
@@ -129,9 +129,9 @@ export function SurveyFormClient({ detail }: { detail: SurveyBookingDetail }) {
         </div>
       </header>
 
-      <div className="mx-auto max-w-lg px-4 py-6">
+      <div className="mx-auto max-w-2xl px-4 sm:px-6 py-6">
         {/* Provider & Booking Info */}
-        <div className="mb-6 flex items-center gap-3 rounded-xl border border-border bg-card p-4">
+        <div className="mb-6 flex items-center gap-3 rounded-xl border border-border bg-card p-4 sm:p-6">
           <ProviderAvatar
             name={detail.providerName}
             iconUrl={detail.providerIconUrl}
@@ -149,7 +149,7 @@ export function SurveyFormClient({ detail }: { detail: SurveyBookingDetail }) {
 
         <form onSubmit={handleSubmit} className="space-y-8">
           {/* Q1: CSAT */}
-          <div className="rounded-xl border border-border bg-card p-4">
+          <div className="rounded-xl border border-border bg-card p-4 sm:p-6">
             <div className="mb-1 text-xs font-medium text-accent">Q1</div>
             <RatingSlider
               label={SURVEY_QUESTIONS.q1}
@@ -159,7 +159,7 @@ export function SurveyFormClient({ detail }: { detail: SurveyBookingDetail }) {
           </div>
 
           {/* Q2: 接客・対応 */}
-          <div className="rounded-xl border border-border bg-card p-4">
+          <div className="rounded-xl border border-border bg-card p-4 sm:p-6">
             <div className="mb-1 text-xs font-medium text-accent">Q2</div>
             <RatingSlider
               label={getQ2Text(detail.providerCategory)}
@@ -169,7 +169,7 @@ export function SurveyFormClient({ detail }: { detail: SurveyBookingDetail }) {
           </div>
 
           {/* Q3: 仕上がり・品質 */}
-          <div className="rounded-xl border border-border bg-card p-4">
+          <div className="rounded-xl border border-border bg-card p-4 sm:p-6">
             <div className="mb-1 text-xs font-medium text-accent">Q3</div>
             <RatingSlider
               label={getQ3Text(detail.providerCategory)}
@@ -179,7 +179,7 @@ export function SurveyFormClient({ detail }: { detail: SurveyBookingDetail }) {
           </div>
 
           {/* Q4: 料金 */}
-          <div className="rounded-xl border border-border bg-card p-4">
+          <div className="rounded-xl border border-border bg-card p-4 sm:p-6">
             <div className="mb-1 text-xs font-medium text-accent">Q4</div>
             <RatingSlider
               label={SURVEY_QUESTIONS.q4}
@@ -189,7 +189,7 @@ export function SurveyFormClient({ detail }: { detail: SurveyBookingDetail }) {
           </div>
 
           {/* Q5: 自由記述 */}
-          <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+          <div className="rounded-xl border border-border bg-card p-4 sm:p-6 space-y-3">
             <div className="mb-1 text-xs font-medium text-accent">Q5</div>
             <p className="text-sm font-medium leading-relaxed">{SURVEY_QUESTIONS.q5}</p>
             <textarea
@@ -202,7 +202,7 @@ export function SurveyFormClient({ detail }: { detail: SurveyBookingDetail }) {
           </div>
 
           {/* Q6: 口コミ */}
-          <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+          <div className="rounded-xl border border-border bg-card p-4 sm:p-6 space-y-3">
             <div className="mb-1 text-xs font-medium text-accent">Q6</div>
             <p className="text-sm font-medium leading-relaxed">{SURVEY_QUESTIONS.q6}</p>
             <textarea
