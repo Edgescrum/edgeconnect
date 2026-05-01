@@ -141,8 +141,6 @@ export function AnalyticsClient({
   // Survey advanced stats (lazy loaded for standard plan)
   const [surveyAdvanced, setSurveyAdvanced] = useState<SurveyAdvancedStats | null>(null);
   const [surveyAdvancedLoading, setSurveyAdvancedLoading] = useState(false);
-  const surveyAdvancedFetched = useRef(false);
-
   // フィルターで変動するデータ（初期値はpropsから）
   const [segmentMonthlyData, setSegmentMonthlyData] = useState(allMonthlyData);
   const [segmentMonthlyAvgInterval, setSegmentMonthlyAvgInterval] = useState(monthlyAvgInterval);
