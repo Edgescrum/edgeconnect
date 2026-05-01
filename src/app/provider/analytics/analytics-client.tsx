@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import {
   AreaChart,
   Area,
@@ -10,6 +10,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
+import { getAnalyticsBySegment, type SegmentKey } from "@/lib/actions/analytics";
 
 interface MonthlyStat {
   month: string;
@@ -77,6 +78,14 @@ const PERIOD_OPTIONS: { key: PeriodKey; label: string; months: number }[] = [
   { key: "year", label: "年", months: 24 },
 ];
 
+const SEGMENT_OPTIONS: { key: SegmentKey; label: string }[] = [
+  { key: "all", label: "全体" },
+  { key: "excellent", label: "優良" },
+  { key: "normal", label: "通常" },
+  { key: "dormant", label: "休眠" },
+  { key: "at_risk", label: "離脱リスク" },
+];
+
 export function AnalyticsClient({
   allMonthlyData,
   monthlyAvgInterval,
@@ -96,17 +105,45 @@ export function AnalyticsClient({
 }) {
   const [period, setPeriod] = useState<PeriodKey>("month");
   const [chartTab, setChartTab] = useState<"bookings" | "revenue" | "interval" | "unitPrice">("bookings");
+  const [segment, setSegment] = useState<SegmentKey>("all");
+  const [isSegmentLoading, startSegmentTransition] = useTransition();
+
+  // セグメントフィルターで変動するデータ（初期値はpropsから）
+  const [filteredMonthlyData, setFilteredMonthlyData] = useState(allMonthlyData);
+  const [filteredMonthlyAvgInterval, setFilteredMonthlyAvgInterval] = useState(monthlyAvgInterval);
+  const [filteredAvgBookingInterval, setFilteredAvgBookingInterval] = useState(avgBookingInterval);
+
+  function handleSegmentChange(newSegment: SegmentKey) {
+    setSegment(newSegment);
+    if (newSegment === "all") {
+      // 全体の場合は初期データに戻す
+      setFilteredMonthlyData(allMonthlyData);
+      setFilteredMonthlyAvgInterval(monthlyAvgInterval);
+      setFilteredAvgBookingInterval(avgBookingInterval);
+      return;
+    }
+    startSegmentTransition(async () => {
+      try {
+        const data = await getAnalyticsBySegment(newSegment);
+        setFilteredMonthlyData(data.allMonthlyData);
+        setFilteredMonthlyAvgInterval(data.monthlyAvgInterval);
+        setFilteredAvgBookingInterval(data.avgBookingInterval);
+      } catch {
+        // エラー時は現在のデータを保持
+      }
+    });
+  }
 
   // 24ヶ月分のデータから期間に応じてスライス（末尾N件を取得）
   const getStatsForPeriod = (): MonthlyStat[] => {
     const months = PERIOD_OPTIONS.find((o) => o.key === period)?.months ?? 6;
-    return allMonthlyData.slice(-months);
+    return filteredMonthlyData.slice(-months);
   };
 
   const currentStats = getStatsForPeriod();
 
   // KPI用：直近6ヶ月分（月表示のデフォルト）
-  const monthlyStats = allMonthlyData.slice(-6);
+  const monthlyStats = filteredMonthlyData.slice(-6);
 
   // 四半期表示の場合はデータを3ヶ月ごとに集計
   const aggregateQuarterly = (data: MonthlyStat[]): MonthlyStat[] => {
@@ -166,7 +203,7 @@ export function AnalyticsClient({
   // 月別平均予約間隔データを期間に応じてスライス・集約
   const getIntervalForPeriod = (): MonthlyAvgInterval[] => {
     const months = PERIOD_OPTIONS.find((o) => o.key === period)?.months ?? 6;
-    const sliced = monthlyAvgInterval.slice(-months);
+    const sliced = filteredMonthlyAvgInterval.slice(-months);
     if (period === "quarter") {
       const quarters: MonthlyAvgInterval[] = [];
       for (let i = 0; i < sliced.length; i += 3) {
@@ -307,6 +344,38 @@ export function AnalyticsClient({
 
   return (
     <div className="space-y-6">
+      {/* セグメントフィルター */}
+      <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 text-sm text-muted">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+            <circle cx="9" cy="7" r="4" />
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+            <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+          </svg>
+          <span className="hidden sm:inline text-xs font-medium">セグメント</span>
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {SEGMENT_OPTIONS.map((opt) => (
+            <button
+              key={opt.key}
+              onClick={() => handleSegmentChange(opt.key)}
+              disabled={isSegmentLoading}
+              className={`rounded-xl px-3 py-1.5 text-xs font-medium transition-all ${
+                segment === opt.key
+                  ? "bg-accent text-white shadow-sm"
+                  : "bg-card text-muted ring-1 ring-border hover:text-foreground"
+              } ${isSegmentLoading ? "opacity-50" : ""}`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+        {isSegmentLoading && (
+          <div className="h-4 w-4 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+        )}
+      </div>
+
       {/* KPI サマリーカード */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <KpiSummaryCard
@@ -344,9 +413,9 @@ export function AnalyticsClient({
             </svg>
           }
           label="平均予約間隔"
-          value={avgBookingInterval.avg_interval_days > 0 ? `${avgBookingInterval.avg_interval_days}日` : "-"}
-          subText={avgBookingInterval.customers_with_interval > 0
-            ? `${avgBookingInterval.customers_with_interval}人のリピーター`
+          value={filteredAvgBookingInterval.avg_interval_days > 0 ? `${filteredAvgBookingInterval.avg_interval_days}日` : "-"}
+          subText={filteredAvgBookingInterval.customers_with_interval > 0
+            ? `${filteredAvgBookingInterval.customers_with_interval}人のリピーター`
             : "データなし"
           }
         />
@@ -622,21 +691,21 @@ export function AnalyticsClient({
             <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-full bg-accent/10">
               <div className="text-center">
                 <span className="text-2xl font-bold text-accent">
-                  {avgBookingInterval.avg_interval_days > 0 ? avgBookingInterval.avg_interval_days : "-"}
+                  {filteredAvgBookingInterval.avg_interval_days > 0 ? filteredAvgBookingInterval.avg_interval_days : "-"}
                 </span>
-                {avgBookingInterval.avg_interval_days > 0 && (
+                {filteredAvgBookingInterval.avg_interval_days > 0 && (
                   <span className="block text-xs font-medium text-accent/70">日</span>
                 )}
               </div>
             </div>
             <div className="text-sm text-muted space-y-2">
-              {avgBookingInterval.avg_interval_days > 0 ? (
+              {filteredAvgBookingInterval.avg_interval_days > 0 ? (
                 <>
                   <p className="text-xs">
-                    平均 <span className="font-semibold text-foreground">{avgBookingInterval.avg_interval_days}日</span> ごとに来店
+                    平均 <span className="font-semibold text-foreground">{filteredAvgBookingInterval.avg_interval_days}日</span> ごとに来店
                   </p>
                   <p className="text-xs opacity-70">
-                    リピーター: {avgBookingInterval.customers_with_interval}人 / 全{avgBookingInterval.total_customers}人
+                    リピーター: {filteredAvgBookingInterval.customers_with_interval}人 / 全{filteredAvgBookingInterval.total_customers}人
                   </p>
                 </>
               ) : (
