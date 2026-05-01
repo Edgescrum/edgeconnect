@@ -33,19 +33,41 @@ function formatFullDate(dateStr: string) {
   return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}(${days[d.getDay()]})`;
 }
 
-function RatingBar({ label, value }: { label: string; value: number }) {
+function CategoryScoreRow({ label, value }: { label: string; value: number }) {
   const pct = (value / 5) * 100;
   return (
-    <div className="flex items-center gap-2 text-xs">
-      <span className="w-8 shrink-0 text-muted">{label}</span>
-      <div className="h-1.5 flex-1 rounded-full bg-gray-100">
+    <div className="flex items-center gap-2.5 text-xs">
+      <span className="w-7 shrink-0 font-medium text-foreground">{label}</span>
+      <span className="text-amber-500">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+          <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+        </svg>
+      </span>
+      <span className="w-6 shrink-0 font-bold text-foreground">{value}</span>
+      <div className="h-1 flex-1 rounded-full bg-gray-100">
         <div
-          className="h-1.5 rounded-full bg-amber-400 transition-all"
+          className="h-1 rounded-full bg-amber-400/70 transition-all"
           style={{ width: `${pct}%` }}
         />
       </div>
-      <span className="w-5 shrink-0 text-right font-medium text-foreground">{value}</span>
     </div>
+  );
+}
+
+function DriverBadge({ label, value }: { label: string; value: number }) {
+  const colorMap: Record<number, string> = {
+    1: "bg-red-50 text-red-600 border-red-100",
+    2: "bg-orange-50 text-orange-600 border-orange-100",
+    3: "bg-yellow-50 text-yellow-700 border-yellow-100",
+    4: "bg-emerald-50 text-emerald-600 border-emerald-100",
+    5: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  };
+  const cls = colorMap[value] || "bg-gray-50 text-gray-600 border-gray-100";
+  return (
+    <span className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-medium ${cls}`}>
+      {label}
+      <span className="font-bold">{value}</span>
+    </span>
   );
 }
 
@@ -141,15 +163,15 @@ export function ReviewManagementClient({ reviews: initialReviews }: { reviews: P
         return (
           <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
             <p className="mb-3 text-xs font-semibold text-muted">カテゴリ別平均スコア</p>
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               {driverServiceAvg != null && (
-                <RatingBar label="接客" value={Number(driverServiceAvg.toFixed(1))} />
+                <CategoryScoreRow label="接客" value={Number(driverServiceAvg.toFixed(1))} />
               )}
               {driverQualityAvg != null && (
-                <RatingBar label="品質" value={Number(driverQualityAvg.toFixed(1))} />
+                <CategoryScoreRow label="品質" value={Number(driverQualityAvg.toFixed(1))} />
               )}
               {driverPriceAvg != null && (
-                <RatingBar label="価格" value={Number(driverPriceAvg.toFixed(1))} />
+                <CategoryScoreRow label="価格" value={Number(driverPriceAvg.toFixed(1))} />
               )}
             </div>
           </div>
@@ -158,23 +180,34 @@ export function ReviewManagementClient({ reviews: initialReviews }: { reviews: P
 
       {/* Star distribution */}
       <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
-        <p className="mb-3 text-xs font-semibold text-muted">スコア分布</p>
-        <div className="space-y-2">
-          {[5, 4, 3, 2, 1].map((star) => (
-            <div key={star} className="flex items-center gap-2 text-xs">
-              <span className="w-4 shrink-0 text-right font-medium text-foreground">{star}</span>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="#f59e0b" stroke="none">
-                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-              </svg>
-              <div className="h-2 flex-1 overflow-hidden rounded-full bg-gray-100">
-                <div
-                  className="h-2 rounded-full bg-amber-400 transition-all"
-                  style={{ width: reviews.length > 0 ? `${(distribution[star - 1] / reviews.length) * 100}%` : "0%" }}
-                />
+        <p className="mb-2.5 text-xs font-semibold text-muted">スコア分布</p>
+        <div className="space-y-1">
+          {[5, 4, 3, 2, 1].map((star) => {
+            const count = distribution[star - 1];
+            const maxCount = Math.max(...distribution, 1);
+            const pct = (count / maxCount) * 100;
+            return (
+              <div key={star} className="flex items-center gap-1.5 text-[11px]">
+                <span className="flex w-8 shrink-0 items-center gap-0.5 text-muted">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="#f59e0b" stroke="none">
+                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                  </svg>
+                  {star}
+                </span>
+                <div className="h-3 flex-1 overflow-hidden rounded bg-gray-50">
+                  <div
+                    className={`h-3 rounded transition-all ${
+                      star >= 4 ? "bg-emerald-400" : star === 3 ? "bg-amber-400" : "bg-orange-300"
+                    }`}
+                    style={{ width: count > 0 ? `${pct}%` : "0%" }}
+                  />
+                </div>
+                <span className="w-7 shrink-0 text-right font-medium text-foreground">
+                  {count}<span className="text-muted">件</span>
+                </span>
               </div>
-              <span className="w-6 shrink-0 text-right text-muted">{distribution[star - 1]}</span>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
@@ -257,17 +290,17 @@ export function ReviewManagementClient({ reviews: initialReviews }: { reviews: P
                 <span className="text-sm font-semibold text-foreground">{review.csat}.0</span>
               </div>
 
-              {/* Driver scores */}
+              {/* Driver scores as badges */}
               {(review.driverService != null || review.driverQuality != null || review.driverPrice != null) && (
-                <div className="space-y-1.5">
+                <div className="flex flex-wrap gap-1.5">
                   {review.driverService != null && (
-                    <RatingBar label="接客" value={review.driverService} />
+                    <DriverBadge label="接客" value={review.driverService} />
                   )}
                   {review.driverQuality != null && (
-                    <RatingBar label="品質" value={review.driverQuality} />
+                    <DriverBadge label="品質" value={review.driverQuality} />
                   )}
                   {review.driverPrice != null && (
-                    <RatingBar label="価格" value={review.driverPrice} />
+                    <DriverBadge label="価格" value={review.driverPrice} />
                   )}
                 </div>
               )}
