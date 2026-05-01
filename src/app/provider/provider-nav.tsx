@@ -15,6 +15,7 @@ const PAGE_TITLES: Record<string, string> = {
   "/provider/billing": "プラン管理",
   "/provider/customers": "顧客管理",
   "/provider/reviews": "口コミ管理",
+  "/provider/survey-settings": "アンケート設問管理",
   "/provider/analytics": "実績分析",
 };
 

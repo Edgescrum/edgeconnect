@@ -16,11 +16,13 @@ export function DashboardClient({
   provider,
   recentProviders,
   pendingSurveyCount = 0,
+  showAttributePrompt = false,
 }: {
   role: string;
   provider: ProviderBase | null;
   recentProviders: RecentProvider[];
   pendingSurveyCount?: number;
+  showAttributePrompt?: boolean;
 }) {
   const isProvider = role === "provider";
   const hasRecent = recentProviders.length > 0;
@@ -92,6 +94,20 @@ export function DashboardClient({
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent-bg">
                   <ChevronRightIcon className="text-accent" />
                 </div>
+              </Link>
+            </div>
+          )}
+
+          {showAttributePrompt && (
+            <div className="mx-4 mt-4 rounded-2xl bg-indigo-50 p-4 ring-1 ring-indigo-100">
+              <p className="text-sm font-semibold text-indigo-900">プロフィールを充実させませんか？</p>
+              <p className="mt-1 text-xs text-indigo-700/80">性別・生年月日を登録すると、より適切なサービス提案を受けられます</p>
+              <Link
+                href="/settings"
+                className="mt-3 inline-flex items-center gap-1 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white active:scale-[0.98]"
+              >
+                <GearIcon className="text-white" size={14} />
+                設定する
               </Link>
             </div>
           )}
@@ -189,6 +205,21 @@ export function DashboardClient({
             </div>
           </div>
         </div>
+
+        {showAttributePrompt && (
+          <div className="mt-4 flex items-center gap-4 rounded-2xl bg-indigo-50 p-5 ring-1 ring-indigo-100">
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-indigo-900">プロフィールを充実させませんか？</p>
+              <p className="mt-0.5 text-xs text-indigo-700/80">性別・生年月日を登録すると、より適切なサービス提案を受けられます</p>
+            </div>
+            <Link
+              href="/settings"
+              className="shrink-0 rounded-xl bg-indigo-600 px-5 py-2 text-sm font-semibold text-white hover:bg-indigo-700 transition-colors"
+            >
+              設定する
+            </Link>
+          </div>
+        )}
 
         {/* カードグリッド */}
         <div className="mt-6 grid grid-cols-12 gap-5">
