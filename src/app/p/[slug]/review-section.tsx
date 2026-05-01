@@ -5,7 +5,7 @@ interface ReviewItem {
   csat: number;
   review_text: string;
   created_at: string;
-  customer_name: string | null;
+  service_name: string | null;
 }
 
 interface ReviewSummary {
@@ -96,9 +96,11 @@ export function ReviewSection({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <StarRating rating={review.csat} size={12} />
-                <span className="text-xs text-muted">
-                  {review.customer_name || "お客さま"}
-                </span>
+                {review.service_name && (
+                  <span className="rounded-md bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-muted">
+                    {review.service_name}
+                  </span>
+                )}
               </div>
               <span className="text-xs text-muted">
                 {formatReviewDate(review.created_at)}
