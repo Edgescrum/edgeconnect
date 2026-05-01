@@ -94,6 +94,20 @@ export async function saveProviderSurveySettings(
 
   const supabase = createAdminClient();
 
+  // templateQuestionId の存在チェック
+  if (selections.length > 0) {
+    const ids = selections.map((s) => s.templateQuestionId);
+    const { data: validQuestions } = await supabase
+      .from("survey_template_questions")
+      .select("id")
+      .in("id", ids)
+      .eq("is_active", true);
+    const validIds = new Set((validQuestions || []).map((q) => q.id as number));
+    if (ids.some((id) => !validIds.has(id))) {
+      return { success: false, error: "無効な設問が含まれています" };
+    }
+  }
+
   // 既存の設定を削除
   await supabase
     .from("provider_survey_settings")
