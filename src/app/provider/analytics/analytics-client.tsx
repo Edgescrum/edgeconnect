@@ -78,6 +78,14 @@ const PERIOD_OPTIONS: { key: PeriodKey; label: string; months: number }[] = [
   { key: "year", label: "年", months: 24 },
 ];
 
+type DateRangeKey = "this_month" | "this_year" | "all";
+
+const DATE_RANGE_OPTIONS: { key: DateRangeKey; label: string }[] = [
+  { key: "this_month", label: "今月" },
+  { key: "this_year", label: "今年" },
+  { key: "all", label: "全期間" },
+];
+
 const SEGMENT_OPTIONS: { key: SegmentKey; label: string }[] = [
   { key: "all", label: "全体" },
   { key: "excellent", label: "優良" },
@@ -106,43 +114,65 @@ export function AnalyticsClient({
   const [period, setPeriod] = useState<PeriodKey>("month");
   const [chartTab, setChartTab] = useState<"bookings" | "revenue" | "interval" | "unitPrice">("bookings");
   const [segment, setSegment] = useState<SegmentKey>("all");
+  const [dateRange, setDateRange] = useState<DateRangeKey>("this_year");
   const [isSegmentLoading, startSegmentTransition] = useTransition();
 
   // セグメントフィルターで変動するデータ（初期値はpropsから）
-  const [filteredMonthlyData, setFilteredMonthlyData] = useState(allMonthlyData);
-  const [filteredMonthlyAvgInterval, setFilteredMonthlyAvgInterval] = useState(monthlyAvgInterval);
+  const [segmentMonthlyData, setSegmentMonthlyData] = useState(allMonthlyData);
+  const [segmentMonthlyAvgInterval, setSegmentMonthlyAvgInterval] = useState(monthlyAvgInterval);
   const [filteredAvgBookingInterval, setFilteredAvgBookingInterval] = useState(avgBookingInterval);
-  const [filteredPopularMenus, setFilteredPopularMenus] = useState(popularMenus);
-  const [filteredHeatmapData, setFilteredHeatmapData] = useState(heatmapData);
+  const [segmentPopularMenus, setSegmentPopularMenus] = useState(popularMenus);
+  const [segmentHeatmapData, setSegmentHeatmapData] = useState(heatmapData);
+
+  // 期間フィルターのロジック: セグメントフィルター済みデータを期間でスライス
+  const filterByDateRange = <T extends { month: string }>(data: T[]): T[] => {
+    const now = new Date();
+    const currentYear = now.getFullYear().toString();
+    const currentMonth = `${currentYear}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+
+    if (dateRange === "this_month") {
+      return data.filter((d) => d.month === currentMonth);
+    }
+    if (dateRange === "this_year") {
+      return data.filter((d) => d.month.startsWith(currentYear));
+    }
+    // all: 全期間
+    return data;
+  };
+
+  const filteredMonthlyData = filterByDateRange(segmentMonthlyData);
+  const filteredMonthlyAvgInterval = filterByDateRange(segmentMonthlyAvgInterval);
+  const filteredPopularMenus = segmentPopularMenus; // メニューは期間フィルター不要（全期間集計）
+  const filteredHeatmapData = segmentHeatmapData; // ヒートマップも同様
 
   function handleSegmentChange(newSegment: SegmentKey) {
     setSegment(newSegment);
     if (newSegment === "all") {
       // 全体の場合は初期データに戻す
-      setFilteredMonthlyData(allMonthlyData);
-      setFilteredMonthlyAvgInterval(monthlyAvgInterval);
+      setSegmentMonthlyData(allMonthlyData);
+      setSegmentMonthlyAvgInterval(monthlyAvgInterval);
       setFilteredAvgBookingInterval(avgBookingInterval);
-      setFilteredPopularMenus(popularMenus);
-      setFilteredHeatmapData(heatmapData);
+      setSegmentPopularMenus(popularMenus);
+      setSegmentHeatmapData(heatmapData);
       return;
     }
     startSegmentTransition(async () => {
       try {
         const data = await getAnalyticsBySegment(newSegment);
-        setFilteredMonthlyData(data.allMonthlyData);
-        setFilteredMonthlyAvgInterval(data.monthlyAvgInterval);
+        setSegmentMonthlyData(data.allMonthlyData);
+        setSegmentMonthlyAvgInterval(data.monthlyAvgInterval);
         setFilteredAvgBookingInterval(data.avgBookingInterval);
-        setFilteredPopularMenus(data.popularMenus);
-        setFilteredHeatmapData(data.heatmapData);
+        setSegmentPopularMenus(data.popularMenus);
+        setSegmentHeatmapData(data.heatmapData);
       } catch (err) {
         console.error("[AnalyticsClient] セグメントフィルター エラー:", err);
         // エラー時はセグメントを「全体」に戻し、初期データを復元
         setSegment("all");
-        setFilteredMonthlyData(allMonthlyData);
-        setFilteredMonthlyAvgInterval(monthlyAvgInterval);
+        setSegmentMonthlyData(allMonthlyData);
+        setSegmentMonthlyAvgInterval(monthlyAvgInterval);
         setFilteredAvgBookingInterval(avgBookingInterval);
-        setFilteredPopularMenus(popularMenus);
-        setFilteredHeatmapData(heatmapData);
+        setSegmentPopularMenus(popularMenus);
+        setSegmentHeatmapData(heatmapData);
       }
     });
   }
@@ -155,8 +185,53 @@ export function AnalyticsClient({
 
   const currentStats = getStatsForPeriod();
 
-  // KPI用：直近6ヶ月分（月表示のデフォルト）
-  const monthlyStats = filteredMonthlyData.slice(-6);
+  // KPI用: 期間フィルター内の累計を計算
+  const cumulativeBookingCount = filteredMonthlyData.reduce((sum, d) => sum + d.booking_count, 0);
+  const cumulativeRevenue = filteredMonthlyData.reduce((sum, d) => sum + d.revenue, 0);
+
+  // 顧客単価 = 累計売上 / ユニーク顧客数
+  // 累計ユニーク顧客数: ltvStats のセグメント合計を使用（月別 unique_customers の合算は重複する）
+  const totalSegments =
+    ltvStats.segments.excellent +
+    ltvStats.segments.normal +
+    ltvStats.segments.dormant +
+    ltvStats.segments.at_risk;
+  const cumulativeUnitPrice = totalSegments > 0
+    ? Math.round(cumulativeRevenue / totalSegments)
+    : null;
+
+  // 前月比: 常に「先月 vs 先々月」で計算（期間フィルター・セグメントフィルターの影響を受けない）
+  // allMonthlyData（props の元データ、フィルターなし）の末尾から先月・先々月を取得
+  // 当月（月途中）は比較に使わない
+  const getMomComparison = () => {
+    if (allMonthlyData.length < 2) return { lastMonth: null, prevMonth: null };
+    const now = new Date();
+    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+
+    // 当月を除外して末尾2件を取得
+    const pastMonths = allMonthlyData.filter((d) => d.month < currentMonth);
+    if (pastMonths.length < 2) return { lastMonth: null, prevMonth: null };
+    const lastMonth = pastMonths[pastMonths.length - 1];
+    const prevMonth = pastMonths[pastMonths.length - 2];
+    return { lastMonth, prevMonth };
+  };
+
+  const { lastMonth: momLastMonth, prevMonth: momPrevMonth } = getMomComparison();
+  const bookingDiff = momLastMonth && momPrevMonth && momLastMonth.booking_count > 0
+    ? momLastMonth.booking_count - momPrevMonth.booking_count
+    : null;
+  const revenueDiff = momLastMonth && momPrevMonth && momLastMonth.booking_count > 0
+    ? momLastMonth.revenue - momPrevMonth.revenue
+    : null;
+  const momLastUnitPrice = momLastMonth && momLastMonth.unique_customers > 0
+    ? Math.round(momLastMonth.revenue / momLastMonth.unique_customers)
+    : null;
+  const momPrevUnitPrice = momPrevMonth && momPrevMonth.unique_customers > 0
+    ? Math.round(momPrevMonth.revenue / momPrevMonth.unique_customers)
+    : null;
+  const unitPriceDiff = momLastUnitPrice !== null && momPrevUnitPrice !== null
+    ? momLastUnitPrice - momPrevUnitPrice
+    : null;
 
   // 四半期表示の場合はデータを3ヶ月ごとに集計
   const aggregateQuarterly = (data: MonthlyStat[]): MonthlyStat[] => {
@@ -271,27 +346,6 @@ export function AnalyticsClient({
     };
   });
 
-  // 前月比の計算
-  const currentMonth = monthlyStats.length > 0 ? monthlyStats[monthlyStats.length - 1] : null;
-  const prevMonth = monthlyStats.length > 1 ? monthlyStats[monthlyStats.length - 2] : null;
-
-  const bookingDiff = currentMonth && prevMonth
-    ? currentMonth.booking_count - prevMonth.booking_count
-    : null;
-  const revenueDiff = currentMonth && prevMonth
-    ? currentMonth.revenue - prevMonth.revenue
-    : null;
-  // 顧客単価の計算（総売上 / ユニーク顧客数）
-  const currentUnitPrice = currentMonth && currentMonth.unique_customers > 0
-    ? Math.round(currentMonth.revenue / currentMonth.unique_customers)
-    : null;
-  const prevUnitPrice = prevMonth && prevMonth.unique_customers > 0
-    ? Math.round(prevMonth.revenue / prevMonth.unique_customers)
-    : null;
-  const unitPriceDiff = currentUnitPrice !== null && prevUnitPrice !== null
-    ? currentUnitPrice - prevUnitPrice
-    : null;
-
   const DAY_LABELS = ["日", "月", "火", "水", "木", "金", "土"];
 
   // ヒートマップデータの整形（フィルタリング済みデータを使用）
@@ -306,11 +360,6 @@ export function AnalyticsClient({
 
   // 人気メニューの最大値（バー幅計算用、フィルタリング済みデータを使用）
   const maxMenuCount = Math.max(1, ...filteredPopularMenus.map((m) => m.booking_count));
-  const totalSegments =
-    ltvStats.segments.excellent +
-    ltvStats.segments.normal +
-    ltvStats.segments.dormant +
-    ltvStats.segments.at_risk;
 
   // 年を跨ぐかどうか判定
   const hasMultipleYears = (() => {
@@ -357,36 +406,67 @@ export function AnalyticsClient({
 
   return (
     <div className="space-y-6">
-      {/* セグメントフィルター */}
-      <div className="flex items-center gap-3">
-        <div className="flex items-center gap-2 text-sm text-muted">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-            <circle cx="9" cy="7" r="4" />
-            <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-            <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-          </svg>
-          <span className="hidden sm:inline text-xs font-medium">セグメント</span>
+      {/* フィルターエリア */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-6">
+        {/* セグメントフィルター */}
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 text-sm text-muted">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+              <circle cx="9" cy="7" r="4" />
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+              <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+            </svg>
+            <span className="hidden sm:inline text-xs font-medium">セグメント</span>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {SEGMENT_OPTIONS.map((opt) => (
+              <button
+                key={opt.key}
+                onClick={() => handleSegmentChange(opt.key)}
+                disabled={isSegmentLoading}
+                className={`rounded-xl px-3 py-1.5 text-xs font-medium transition-all ${
+                  segment === opt.key
+                    ? "bg-accent text-white shadow-sm"
+                    : "bg-card text-muted ring-1 ring-border hover:text-foreground"
+                } ${isSegmentLoading ? "opacity-50" : ""}`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+          {isSegmentLoading && (
+            <div className="h-4 w-4 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+          )}
         </div>
-        <div className="flex flex-wrap gap-1.5">
-          {SEGMENT_OPTIONS.map((opt) => (
-            <button
-              key={opt.key}
-              onClick={() => handleSegmentChange(opt.key)}
-              disabled={isSegmentLoading}
-              className={`rounded-xl px-3 py-1.5 text-xs font-medium transition-all ${
-                segment === opt.key
-                  ? "bg-accent text-white shadow-sm"
-                  : "bg-card text-muted ring-1 ring-border hover:text-foreground"
-              } ${isSegmentLoading ? "opacity-50" : ""}`}
-            >
-              {opt.label}
-            </button>
-          ))}
+
+        {/* 期間フィルター */}
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 text-sm text-muted">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+              <line x1="16" y1="2" x2="16" y2="6" />
+              <line x1="8" y1="2" x2="8" y2="6" />
+              <line x1="3" y1="10" x2="21" y2="10" />
+            </svg>
+            <span className="hidden sm:inline text-xs font-medium">期間</span>
+          </div>
+          <div className="flex gap-1.5">
+            {DATE_RANGE_OPTIONS.map((opt) => (
+              <button
+                key={opt.key}
+                onClick={() => setDateRange(opt.key)}
+                className={`rounded-xl px-3 py-1.5 text-xs font-medium transition-all ${
+                  dateRange === opt.key
+                    ? "bg-accent text-white shadow-sm"
+                    : "bg-card text-muted ring-1 ring-border hover:text-foreground"
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
         </div>
-        {isSegmentLoading && (
-          <div className="h-4 w-4 animate-spin rounded-full border-2 border-accent border-t-transparent" />
-        )}
       </div>
 
       {/* KPI サマリーカード */}
@@ -401,7 +481,7 @@ export function AnalyticsClient({
             </svg>
           }
           label="予約実績"
-          value={currentMonth ? `${currentMonth.booking_count}件` : "-"}
+          value={`${cumulativeBookingCount}件`}
           diff={bookingDiff}
           diffLabel="前月比"
         />
@@ -412,8 +492,8 @@ export function AnalyticsClient({
               <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
             </svg>
           }
-          label="今月の売上"
-          value={currentMonth ? `${currentMonth.revenue.toLocaleString()}円` : "-"}
+          label="売上"
+          value={`${cumulativeRevenue.toLocaleString()}円`}
           diff={revenueDiff}
           diffLabel="前月比"
           formatDiff={(v) => `${v > 0 ? "+" : ""}${v.toLocaleString()}円`}
@@ -440,7 +520,7 @@ export function AnalyticsClient({
             </svg>
           }
           label="顧客単価"
-          value={currentUnitPrice !== null ? `${currentUnitPrice.toLocaleString()}円` : "-"}
+          value={cumulativeUnitPrice !== null ? `${cumulativeUnitPrice.toLocaleString()}円` : "-"}
           diff={unitPriceDiff}
           diffLabel="前月比"
           formatDiff={(v) => `${v > 0 ? "+" : ""}${v.toLocaleString()}円`}
