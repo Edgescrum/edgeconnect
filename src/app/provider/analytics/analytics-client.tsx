@@ -1071,6 +1071,26 @@ const SEGMENT_DESCRIPTIONS: Record<string, string> = {
   at_risk: "1回きり or 長期未来店",
 };
 
+// タイプ別満足度カード設定
+const SEGMENT_CARD_CONFIG: Record<string, { description: string; action: string }> = {
+  excellent: {
+    description: "常連さん（5回以上来店）",
+    action: "満足度が高く維持できています。口コミを依頼するチャンスです。",
+  },
+  normal: {
+    description: "通常のお客さん（2-4回来店）",
+    action: "安定した評価です。来店頻度を上げる施策を検討しましょう。",
+  },
+  dormant: {
+    description: "最近来ていないお客さん",
+    action: "最近来ていないお客さんの満足度です。フォローアップの連絡を検討しましょう。",
+  },
+  at_risk: {
+    description: "離脱リスク（1回きり or 長期未来店）",
+    action: "離脱リスクのあるお客さんの評価です。サービス改善に活かしましょう。",
+  },
+};
+
 // ============================================================
 // Survey Analytics Tab Component
 // ============================================================
@@ -1638,35 +1658,127 @@ function SurveyAnalyticsTab({
               </ChartCard>
             )}
 
+            {/* 9.6. 満足度 x 顧客単価 */}
+            {advancedStats.csatVsUnitPrice && advancedStats.csatVsUnitPrice.length > 0 && (
+              <ChartCard title="満足度が売上につながるか: 顧客単価" icon={<CurrencyIcon />}>
+                <p className="mb-4 text-xs text-muted">満足度スコア別の平均顧客単価（累計利用金額 / 来店回数）</p>
+                <div className="space-y-3">
+                  {advancedStats.csatVsUnitPrice.map((item) => {
+                    const maxPrice = Math.max(...advancedStats.csatVsUnitPrice.map((i) => i.avgUnitPrice));
+                    const barWidth = maxPrice > 0 ? (item.avgUnitPrice / maxPrice) * 100 : 0;
+                    return (
+                      <div key={item.scoreLabel} className="flex items-center gap-3">
+                        <span className="w-12 shrink-0 text-sm font-medium text-foreground">{item.scoreLabel}</span>
+                        <div className="flex-1 h-6 overflow-hidden rounded-md bg-border/20 relative">
+                          <div
+                            className="h-full rounded-md bg-violet-500 transition-all duration-700"
+                            style={{ width: `${barWidth}%` }}
+                          />
+                          <span className="absolute inset-y-0 right-2 flex items-center text-xs font-bold text-foreground">
+                            {item.avgUnitPrice.toLocaleString()}円
+                          </span>
+                        </div>
+                        <span className="w-14 shrink-0 text-right text-[11px] text-muted">{item.customerCount}人</span>
+                      </div>
+                    );
+                  })}
+                </div>
+                {(() => {
+                  const items = advancedStats.csatVsUnitPrice;
+                  if (items.length < 2) return null;
+                  const highScore = items.find((i) => i.scoreLabel === "5点" || i.scoreLabel === "4点");
+                  const lowScore = items.find((i) => i.scoreLabel === "1-2点" || i.scoreLabel === "3点");
+                  if (!highScore || !lowScore) return null;
+                  const ratio = lowScore.avgUnitPrice > 0 ? highScore.avgUnitPrice / lowScore.avgUnitPrice : 0;
+                  const hasCorrelation = ratio >= 1.2;
+                  return (
+                    <p className={`mt-4 rounded-xl p-3 text-xs leading-relaxed ${hasCorrelation ? "bg-emerald-50 text-emerald-700" : "bg-slate-50 text-slate-600"}`}>
+                      {hasCorrelation
+                        ? `満足度が高いお客さんほど高いメニューを利用しています（${highScore.scoreLabel}: ${highScore.avgUnitPrice.toLocaleString()}円 vs ${lowScore.scoreLabel}: ${lowScore.avgUnitPrice.toLocaleString()}円）。満足度向上が客単価アップにつながります。`
+                        : "満足度と利用金額に大きな差はありません。メニューの提案力を上げることで客単価アップが期待できます。"}
+                    </p>
+                  );
+                })()}
+              </ChartCard>
+            )}
+
+            {/* 9.7. 満足度 x LTV */}
+            {advancedStats.csatVsLtv && advancedStats.csatVsLtv.length > 0 && (
+              <ChartCard title="満足度が売上につながるか: LTV" icon={<CurrencyIcon />}>
+                <p className="mb-4 text-xs text-muted">満足度スコア別の平均LTV（累計利用金額）</p>
+                <ResponsiveContainer width="100%" height={Math.max(150, advancedStats.csatVsLtv.length * 50)}>
+                  <BarChart data={advancedStats.csatVsLtv} layout="vertical" margin={{ left: 10, right: 10 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" opacity={0.5} horizontal={false} />
+                    <XAxis type="number" fontSize={11} stroke="var(--color-muted)" axisLine={false} tickLine={false} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
+                    <YAxis type="category" dataKey="scoreLabel" fontSize={11} stroke="var(--color-muted)" axisLine={false} tickLine={false} width={50} />
+                    <Tooltip
+                      formatter={(value) => [`${Number(value).toLocaleString()}円`, "平均LTV"]}
+                      contentStyle={{ borderRadius: "12px", border: "1px solid var(--border)", fontSize: "13px" }}
+                    />
+                    <Bar dataKey="avgLtv" fill="#8b5cf6" radius={[0, 4, 4, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+                {(() => {
+                  const items = advancedStats.csatVsLtv;
+                  if (items.length < 2) return null;
+                  const highItem = items[items.length - 1]; // highest score
+                  const lowItem = items[0]; // lowest score
+                  const ratio = lowItem.avgLtv > 0 ? highItem.avgLtv / lowItem.avgLtv : 0;
+                  const hasDifference = ratio >= 1.5;
+                  return (
+                    <p className={`mt-4 rounded-xl p-3 text-xs leading-relaxed ${hasDifference ? "bg-emerald-50 text-emerald-700" : "bg-slate-50 text-slate-600"}`}>
+                      {hasDifference
+                        ? `${highItem.scoreLabel}のお客さんは平均${highItem.avgLtv.toLocaleString()}円利用しています。${lowItem.scoreLabel}のお客さんの${ratio.toFixed(1)}倍です。満足度向上が長期的な売上につながります。`
+                        : "満足度に関わらず利用金額は安定しています。"}
+                    </p>
+                  );
+                })()}
+              </ChartCard>
+            )}
+
             {/* 10. お客さんのタイプ別 満足度 */}
             {segment === "all" && advancedStats.segmentCsat.length > 0 && (
               <ChartCard title="お客さんのタイプ別 満足度" icon={<UsersIcon />}>
+                <p className="mb-4 text-xs text-muted">タイプごとの満足度を比較し、注力すべきお客さんを特定しましょう</p>
                 <div className="space-y-3">
-                  {advancedStats.segmentCsat.map((seg, i) => {
-                    const desc = SEGMENT_DESCRIPTIONS[seg.segment] || "";
+                  {advancedStats.segmentCsat.map((seg) => {
+                    const config = SEGMENT_CARD_CONFIG[seg.segment];
+                    if (!config) return null;
+                    const overallAvg = advancedStats.segmentCsat.reduce((s, x) => s + (x.responseCount > 0 ? x.avgCsat * x.responseCount : 0), 0)
+                      / Math.max(1, advancedStats.segmentCsat.reduce((s, x) => s + x.responseCount, 0));
+                    const diff = seg.responseCount > 0 ? Number((seg.avgCsat - overallAvg).toFixed(1)) : null;
+                    const csatBgColor = seg.responseCount === 0 ? "bg-gray-50 ring-gray-200"
+                      : seg.avgCsat >= 4 ? "bg-emerald-50 ring-emerald-200"
+                      : seg.avgCsat >= 3 ? "bg-amber-50 ring-amber-200"
+                      : "bg-red-50 ring-red-200";
+
                     return (
-                      <div key={seg.segment} className="flex items-center gap-3">
-                        <div className={`h-3 w-3 shrink-0 rounded-full ${SEGMENT_COLORS[i % SEGMENT_COLORS.length].bg}`} />
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-baseline justify-between">
-                            <div className="min-w-0">
-                              <p className="text-sm font-medium">{seg.segmentLabel}</p>
-                              {desc && <p className="text-[10px] text-muted">{desc}</p>}
-                            </div>
-                            <div className="ml-2 flex items-center gap-2 shrink-0">
-                              <span className="text-xs text-muted">{seg.responseCount}件</span>
-                              <span className={`text-sm font-bold ${seg.responseCount > 0 ? getCsatColor(seg.avgCsat) : "text-muted"}`}>
-                                {seg.responseCount > 0 ? `${seg.avgCsat} / 5` : "- / 5"}
-                              </span>
-                            </div>
+                      <div key={seg.segment} className={`rounded-xl p-4 ring-1 ${csatBgColor}`}>
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <p className="text-sm font-semibold text-foreground">{seg.segmentLabel}</p>
+                            <p className="mt-0.5 text-[11px] text-muted">{config.description}</p>
                           </div>
-                          <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-border/30">
-                            <div
-                              className={`h-full rounded-full ${SEGMENT_COLORS[i % SEGMENT_COLORS.length].bg} transition-all duration-500`}
-                              style={{ width: `${seg.responseCount > 0 ? (seg.avgCsat / 5) * 100 : 0}%` }}
-                            />
+                          <div className="text-right">
+                            <div className="flex items-center gap-1">
+                              {seg.responseCount > 0 ? (
+                                <>
+                                  <span className="text-amber-500">{"★".repeat(Math.round(seg.avgCsat))}</span>
+                                  <span className={`text-base font-bold ${getCsatColor(seg.avgCsat)}`}>{seg.avgCsat}</span>
+                                </>
+                              ) : (
+                                <span className="text-sm text-muted">データなし</span>
+                              )}
+                            </div>
+                            <p className="text-[11px] text-muted">{seg.responseCount}件回答</p>
                           </div>
                         </div>
+                        {diff !== null && (
+                          <span className={`mt-2 inline-block rounded-full px-2 py-0.5 text-[10px] font-medium ${diff >= 0 ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"}`}>
+                            平均{diff >= 0 ? "+" : ""}{diff}
+                          </span>
+                        )}
+                        <p className="mt-2 text-[11px] leading-relaxed text-muted">{config.action}</p>
                       </div>
                     );
                   })}
