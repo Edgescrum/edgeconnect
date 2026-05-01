@@ -112,6 +112,8 @@ export function AnalyticsClient({
   const [filteredMonthlyData, setFilteredMonthlyData] = useState(allMonthlyData);
   const [filteredMonthlyAvgInterval, setFilteredMonthlyAvgInterval] = useState(monthlyAvgInterval);
   const [filteredAvgBookingInterval, setFilteredAvgBookingInterval] = useState(avgBookingInterval);
+  const [filteredPopularMenus, setFilteredPopularMenus] = useState(popularMenus);
+  const [filteredHeatmapData, setFilteredHeatmapData] = useState(heatmapData);
 
   function handleSegmentChange(newSegment: SegmentKey) {
     setSegment(newSegment);
@@ -120,6 +122,8 @@ export function AnalyticsClient({
       setFilteredMonthlyData(allMonthlyData);
       setFilteredMonthlyAvgInterval(monthlyAvgInterval);
       setFilteredAvgBookingInterval(avgBookingInterval);
+      setFilteredPopularMenus(popularMenus);
+      setFilteredHeatmapData(heatmapData);
       return;
     }
     startSegmentTransition(async () => {
@@ -128,8 +132,10 @@ export function AnalyticsClient({
         setFilteredMonthlyData(data.allMonthlyData);
         setFilteredMonthlyAvgInterval(data.monthlyAvgInterval);
         setFilteredAvgBookingInterval(data.avgBookingInterval);
-      } catch {
-        // エラー時は現在のデータを保持
+        setFilteredPopularMenus(data.popularMenus);
+        setFilteredHeatmapData(data.heatmapData);
+      } catch (err) {
+        console.error("[AnalyticsClient] セグメントフィルター エラー:", err);
       }
     });
   }
@@ -281,18 +287,18 @@ export function AnalyticsClient({
 
   const DAY_LABELS = ["日", "月", "火", "水", "木", "金", "土"];
 
-  // ヒートマップデータの整形
+  // ヒートマップデータの整形（フィルタリング済みデータを使用）
   const heatmapGrid: number[][] = Array.from({ length: 7 }, () =>
     Array.from({ length: 24 }, () => 0)
   );
   let maxHeat = 1;
-  for (const cell of heatmapData) {
+  for (const cell of filteredHeatmapData) {
     heatmapGrid[cell.day_of_week][cell.hour_of_day] = cell.booking_count;
     if (cell.booking_count > maxHeat) maxHeat = cell.booking_count;
   }
 
-  // 人気メニューの最大値（バー幅計算用）
-  const maxMenuCount = Math.max(1, ...popularMenus.map((m) => m.booking_count));
+  // 人気メニューの最大値（バー幅計算用、フィルタリング済みデータを使用）
+  const maxMenuCount = Math.max(1, ...filteredPopularMenus.map((m) => m.booking_count));
   const totalSegments =
     ltvStats.segments.excellent +
     ltvStats.segments.normal +
@@ -570,9 +576,9 @@ export function AnalyticsClient({
           </svg>
         }
       >
-        {popularMenus.length > 0 ? (
+        {filteredPopularMenus.length > 0 ? (
           <div className="space-y-3">
-            {popularMenus.map((m, i) => {
+            {filteredPopularMenus.map((m, i) => {
               const barWidth = maxMenuCount > 0
                 ? Math.round((m.booking_count / maxMenuCount) * 100)
                 : 0;
