@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { requireActiveSubscription } from "@/lib/auth/provider-session";
 import { AnalyticsClient } from "./analytics-client";
 import { getSurveyBasicStats } from "@/lib/actions/survey-analytics";
+import { getCategoryBenchmark } from "@/lib/actions/analytics";
 
 export default async function AnalyticsPage() {
   const user = await resolveUser();
@@ -131,11 +132,7 @@ export default async function AnalyticsPage() {
       p_start_date: null,
       p_end_date: null,
     }),
-    provider.category
-      ? supabase.rpc("get_category_benchmark", {
-          p_category: provider.category,
-        })
-      : Promise.resolve({ data: { available: false, provider_count: 0 } }),
+    getCategoryBenchmark("all", "this_year").catch(() => ({ available: false, provider_count: 0 })),
     getSurveyBasicStats(),
   ]);
 
@@ -170,7 +167,7 @@ export default async function AnalyticsPage() {
           heatmapData={heatmapResult.data || []}
           avgBookingInterval={avgIntervalResult.data || { avg_interval_days: 0, total_customers: 0, customers_with_interval: 0 }}
           ltvStats={ltvResult.data || { avg_ltv: 0, segments: { excellent: 0, normal: 0, dormant: 0, at_risk: 0 } }}
-          benchmark={benchmarkResult.data || { available: false, provider_count: 0 }}
+          benchmark={benchmarkResult || { available: false, provider_count: 0 }}
           businessHours={(providerSettings?.business_hours as Record<string, { open: string; close: string } | null>) || null}
           surveyBasicStats={surveyBasicStats}
         />

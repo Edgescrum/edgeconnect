@@ -137,6 +137,9 @@ export interface SurveyBenchmark {
   providerCount: number;
   avgCsat?: number;
   avgResponseRate?: number;
+  avgDriverService?: number;
+  avgDriverQuality?: number;
+  avgDriverPrice?: number;
 }
 
 export interface SurveyAdvancedStats {
@@ -981,60 +984,29 @@ export async function getSurveyAdvancedStats(
     }
   }
 
-  // -- h. Survey Benchmark (同カテゴリの平均満足度・回答率) --
+  // -- h. Survey Benchmark (同カテゴリ��平均満足度・回答率・ドライバー) --
   let surveyBenchmark: SurveyBenchmark = { available: false, providerCount: 0 };
   if (provider.category) {
-    // Count providers in same category
-    const { count: providerCount } = await supabase
-      .from("providers")
-      .select("id", { count: "exact", head: true })
-      .eq("category", provider.category)
-      .eq("is_active", true);
+    const { data: benchmarkData, error: benchmarkError } = await supabase.rpc(
+      "get_category_survey_benchmark",
+      { p_category: provider.category }
+    );
 
-    const pCount = providerCount || 0;
-    if (pCount >= 5) {
-      // Get all provider IDs in same category
-      const { data: categoryProviders } = await supabase
-        .from("providers")
-        .select("id")
-        .eq("category", provider.category)
-        .eq("is_active", true);
-
-      if (categoryProviders && categoryProviders.length >= 5) {
-        const catProviderIds = categoryProviders.map((p) => p.id as number);
-
-        // Average CSAT across category
-        const { data: catResponses } = await supabase
-          .from("survey_responses")
-          .select("csat, provider_id")
-          .in("provider_id", catProviderIds);
-
-        // Average response rate across category
-        const { count: catNotifCount } = await supabase
-          .from("pending_survey_notifications")
-          .select("id", { count: "exact", head: true })
-          .in("provider_id", catProviderIds)
-          .eq("status", "sent");
-
-        const catResponseCount = catResponses?.length || 0;
-        const catNotifications = catNotifCount || 0;
-
-        if (catResponseCount > 0) {
-          const avgCatCsat = catResponses!.reduce((s, r) => s + (r.csat as number), 0) / catResponseCount;
-          const avgCatResponseRate = catNotifications > 0
-            ? Math.min(100, Math.round((catResponseCount / catNotifications) * 1000) / 10)
-            : 0;
-
-          surveyBenchmark = {
-            available: true,
-            providerCount: pCount,
-            avgCsat: Number(avgCatCsat.toFixed(1)),
-            avgResponseRate: avgCatResponseRate,
-          };
-        }
+    if (!benchmarkError && benchmarkData) {
+      const bd = benchmarkData as Record<string, unknown>;
+      if (bd.available) {
+        surveyBenchmark = {
+          available: true,
+          providerCount: Number(bd.provider_count ?? 0),
+          avgCsat: Number(bd.avg_csat ?? 0),
+          avgResponseRate: Number(bd.avg_response_rate ?? 0),
+          avgDriverService: Number(bd.avg_driver_service ?? 0),
+          avgDriverQuality: Number(bd.avg_driver_quality ?? 0),
+          avgDriverPrice: Number(bd.avg_driver_price ?? 0),
+        };
+      } else {
+        surveyBenchmark = { available: false, providerCount: Number(bd.provider_count ?? 0) };
       }
-    } else {
-      surveyBenchmark = { available: false, providerCount: pCount };
     }
   }
 
