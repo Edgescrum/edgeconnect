@@ -428,8 +428,13 @@ export function AnalyticsClient({
   });
 
   // ヒートマップ
-  const DAY_LABELS = ["月", "火", "水", "木", "金", "土", "日"];
+  const ALL_DAY_LABELS = ["月", "火", "水", "木", "金", "土", "日"];
+  const DAY_KEYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
   const dowToRow = (dow: number) => (dow === 0 ? 6 : dow - 1);
+  // 営業日のみ表示（businessHours で null = 定休日）
+  const activeDayIndices = businessHours
+    ? DAY_KEYS.map((key, i) => (businessHours[key] !== null ? i : -1)).filter(i => i >= 0)
+    : [0, 1, 2, 3, 4, 5, 6];
 
   const { heatmapStartHour, heatmapEndHour } = (() => {
     if (!businessHours) return { heatmapStartHour: 9, heatmapEndHour: 20 };
@@ -837,9 +842,9 @@ export function AnalyticsClient({
                         <div key={h} className="flex-1 text-center text-xs text-muted">{h}</div>
                       ))}
                     </div>
-                    {DAY_LABELS.map((day, dayIdx) => (
+                    {activeDayIndices.map((dayIdx) => (
                       <div key={dayIdx} className="flex items-center">
-                        <div className="w-8 text-xs font-medium text-muted">{day}</div>
+                        <div className="w-8 text-xs font-medium text-muted">{ALL_DAY_LABELS[dayIdx]}</div>
                         {heatmapHours.map((h) => {
                           const count = heatmapGrid[dayIdx][h];
                           const intensity = count / maxHeat;
@@ -855,7 +860,7 @@ export function AnalyticsClient({
                                 color: intensity > 0.5 ? "white" : "var(--color-muted)",
                                 fontWeight: intensity > 0.5 ? 600 : 400,
                               }}
-                              title={`${day} ${h}時: ${count}件`}
+                              title={`${ALL_DAY_LABELS[dayIdx]} ${h}時: ${count}件`}
                             >
                               {count > 0 ? count : ""}
                             </div>
