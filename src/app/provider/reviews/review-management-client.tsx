@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { toggleReviewVisibility, type ProviderReviewItem } from "@/lib/actions/survey";
+import { TabFilter } from "@/components/TabFilter";
 
 function StarDisplay({ rating, size = 14 }: { rating: number; size?: number }) {
   return (
@@ -123,28 +124,15 @@ export function ReviewManagementClient({ reviews: initialReviews }: { reviews: P
       </div>
 
       {/* Filter tabs */}
-      <div className="flex rounded-xl bg-gray-100 p-1">
-        {[
+      <TabFilter
+        tabs={[
           { key: "all" as const, label: "すべて", count: reviews.length },
           { key: "visible" as const, label: "公開中", count: visibleCount },
           { key: "hidden" as const, label: "非表示", count: hiddenCount },
-        ].map((tab) => (
-          <button
-            key={tab.key}
-            onClick={() => setFilter(tab.key)}
-            className={`flex-1 rounded-lg py-2 text-sm font-medium transition-colors ${
-              filter === tab.key
-                ? "bg-white text-foreground shadow-sm"
-                : "text-muted hover:text-foreground"
-            }`}
-          >
-            {tab.label}
-            <span className={`ml-1 text-xs ${filter === tab.key ? "text-muted" : "text-muted/60"}`}>
-              {tab.count}
-            </span>
-          </button>
-        ))}
-      </div>
+        ]}
+        activeKey={filter}
+        onChange={setFilter}
+      />
 
       {/* Review list */}
       {filteredReviews.length === 0 && (

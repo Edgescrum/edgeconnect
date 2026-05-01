@@ -13,8 +13,9 @@ import {
   Bar,
 } from "recharts";
 import { getAnalyticsBySegment, type SegmentKey, type DateRangeKey } from "@/lib/actions/analytics";
-import { getSurveyAdvancedStats, type SurveyBasicStats, type SurveyAdvancedStats } from "@/lib/actions/survey-analytics";
+import { getSurveyAdvancedStats, getSurveyBasicStats as fetchSurveyBasicStats, type SurveyBasicStats, type SurveyAdvancedStats } from "@/lib/actions/survey-analytics";
 import { generateSurveyAdvice } from "@/lib/constants/survey-advice-templates";
+import { TabFilter } from "@/components/TabFilter";
 
 interface MonthlyStat {
   month: string;
@@ -135,9 +136,10 @@ export function AnalyticsClient({
   const [dateRange, setDateRange] = useState<DateRangeKey>("this_year");
   const [isFilterLoading, startFilterTransition] = useTransition();
 
-  // Survey advanced stats (lazy loaded for standard plan)
+  // Survey stats (lazy loaded for standard plan)
   const [surveyAdvanced, setSurveyAdvanced] = useState<SurveyAdvancedStats | null>(null);
   const [surveyAdvancedLoading, setSurveyAdvancedLoading] = useState(false);
+  const [filteredSurveyBasicStats, setFilteredSurveyBasicStats] = useState<SurveyBasicStats>(surveyBasicStats);
   // フィルターで変動するデータ（初期値はpropsから）
   const [segmentMonthlyData, setSegmentMonthlyData] = useState(allMonthlyData);
   const [segmentMonthlyAvgInterval, setSegmentMonthlyAvgInterval] = useState(monthlyAvgInterval);
@@ -146,18 +148,27 @@ export function AnalyticsClient({
   const [filteredHeatmapData, setFilteredHeatmapData] = useState(heatmapData);
   const [filteredLtvStats, setFilteredLtvStats] = useState(ltvStats);
 
-  // Load survey advanced stats when switching to survey tab or when filters change
+  // Load survey stats when switching to survey tab or when filters change
   const lastSurveyFilter = useRef<string>("");
   useEffect(() => {
-    if (activeTab === "survey" && isStandard) {
+    if (activeTab === "survey") {
       const filterKey = `${segment}-${dateRange}`;
       if (lastSurveyFilter.current === filterKey && surveyAdvanced) return;
       lastSurveyFilter.current = filterKey;
       setSurveyAdvancedLoading(true);
-      getSurveyAdvancedStats(segment, dateRange)
-        .then(setSurveyAdvanced)
-        .catch(console.error)
-        .finally(() => setSurveyAdvancedLoading(false));
+      // Load basic stats with filters
+      fetchSurveyBasicStats(segment, dateRange)
+        .then(setFilteredSurveyBasicStats)
+        .catch(console.error);
+      // Load advanced stats (standard only)
+      if (isStandard) {
+        getSurveyAdvancedStats(segment, dateRange)
+          .then(setSurveyAdvanced)
+          .catch(console.error)
+          .finally(() => setSurveyAdvancedLoading(false));
+      } else {
+        setSurveyAdvancedLoading(false);
+      }
     }
   }, [activeTab, isStandard, segment, dateRange]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -479,41 +490,14 @@ export function AnalyticsClient({
   return (
     <div className="space-y-6">
       {/* Tab Navigation */}
-      <div className="flex gap-1 rounded-2xl bg-background p-1.5 ring-1 ring-border">
-        <button
-          onClick={() => setActiveTab("booking")}
-          className={`flex-1 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all ${
-            activeTab === "booking"
-              ? "bg-card text-foreground shadow-sm ring-1 ring-border/60"
-              : "text-muted hover:text-foreground"
-          }`}
-        >
-          <span className="flex items-center justify-center gap-1.5">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-              <line x1="16" y1="2" x2="16" y2="6" />
-              <line x1="8" y1="2" x2="8" y2="6" />
-              <line x1="3" y1="10" x2="21" y2="10" />
-            </svg>
-            予約実績
-          </span>
-        </button>
-        <button
-          onClick={() => setActiveTab("survey")}
-          className={`flex-1 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all ${
-            activeTab === "survey"
-              ? "bg-card text-foreground shadow-sm ring-1 ring-border/60"
-              : "text-muted hover:text-foreground"
-          }`}
-        >
-          <span className="flex items-center justify-center gap-1.5">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3" />
-            </svg>
-            アンケート分析
-          </span>
-        </button>
-      </div>
+      <TabFilter
+        tabs={[
+          { key: "booking" as const, label: "予約実績" },
+          { key: "survey" as const, label: "アンケート分析" },
+        ]}
+        activeKey={activeTab}
+        onChange={setActiveTab}
+      />
 
       {/* Shared Filter Area (standard only, visible for both tabs) */}
       {isStandard && (
@@ -1064,7 +1048,7 @@ export function AnalyticsClient({
       {activeTab === "survey" && (
         <SurveyAnalyticsTab
           plan={plan}
-          basicStats={surveyBasicStats}
+          basicStats={filteredSurveyBasicStats}
           advancedStats={surveyAdvanced}
           advancedLoading={surveyAdvancedLoading}
           segment={segment}
@@ -1091,6 +1075,14 @@ const SEGMENT_DESCRIPTIONS: Record<string, string> = {
 // Survey Analytics Tab Component
 // ============================================================
 
+type SurveyPeriodKey = "month" | "quarter" | "year";
+
+const SURVEY_PERIOD_OPTIONS: { key: SurveyPeriodKey; label: string; months: number }[] = [
+  { key: "month", label: "月", months: 6 },
+  { key: "quarter", label: "四半期", months: 12 },
+  { key: "year", label: "年", months: 24 },
+];
+
 function SurveyAnalyticsTab({
   plan,
   basicStats,
@@ -1106,9 +1098,10 @@ function SurveyAnalyticsTab({
 }) {
   const isStandard = plan === "standard";
   const [surveyChartTab, setSurveyChartTab] = useState<SurveyChartTab>("csat");
+  const [surveyPeriod, setSurveyPeriod] = useState<SurveyPeriodKey>("month");
 
   // Merge csatTrend and driverTrend into a single dataset for unified chart
-  const mergedTrendData = advancedStats?.csatTrend.map((ct) => {
+  const rawMergedTrendData = advancedStats?.csatTrend.map((ct) => {
     const dt = advancedStats.driverTrend.find((d) => d.month === ct.month);
     return {
       month: ct.month,
@@ -1120,18 +1113,102 @@ function SurveyAnalyticsTab({
     };
   }) || [];
 
+  // Apply period aggregation (same as booking tab)
+  const mergedTrendData = (() => {
+    const months = SURVEY_PERIOD_OPTIONS.find((o) => o.key === surveyPeriod)?.months ?? 6;
+    const sliced = rawMergedTrendData.slice(-months);
+
+    if (surveyPeriod === "quarter") {
+      const quarters: typeof sliced = [];
+      for (let i = 0; i < sliced.length; i += 3) {
+        const chunk = sliced.slice(i, i + 3);
+        if (chunk.length === 0) continue;
+        const totalResp = chunk.reduce((s, c) => s + c.responseCount, 0);
+        quarters.push({
+          month: chunk[0].month,
+          avgCsat: totalResp > 0
+            ? Number((chunk.reduce((s, c) => s + c.avgCsat * c.responseCount, 0) / totalResp).toFixed(1))
+            : 0,
+          responseCount: totalResp,
+          avgService: totalResp > 0
+            ? Number((chunk.reduce((s, c) => s + c.avgService * c.responseCount, 0) / totalResp).toFixed(1))
+            : 0,
+          avgQuality: totalResp > 0
+            ? Number((chunk.reduce((s, c) => s + c.avgQuality * c.responseCount, 0) / totalResp).toFixed(1))
+            : 0,
+          avgPrice: totalResp > 0
+            ? Number((chunk.reduce((s, c) => s + c.avgPrice * c.responseCount, 0) / totalResp).toFixed(1))
+            : 0,
+        });
+      }
+      return quarters;
+    }
+    if (surveyPeriod === "year") {
+      const yearMap = new Map<string, typeof sliced>();
+      for (const item of sliced) {
+        const year = item.month.slice(0, 4);
+        if (!yearMap.has(year)) yearMap.set(year, []);
+        yearMap.get(year)!.push(item);
+      }
+      const years: typeof sliced = [];
+      for (const [year, chunks] of yearMap) {
+        const totalResp = chunks.reduce((s, c) => s + c.responseCount, 0);
+        years.push({
+          month: `${year}-01`,
+          avgCsat: totalResp > 0
+            ? Number((chunks.reduce((s, c) => s + c.avgCsat * c.responseCount, 0) / totalResp).toFixed(1))
+            : 0,
+          responseCount: totalResp,
+          avgService: totalResp > 0
+            ? Number((chunks.reduce((s, c) => s + c.avgService * c.responseCount, 0) / totalResp).toFixed(1))
+            : 0,
+          avgQuality: totalResp > 0
+            ? Number((chunks.reduce((s, c) => s + c.avgQuality * c.responseCount, 0) / totalResp).toFixed(1))
+            : 0,
+          avgPrice: totalResp > 0
+            ? Number((chunks.reduce((s, c) => s + c.avgPrice * c.responseCount, 0) / totalResp).toFixed(1))
+            : 0,
+        });
+      }
+      return years;
+    }
+    return sliced;
+  })();
+
+  const surveyHasMultipleYears = (() => {
+    const years = new Set(mergedTrendData.map((d) => d.month.slice(0, 4)));
+    return years.size > 1;
+  })();
+
   const formatSurveyTick = (v: string, index: number) => {
     const year = v.slice(0, 4);
     const m = parseInt(v.slice(5, 7));
+    if (surveyPeriod === "year") return `${year}年`;
+    if (surveyPeriod === "quarter") {
+      const q = Math.ceil(m / 3);
+      if (index === 0) return `${year}年Q${q}`;
+      const prevEntry = mergedTrendData[index - 1];
+      if (prevEntry && prevEntry.month.slice(0, 4) !== year) return `${year}年Q${q}`;
+      return `Q${q}`;
+    }
+    if (surveyHasMultipleYears) {
+      if (m === 12 || m === 1) return `${year}年${m}月`;
+      return `${m}月`;
+    }
     if (index === 0) return `${year}年${m}月`;
-    const prevEntry = mergedTrendData[index - 1];
-    if (prevEntry && prevEntry.month.slice(0, 4) !== year) return `${year}年${m}月`;
     return `${m}月`;
   };
 
   const formatSurveyTooltipLabel = (label: unknown) => {
     const str = String(label);
-    return `${str.slice(0, 4)}年${parseInt(str.slice(5, 7))}月`;
+    const year = str.slice(0, 4);
+    const m = parseInt(str.slice(5, 7));
+    if (surveyPeriod === "year") return `${year}年`;
+    if (surveyPeriod === "quarter") {
+      const q = Math.ceil(m / 3);
+      return `${year}年 第${q}四半期`;
+    }
+    return `${year}年${m}月`;
   };
 
   // Generate advice
@@ -1199,15 +1276,21 @@ function SurveyAnalyticsTab({
           icon={<ThumbsUpIcon />}
           label="平均満足度"
           value={basicStats.totalResponses > 0 ? `${basicStats.avgCsat} / 5` : "-"}
+          diff={basicStats.csatDiff}
+          diffLabel="前月比"
+          formatDiff={(v) => `${v > 0 ? "+" : ""}${v}`}
           subText={basicStats.totalResponses > 0 ? `${basicStats.totalResponses}件の回答` : "回答なし"}
         />
         <KpiSummaryCard
           icon={<PercentIcon />}
           label="回答率"
           value={basicStats.responseRate > 0 ? `${basicStats.responseRate}%` : "-"}
+          diff={basicStats.responseRateDiff}
+          diffLabel="前月比"
+          formatDiff={(v) => `${v > 0 ? "+" : ""}${v}%`}
           subText={basicStats.totalNotifications > 0
-            ? `${basicStats.totalNotifications}人中${basicStats.totalResponses}人が回答`
-            : "送信数に対する回答数"}
+            ? `${basicStats.totalNotifications}件中${basicStats.totalResponses}件が回答`
+            : "配信数に対する回答数"}
         />
       </div>
 
@@ -1286,6 +1369,22 @@ function SurveyAnalyticsTab({
                   <div className="flex items-center gap-2">
                     <TrendIcon />
                     <h3 className="text-sm font-semibold text-foreground">満足度の推移</h3>
+                  </div>
+                  {/* Period switcher (same as booking tab) */}
+                  <div className="flex gap-1 rounded-xl bg-background p-1 ring-1 ring-border">
+                    {SURVEY_PERIOD_OPTIONS.map((opt) => (
+                      <button
+                        key={opt.key}
+                        onClick={() => setSurveyPeriod(opt.key)}
+                        className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
+                          surveyPeriod === opt.key
+                            ? "bg-accent text-white shadow-sm"
+                            : "text-muted hover:text-foreground"
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
                   </div>
                 </div>
 
@@ -1483,13 +1582,15 @@ function SurveyAnalyticsTab({
                           </div>
                         </div>
                         <div className="mt-3 flex items-end gap-2">
-                          <span className={`text-3xl font-bold ${getCsatColor(item.avgCsat)}`}>{item.avgCsat}</span>
+                          <span className={`text-3xl font-bold ${item.count > 0 ? getCsatColor(item.avgCsat) : "text-muted"}`}>
+                            {item.count > 0 ? item.avgCsat : "-"}
+                          </span>
                           <span className="mb-1 text-sm text-muted">/ 5.0</span>
                         </div>
                         <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/60">
                           <div
                             className={`h-full rounded-full transition-all duration-700 ${isNew ? "bg-blue-400" : "bg-emerald-400"}`}
-                            style={{ width: `${(item.avgCsat / 5) * 100}%` }}
+                            style={{ width: `${item.count > 0 ? (item.avgCsat / 5) * 100 : 0}%` }}
                           />
                         </div>
                       </div>
@@ -1554,13 +1655,15 @@ function SurveyAnalyticsTab({
                             </div>
                             <div className="ml-2 flex items-center gap-2 shrink-0">
                               <span className="text-xs text-muted">{seg.responseCount}件</span>
-                              <span className={`text-sm font-bold ${getCsatColor(seg.avgCsat)}`}>{seg.avgCsat} / 5</span>
+                              <span className={`text-sm font-bold ${seg.responseCount > 0 ? getCsatColor(seg.avgCsat) : "text-muted"}`}>
+                                {seg.responseCount > 0 ? `${seg.avgCsat} / 5` : "- / 5"}
+                              </span>
                             </div>
                           </div>
                           <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-border/30">
                             <div
                               className={`h-full rounded-full ${SEGMENT_COLORS[i % SEGMENT_COLORS.length].bg} transition-all duration-500`}
-                              style={{ width: `${(seg.avgCsat / 5) * 100}%` }}
+                              style={{ width: `${seg.responseCount > 0 ? (seg.avgCsat / 5) * 100 : 0}%` }}
                             />
                           </div>
                         </div>
@@ -1588,6 +1691,53 @@ function SurveyAnalyticsTab({
                 </ResponsiveContainer>
               </ChartCard>
             )}
+
+            {/* 12. 業界ベンチマーク比較（アンケート分析版） */}
+            <ChartCard title="業界ベンチマーク比較" icon={<BarChartIcon />}>
+              {advancedStats.surveyBenchmark.available ? (
+                <div className="space-y-4">
+                  <p className="text-xs text-muted">同カテゴリ {advancedStats.surveyBenchmark.providerCount}事業者の平均との比較</p>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <BenchmarkCard label="平均満足度（業界）" value={`${advancedStats.surveyBenchmark.avgCsat} / 5`} />
+                    <BenchmarkCard label="平均回答率（業界）" value={`${advancedStats.surveyBenchmark.avgResponseRate}%`} />
+                  </div>
+                  {basicStats.totalResponses > 0 && (
+                    <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                      <div className="rounded-xl bg-background p-3.5">
+                        <p className="text-xs text-muted">あなたの満足度</p>
+                        <p className={`mt-1.5 text-lg font-bold ${getCsatColor(basicStats.avgCsat)}`}>{basicStats.avgCsat} / 5</p>
+                        {advancedStats.surveyBenchmark.avgCsat !== undefined && (
+                          <p className={`mt-0.5 text-xs font-medium ${basicStats.avgCsat >= advancedStats.surveyBenchmark.avgCsat ? "text-emerald-600" : "text-red-500"}`}>
+                            {basicStats.avgCsat >= advancedStats.surveyBenchmark.avgCsat ? "業界平均以上" : "業界平均以下"}
+                          </p>
+                        )}
+                      </div>
+                      <div className="rounded-xl bg-background p-3.5">
+                        <p className="text-xs text-muted">あなたの回答率</p>
+                        <p className="mt-1.5 text-lg font-bold">{basicStats.responseRate}%</p>
+                        {advancedStats.surveyBenchmark.avgResponseRate !== undefined && (
+                          <p className={`mt-0.5 text-xs font-medium ${basicStats.responseRate >= advancedStats.surveyBenchmark.avgResponseRate ? "text-emerald-600" : "text-red-500"}`}>
+                            {basicStats.responseRate >= advancedStats.surveyBenchmark.avgResponseRate ? "業界平均以上" : "業界平均以下"}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="flex items-center gap-3 rounded-xl bg-background p-4">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" y1="16" x2="12" y2="12" />
+                    <line x1="12" y1="8" x2="12.01" y2="8" />
+                  </svg>
+                  <p className="text-sm text-muted">
+                    同カテゴリの事業者が5件以上になると、ベンチマーク比較が表示されます
+                    {advancedStats.surveyBenchmark.providerCount > 0 && `（現在 ${advancedStats.surveyBenchmark.providerCount}件）`}
+                  </p>
+                </div>
+              )}
+            </ChartCard>
           </>
         ) : null
       ) : (

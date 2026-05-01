@@ -23,9 +23,14 @@ async function getProviderWithPlan() {
 export interface SurveyBasicStats {
   avgCsat: number;
   totalResponses: number;
-  totalNotifications: number; // アンケート送信数（回答率の分母）
-  responseRate: number; // 回答率 (%)
+  totalNotifications: number; // 配信数（アンケート対象予約数）= 回答率の分母
+  responseRate: number; // 回答率 (%) = 回答数 / 配信数
   csatDistribution: { score: number; count: number }[]; // 1-5点の分布
+  // 前月比
+  prevMonthAvgCsat: number | null;
+  csatDiff: number | null;        // 今月 - 先月
+  prevMonthResponseRate: number | null;
+  responseRateDiff: number | null; // 今月 - 先月 (ポイント差)
 }
 
 export interface MonthlyCsatTrend {
@@ -109,6 +114,13 @@ export interface CsatRetentionItem {
   retentionRate: number; // 0-100
 }
 
+export interface SurveyBenchmark {
+  available: boolean;
+  providerCount: number;
+  avgCsat?: number;
+  avgResponseRate?: number;
+}
+
 export interface SurveyAdvancedStats {
   csatTrend: MonthlyCsatTrend[];
   driverTrend: DriverTrend[];
@@ -132,41 +144,70 @@ export interface SurveyAdvancedStats {
   driverRegression: DriverRegressionResult[];
   // 満足度x再来店率
   csatRetentionRate: CsatRetentionItem[];
+  // ベンチマーク
+  surveyBenchmark: SurveyBenchmark;
 }
 
 // ============================================================
 // Basic Stats (available for all plans)
 // ============================================================
 
-export async function getSurveyBasicStats(): Promise<SurveyBasicStats> {
+export async function getSurveyBasicStats(
+  segment: SegmentKey = "all",
+  dateRange: DateRangeKey = "all"
+): Promise<SurveyBasicStats> {
   const provider = await getProviderWithPlan();
   const supabase = createAdminClient();
+  const { startDate, endDate } = computeDateRange(dateRange);
 
-  // 分母: pending_survey_notifications の全件数（status問わず）
-  // = アンケート対象として登録された予約数
-  // 分子: survey_responses の件数 = 実際に回答された数
-  const [
-    { count: notificationCount },
-    { count: responseCount },
-    { data: avgData },
-  ] = await Promise.all([
-    supabase
-      .from("pending_survey_notifications")
-      .select("id", { count: "exact", head: true })
-      .eq("provider_id", provider.id),
-    supabase
-      .from("survey_responses")
-      .select("id", { count: "exact", head: true })
-      .eq("provider_id", provider.id),
-    supabase
-      .from("survey_responses")
-      .select("csat")
-      .eq("provider_id", provider.id),
+  // Get segment customer IDs if needed
+  let segmentCustomerIds: number[] | null = null;
+  if (segment !== "all") {
+    const { data: segData } = await supabase.rpc("get_segment_customer_ids", {
+      p_provider_id: provider.id,
+      p_segment: segment,
+    });
+    segmentCustomerIds = segData
+      ? (segData as { customer_user_id: number }[]).map((r) => r.customer_user_id)
+      : [];
+  }
+
+  // 分母: pending_survey_notifications で status = 'sent' の件数（配信数）
+  // 分子: survey_responses の件数（回答数）
+  let notifQuery = supabase
+    .from("pending_survey_notifications")
+    .select("id", { count: "exact", head: true })
+    .eq("provider_id", provider.id)
+    .eq("status", "sent");
+
+  let responseQuery = supabase
+    .from("survey_responses")
+    .select("csat, created_at, customer_user_id")
+    .eq("provider_id", provider.id);
+
+  if (startDate) {
+    notifQuery = notifQuery.gte("created_at", startDate);
+    responseQuery = responseQuery.gte("created_at", startDate);
+  }
+  if (endDate) {
+    notifQuery = notifQuery.lte("created_at", endDate);
+    responseQuery = responseQuery.lte("created_at", endDate);
+  }
+  if (segmentCustomerIds && segmentCustomerIds.length > 0) {
+    notifQuery = notifQuery.in("customer_user_id", segmentCustomerIds);
+    responseQuery = responseQuery.in("customer_user_id", segmentCustomerIds);
+  } else if (segmentCustomerIds && segmentCustomerIds.length === 0) {
+    return emptySurveyBasicStats();
+  }
+
+  const [{ count: notificationCount }, { data: avgData }] = await Promise.all([
+    notifQuery,
+    responseQuery,
   ]);
 
-  const totalResponses = responseCount || 0;
+  const totalResponses = avgData?.length || 0;
   const totalNotifications = notificationCount || 0;
-  // 回答率を計算し、100%を上限とする
+  // 回答率: 件数単位（回答数 / 配信数）
   const responseRate = totalNotifications > 0
     ? Math.min(100, Math.round((totalResponses / totalNotifications) * 1000) / 10)
     : 0;
@@ -188,12 +229,112 @@ export async function getSurveyBasicStats(): Promise<SurveyBasicStats> {
     count: distributionMap[score],
   }));
 
+  // 前月比の計算
+  const now = new Date();
+  const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+  const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
+  const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59).toISOString();
+
+  let prevNotifQuery = supabase
+    .from("pending_survey_notifications")
+    .select("id", { count: "exact", head: true })
+    .eq("provider_id", provider.id)
+    .eq("status", "sent")
+    .gte("created_at", lastMonthStart)
+    .lte("created_at", lastMonthEnd);
+
+  let prevResponseQuery = supabase
+    .from("survey_responses")
+    .select("csat")
+    .eq("provider_id", provider.id)
+    .gte("created_at", lastMonthStart)
+    .lte("created_at", lastMonthEnd);
+
+  let currResponseQuery = supabase
+    .from("survey_responses")
+    .select("csat")
+    .eq("provider_id", provider.id)
+    .gte("created_at", thisMonthStart);
+
+  let currNotifQuery = supabase
+    .from("pending_survey_notifications")
+    .select("id", { count: "exact", head: true })
+    .eq("provider_id", provider.id)
+    .eq("status", "sent")
+    .gte("created_at", thisMonthStart);
+
+  if (segmentCustomerIds && segmentCustomerIds.length > 0) {
+    prevNotifQuery = prevNotifQuery.in("customer_user_id", segmentCustomerIds);
+    prevResponseQuery = prevResponseQuery.in("customer_user_id", segmentCustomerIds);
+    currResponseQuery = currResponseQuery.in("customer_user_id", segmentCustomerIds);
+    currNotifQuery = currNotifQuery.in("customer_user_id", segmentCustomerIds);
+  }
+
+  const [
+    { count: prevNotifCount },
+    { data: prevResponseData },
+    { data: currResponseData },
+    { count: currNotifCount },
+  ] = await Promise.all([
+    prevNotifQuery,
+    prevResponseQuery,
+    currResponseQuery,
+    currNotifQuery,
+  ]);
+
+  let prevMonthAvgCsat: number | null = null;
+  let csatDiff: number | null = null;
+  let prevMonthResponseRate: number | null = null;
+  let responseRateDiff: number | null = null;
+
+  if (prevResponseData && prevResponseData.length > 0) {
+    prevMonthAvgCsat = Number(
+      (prevResponseData.reduce((s, r) => s + (r.csat as number), 0) / prevResponseData.length).toFixed(1)
+    );
+    const currAvgCsat = currResponseData && currResponseData.length > 0
+      ? Number((currResponseData.reduce((s, r) => s + (r.csat as number), 0) / currResponseData.length).toFixed(1))
+      : null;
+    if (currAvgCsat !== null) {
+      csatDiff = Number((currAvgCsat - prevMonthAvgCsat).toFixed(1));
+    }
+  }
+
+  const prevNotifications = prevNotifCount || 0;
+  const prevResponses = prevResponseData?.length || 0;
+  if (prevNotifications > 0) {
+    prevMonthResponseRate = Math.min(100, Math.round((prevResponses / prevNotifications) * 1000) / 10);
+    const currNotifications = currNotifCount || 0;
+    const currResponses = currResponseData?.length || 0;
+    if (currNotifications > 0) {
+      const currRate = Math.min(100, Math.round((currResponses / currNotifications) * 1000) / 10);
+      responseRateDiff = Number((currRate - prevMonthResponseRate).toFixed(1));
+    }
+  }
+
   return {
     avgCsat: Number(avgCsat.toFixed(1)),
     totalResponses,
     totalNotifications,
     responseRate,
     csatDistribution,
+    prevMonthAvgCsat,
+    csatDiff,
+    prevMonthResponseRate,
+    responseRateDiff,
+  };
+}
+
+function emptySurveyBasicStats(): SurveyBasicStats {
+  return {
+    avgCsat: 0,
+    totalResponses: 0,
+    totalNotifications: 0,
+    responseRate: 0,
+    csatDistribution: [1, 2, 3, 4, 5].map((score) => ({ score, count: 0 })),
+    prevMonthAvgCsat: null,
+    csatDiff: null,
+    prevMonthResponseRate: null,
+    responseRateDiff: null,
   };
 }
 
@@ -414,14 +555,17 @@ export async function getSurveyAdvancedStats(
       at_risk: "離脱リスク",
     };
 
-    segmentCsat = Array.from(segCsatMap.entries())
-      .filter(([seg]) => seg !== "unknown")
-      .map(([seg, entry]) => ({
+    // Always include all segments (even if count is 0) so UI shows full picture
+    const allSegmentKeys = ["excellent", "normal", "dormant", "at_risk"];
+    segmentCsat = allSegmentKeys.map((seg) => {
+      const entry = segCsatMap.get(seg);
+      return {
         segment: seg,
         segmentLabel: segmentLabels[seg] || seg,
-        avgCsat: Number((entry.csatSum / entry.count).toFixed(1)),
-        responseCount: entry.count,
-      }));
+        avgCsat: entry ? Number((entry.csatSum / entry.count).toFixed(1)) : 0,
+        responseCount: entry?.count || 0,
+      };
+    });
   }
 
   // -- Gender/Age CSAT --
@@ -584,23 +728,25 @@ export async function getSurveyAdvancedStats(
     }
   }
 
-  const newVsRepeaterCsat: NewVsRepeaterCsat[] = [];
-  if (newCsatList.length > 0) {
-    newVsRepeaterCsat.push({
+  // Always include both "new" and "repeater" so the UI shows both cards
+  const newVsRepeaterCsat: NewVsRepeaterCsat[] = [
+    {
       type: "new",
       label: "新規",
-      avgCsat: Number((newCsatList.reduce((s, c) => s + c, 0) / newCsatList.length).toFixed(1)),
+      avgCsat: newCsatList.length > 0
+        ? Number((newCsatList.reduce((s, c) => s + c, 0) / newCsatList.length).toFixed(1))
+        : 0,
       count: newCsatList.length,
-    });
-  }
-  if (repeaterCsatList.length > 0) {
-    newVsRepeaterCsat.push({
+    },
+    {
       type: "repeater",
       label: "リピーター",
-      avgCsat: Number((repeaterCsatList.reduce((s, c) => s + c, 0) / repeaterCsatList.length).toFixed(1)),
+      avgCsat: repeaterCsatList.length > 0
+        ? Number((repeaterCsatList.reduce((s, c) => s + c, 0) / repeaterCsatList.length).toFixed(1))
+        : 0,
       count: repeaterCsatList.length,
-    });
-  }
+    },
+  ];
 
   // -- c. Revenue x CSAT correlation (monthly) --
   const monthlyRevenue = new Map<string, number>();
@@ -762,6 +908,63 @@ export async function getSurveyAdvancedStats(
     }
   }
 
+  // -- h. Survey Benchmark (同カテゴリの平均満足度・回答率) --
+  let surveyBenchmark: SurveyBenchmark = { available: false, providerCount: 0 };
+  if (provider.category) {
+    // Count providers in same category
+    const { count: providerCount } = await supabase
+      .from("providers")
+      .select("id", { count: "exact", head: true })
+      .eq("category", provider.category)
+      .eq("is_active", true);
+
+    const pCount = providerCount || 0;
+    if (pCount >= 5) {
+      // Get all provider IDs in same category
+      const { data: categoryProviders } = await supabase
+        .from("providers")
+        .select("id")
+        .eq("category", provider.category)
+        .eq("is_active", true);
+
+      if (categoryProviders && categoryProviders.length >= 5) {
+        const catProviderIds = categoryProviders.map((p) => p.id as number);
+
+        // Average CSAT across category
+        const { data: catResponses } = await supabase
+          .from("survey_responses")
+          .select("csat, provider_id")
+          .in("provider_id", catProviderIds);
+
+        // Average response rate across category
+        const { count: catNotifCount } = await supabase
+          .from("pending_survey_notifications")
+          .select("id", { count: "exact", head: true })
+          .in("provider_id", catProviderIds)
+          .eq("status", "sent");
+
+        const catResponseCount = catResponses?.length || 0;
+        const catNotifications = catNotifCount || 0;
+
+        if (catResponseCount > 0) {
+          const avgCatCsat = catResponses!.reduce((s, r) => s + (r.csat as number), 0) / catResponseCount;
+          const avgCatResponseRate = catNotifications > 0
+            ? Math.min(100, Math.round((catResponseCount / catNotifications) * 1000) / 10)
+            : 0;
+
+          surveyBenchmark = {
+            available: true,
+            providerCount: pCount,
+            avgCsat: Number(avgCatCsat.toFixed(1)),
+            avgResponseRate: avgCatResponseRate,
+          };
+        }
+      }
+    } else {
+      surveyBenchmark = { available: false, providerCount: pCount };
+    }
+  }
+
   return {
     csatTrend,
     driverTrend,
@@ -777,6 +980,7 @@ export async function getSurveyAdvancedStats(
     menuCsatMatrix,
     driverRegression,
     csatRetentionRate,
+    surveyBenchmark,
   };
 }
 
@@ -789,5 +993,6 @@ function emptyAdvancedStats(): SurveyAdvancedStats {
     revenueCsatInsight: null,
     menuCsatMatrix: [], driverRegression: [],
     csatRetentionRate: [],
+    surveyBenchmark: { available: false, providerCount: 0 },
   };
 }
