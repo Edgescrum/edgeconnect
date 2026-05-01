@@ -114,6 +114,24 @@ export interface CsatRetentionItem {
   retentionRate: number; // 0-100
 }
 
+// 満足度 x 顧客単価
+export interface CsatVsUnitPrice {
+  scoreLabel: string;  // "1-2点" / "3点" / "4点" / "5点"
+  minScore: number;
+  maxScore: number;
+  avgUnitPrice: number;
+  customerCount: number;
+}
+
+// 満足度 x LTV
+export interface CsatVsLtv {
+  scoreLabel: string;
+  minScore: number;
+  maxScore: number;
+  avgLtv: number;
+  customerCount: number;
+}
+
 export interface SurveyBenchmark {
   available: boolean;
   providerCount: number;
@@ -144,6 +162,9 @@ export interface SurveyAdvancedStats {
   driverRegression: DriverRegressionResult[];
   // 満足度x再来店率
   csatRetentionRate: CsatRetentionItem[];
+  // 満足度x顧客単価・LTV
+  csatVsUnitPrice: CsatVsUnitPrice[];
+  csatVsLtv: CsatVsLtv[];
   // ベンチマーク
   surveyBenchmark: SurveyBenchmark;
 }
@@ -908,6 +929,55 @@ export async function getSurveyAdvancedStats(
     }
   }
 
+  // -- g2. CSAT x Unit Price (満足度スコア別の平均顧客単価) --
+  const csatVsUnitPrice: CsatVsUnitPrice[] = [];
+  const csatVsLtv: CsatVsLtv[] = [];
+
+  if (customerCsat.size > 0 && customerSpend.size > 0) {
+    // Build per-customer: avgCsat, unitPrice, totalLtv
+    const customerAnalysis: { custId: number; avgCsat: number; unitPrice: number; ltv: number }[] = [];
+    for (const [custId, csatEntry] of customerCsat) {
+      const spend = customerSpend.get(custId);
+      if (!spend || spend.bookingCount === 0) continue;
+      customerAnalysis.push({
+        custId,
+        avgCsat: csatEntry.csatSum / csatEntry.count,
+        unitPrice: Math.round(spend.totalRevenue / spend.bookingCount),
+        ltv: spend.totalRevenue,
+      });
+    }
+
+    // Score buckets: 1-2 / 3 / 4 / 5
+    const scoreBucketsForRevenue = [
+      { label: "1-2点", min: 1, max: 2.4 },
+      { label: "3点", min: 2.5, max: 3.4 },
+      { label: "4点", min: 3.5, max: 4.4 },
+      { label: "5点", min: 4.5, max: 5 },
+    ];
+
+    for (const bucket of scoreBucketsForRevenue) {
+      const customers = customerAnalysis.filter(
+        (c) => c.avgCsat >= bucket.min && c.avgCsat <= bucket.max
+      );
+      if (customers.length > 0) {
+        csatVsUnitPrice.push({
+          scoreLabel: bucket.label,
+          minScore: bucket.min,
+          maxScore: bucket.max,
+          avgUnitPrice: Math.round(customers.reduce((s, c) => s + c.unitPrice, 0) / customers.length),
+          customerCount: customers.length,
+        });
+        csatVsLtv.push({
+          scoreLabel: bucket.label,
+          minScore: bucket.min,
+          maxScore: bucket.max,
+          avgLtv: Math.round(customers.reduce((s, c) => s + c.ltv, 0) / customers.length),
+          customerCount: customers.length,
+        });
+      }
+    }
+  }
+
   // -- h. Survey Benchmark (同カテゴリの平均満足度・回答率) --
   let surveyBenchmark: SurveyBenchmark = { available: false, providerCount: 0 };
   if (provider.category) {
@@ -980,6 +1050,8 @@ export async function getSurveyAdvancedStats(
     menuCsatMatrix,
     driverRegression,
     csatRetentionRate,
+    csatVsUnitPrice,
+    csatVsLtv,
     surveyBenchmark,
   };
 }
@@ -993,6 +1065,7 @@ function emptyAdvancedStats(): SurveyAdvancedStats {
     revenueCsatInsight: null,
     menuCsatMatrix: [], driverRegression: [],
     csatRetentionRate: [],
+    csatVsUnitPrice: [], csatVsLtv: [],
     surveyBenchmark: { available: false, providerCount: 0 },
   };
 }
