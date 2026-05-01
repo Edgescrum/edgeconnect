@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useState, useTransition, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { toggleReviewVisibility, type ProviderReviewItem } from "@/lib/actions/survey";
 import { TabFilter } from "@/components/TabFilter";
 
@@ -68,6 +68,11 @@ export function ReviewManagementClient({ reviews: initialReviews, initialSegment
   const [segment, setSegment] = useState<SegmentKey>(initialSegment as SegmentKey);
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
+
+  // サーバーから新しいデータが来たら反映する
+  useEffect(() => {
+    setReviews(initialReviews);
+  }, [initialReviews]);
 
   function handleSegmentChange(newSegment: SegmentKey) {
     setSegment(newSegment);
