@@ -6,6 +6,7 @@ import { getCategoryLabel } from "@/lib/constants/categories";
 import { PublicFooter } from "@/components/PublicFooter";
 import { resolveUser } from "@/lib/auth/session";
 import { ServiceMenuList } from "./service-menu-list";
+import { ReviewSection } from "./review-section";
 import { brand } from "@/lib/brand";
 import { isFavorited } from "@/lib/actions/favorite";
 import { ProviderAvatar } from "@/components/ProviderAvatar";
@@ -47,6 +48,14 @@ export async function generateMetadata({
   };
 }
 
+interface ReviewItem {
+  id: number;
+  csat: number;
+  review_text: string;
+  created_at: string;
+  customer_name: string | null;
+}
+
 interface ProviderProfile {
   id: number;
   slug: string;
@@ -58,6 +67,9 @@ interface ProviderProfile {
   brand_color: string;
   category: string | null;
   subscription_status: string;
+  review_summary: { avg_csat: number | null; count: number } | null;
+  csat_summary: { avg_csat: number | null; count: number } | null;
+  recent_reviews: ReviewItem[];
   services: {
     id: number;
     name: string;
@@ -136,6 +148,12 @@ export default async function ProviderProfilePage({
               <ServiceMenuList services={provider.services} slug={slug} isLoggedIn={isLoggedIn} />
             )
           )}
+          <ReviewSection
+            slug={slug}
+            reviewSummary={provider.review_summary}
+            recentReviews={provider.recent_reviews || []}
+            brandColor={brandColor}
+          />
         </div>
       </div>
 
@@ -189,6 +207,12 @@ export default async function ProviderProfilePage({
                 <ServiceMenuList services={provider.services} slug={slug} isLoggedIn={isLoggedIn} />
               )
             )}
+            <ReviewSection
+              slug={slug}
+              reviewSummary={provider.review_summary}
+              recentReviews={provider.recent_reviews || []}
+              brandColor={brandColor}
+            />
           </div>
         </div>
       </div>

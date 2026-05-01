@@ -9,6 +9,8 @@ export interface ProviderCard {
   icon_url: string | null;
   category: string | null;
   brand_color: string | null;
+  avg_csat: number | null;
+  review_count: number | null;
 }
 
 export async function searchProviders(

@@ -4,6 +4,7 @@ import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { CancelBookingButton } from "@/components/CancelBookingButton";
 import { generateGoogleCalendarUrl } from "@/lib/calendar/ics";
+import { DeleteReviewButton } from "./delete-review-button";
 
 export default async function BookingDetailPage({
   params,
@@ -57,6 +58,14 @@ export default async function BookingDetailPage({
   const days = ["日", "月", "火", "水", "木", "金", "土"];
   const dateStr = `${startAt.getFullYear()}/${startAt.getMonth() + 1}/${startAt.getDate()}（${days[startAt.getDay()]}）`;
   const timeStr = `${startAt.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })}〜${new Date(booking.end_at).toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })}`;
+
+  // 口コミ情報を取得
+  const { data: surveyResponse } = await supabase
+    .from("survey_responses")
+    .select("id, csat, review_text, review_public, created_at")
+    .eq("booking_id", id)
+    .eq("customer_user_id", user.id)
+    .single();
 
   return (
     <main className="min-h-screen bg-background">
@@ -205,6 +214,47 @@ export default async function BookingDetailPage({
               >
                 Apple
               </a>
+            </div>
+          </div>
+        )}
+
+        {/* 口コミ */}
+        {surveyResponse && (
+          <div className="mt-6">
+            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted">
+              あなたの回答
+            </h3>
+            <div className="rounded-xl border border-border bg-card p-4">
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center gap-0.5">
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <svg
+                      key={i}
+                      width={14}
+                      height={14}
+                      viewBox="0 0 24 24"
+                      fill={i <= surveyResponse.csat ? "#f59e0b" : "#e5e7eb"}
+                      stroke="none"
+                    >
+                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                    </svg>
+                  ))}
+                </span>
+                <span className="text-xs text-muted">
+                  {new Date(surveyResponse.created_at).toLocaleDateString("ja-JP")}
+                </span>
+              </div>
+              {surveyResponse.review_text && (
+                <p className="mt-2 text-sm leading-relaxed">{surveyResponse.review_text}</p>
+              )}
+              {surveyResponse.review_public && (
+                <span className="mt-1 inline-block rounded-full bg-green-50 px-2 py-0.5 text-[10px] text-green-700">
+                  公開中
+                </span>
+              )}
+              <div className="mt-3">
+                <DeleteReviewButton surveyResponseId={surveyResponse.id} />
+              </div>
             </div>
           </div>
         )}

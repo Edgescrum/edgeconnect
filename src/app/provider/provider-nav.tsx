@@ -14,6 +14,7 @@ const PAGE_TITLES: Record<string, string> = {
   "/provider/calendar": "カレンダー連携",
   "/provider/billing": "プラン管理",
   "/provider/customers": "顧客管理",
+  "/provider/reviews": "口コミ管理",
   "/provider/analytics": "実績分析",
 };
 
