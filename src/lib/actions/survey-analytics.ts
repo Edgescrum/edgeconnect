@@ -83,9 +83,19 @@ export interface MenuCsatMatrix {
   responseCount: number;
 }
 
-export interface WordCloudItem {
-  word: string;
-  count: number;
+export interface DriverRegressionResult {
+  driver: "service" | "quality" | "price";
+  label: string;
+  correlation: number;    // CORR(driver, csat)
+  regrSlope: number;      // REGR_SLOPE(csat, driver) — CSATへの影響度
+  avgScore: number;       // 現在の平均スコア
+  sampleCount: number;
+}
+
+export interface RevenueCsatInsight {
+  correlation: number;
+  message: string;
+  strength: "strong_positive" | "weak" | "strong_negative";
 }
 
 export interface SurveyAdvancedStats {
@@ -105,8 +115,10 @@ export interface SurveyAdvancedStats {
   unitPriceCsat: UnitPriceCsat[];
   newVsRepeaterCsat: NewVsRepeaterCsat[];
   revenueCorrelation: RevenueCorrelation[];
+  revenueCsatInsight: RevenueCsatInsight | null;
   menuCsatMatrix: MenuCsatMatrix[];
-  wordCloud: WordCloudItem[];
+  // Driver regression analysis
+  driverRegression: DriverRegressionResult[];
 }
 
 // ============================================================
@@ -117,16 +129,18 @@ export async function getSurveyBasicStats(): Promise<SurveyBasicStats> {
   const provider = await getProviderWithPlan();
   const supabase = createAdminClient();
 
+  // 分母: pending_survey_notifications の全件数（status問わず）
+  // = アンケート対象として登録された予約数
+  // 分子: survey_responses の件数 = 実際に回答された数
   const [
-    { count: sentCount },
+    { count: notificationCount },
     { count: responseCount },
     { data: avgData },
   ] = await Promise.all([
     supabase
       .from("pending_survey_notifications")
       .select("id", { count: "exact", head: true })
-      .eq("provider_id", provider.id)
-      .eq("status", "sent"),
+      .eq("provider_id", provider.id),
     supabase
       .from("survey_responses")
       .select("id", { count: "exact", head: true })
@@ -138,9 +152,10 @@ export async function getSurveyBasicStats(): Promise<SurveyBasicStats> {
   ]);
 
   const totalResponses = responseCount || 0;
-  const totalSent = sentCount || 0;
-  const responseRate = totalSent > 0
-    ? Math.round((totalResponses / totalSent) * 1000) / 10
+  const totalNotifications = notificationCount || 0;
+  // 回答率を計算し、100%を上限とする
+  const responseRate = totalNotifications > 0
+    ? Math.min(100, Math.round((totalResponses / totalNotifications) * 1000) / 10)
     : 0;
 
   const avgCsat = (avgData && avgData.length > 0)
@@ -168,16 +183,39 @@ function computeDateRange(dateRange: DateRangeKey): { startDate: string | null; 
 }
 
 // ============================================================
-// Predefined keywords for word cloud (Japanese)
+// Correlation helper (Pearson)
 // ============================================================
 
-const PREDEFINED_KEYWORDS = [
-  "丁寧", "満足", "待ち時間", "価格", "雰囲気", "清潔", "対応", "説明",
-  "技術", "仕上がり", "接客", "リラックス", "快適", "親切", "安心",
-  "予約", "時間", "スタッフ", "おすすめ", "感謝", "嬉しい", "良い",
-  "悪い", "遅い", "早い", "高い", "安い", "綺麗", "上手", "丁寧",
-  "また来たい", "気持ちいい", "居心地", "笑顔", "プロ", "信頼",
-];
+function pearsonCorrelation(xs: number[], ys: number[]): number {
+  const n = xs.length;
+  if (n < 3) return 0;
+  const meanX = xs.reduce((s, v) => s + v, 0) / n;
+  const meanY = ys.reduce((s, v) => s + v, 0) / n;
+  let num = 0, denX = 0, denY = 0;
+  for (let i = 0; i < n; i++) {
+    const dx = xs[i] - meanX;
+    const dy = ys[i] - meanY;
+    num += dx * dy;
+    denX += dx * dx;
+    denY += dy * dy;
+  }
+  const den = Math.sqrt(denX * denY);
+  return den === 0 ? 0 : num / den;
+}
+
+function regressionSlope(xs: number[], ys: number[]): number {
+  const n = xs.length;
+  if (n < 3) return 0;
+  const meanX = xs.reduce((s, v) => s + v, 0) / n;
+  const meanY = ys.reduce((s, v) => s + v, 0) / n;
+  let num = 0, den = 0;
+  for (let i = 0; i < n; i++) {
+    const dx = xs[i] - meanX;
+    num += dx * (ys[i] - meanY);
+    den += dx * dx;
+  }
+  return den === 0 ? 0 : num / den;
+}
 
 // ============================================================
 // Advanced Stats (standard plan only, with segment/date filters)
@@ -574,45 +612,75 @@ export async function getSurveyAdvancedStats(
     responseCount: m.responseCount,
   }));
 
-  // -- e. Word cloud from comments --
-  const allComments: string[] = [];
-  for (const r of responses) {
-    if (r.comment) allComments.push(r.comment as string);
-    if (r.review_text) allComments.push(r.review_text as string);
-  }
+  // -- e. Driver regression analysis --
+  // 各ドライバーがCSATにどの程度影響しているかを計算
+  const driverLabels: Record<string, string> = {
+    service: "接客・対応",
+    quality: "品質・仕上がり",
+    price: "価格",
+  };
+  const driverKeys: Array<"service" | "quality" | "price"> = ["service", "quality", "price"];
+  const driverFields: Record<string, "driver_service" | "driver_quality" | "driver_price"> = {
+    service: "driver_service",
+    quality: "driver_quality",
+    price: "driver_price",
+  };
 
-  const wordCounts = new Map<string, number>();
-  const fullText = allComments.join(" ");
-
-  // Predefined keyword matching
-  for (const keyword of PREDEFINED_KEYWORDS) {
-    const regex = new RegExp(keyword, "g");
-    const matches = fullText.match(regex);
-    if (matches && matches.length > 0) {
-      wordCounts.set(keyword, (wordCounts.get(keyword) || 0) + matches.length);
+  const driverRegression: DriverRegressionResult[] = [];
+  for (const key of driverKeys) {
+    const field = driverFields[key];
+    const validPairs = responses.filter((r) => r[field] != null);
+    if (validPairs.length < 3) {
+      driverRegression.push({
+        driver: key,
+        label: driverLabels[key],
+        correlation: 0,
+        regrSlope: 0,
+        avgScore: driverAverages[key],
+        sampleCount: validPairs.length,
+      });
+      continue;
     }
+    const driverValues = validPairs.map((r) => r[field] as number);
+    const csatForDriver = validPairs.map((r) => r.csat as number);
+    const corr = pearsonCorrelation(driverValues, csatForDriver);
+    const slope = regressionSlope(driverValues, csatForDriver);
+    driverRegression.push({
+      driver: key,
+      label: driverLabels[key],
+      correlation: Number(corr.toFixed(3)),
+      regrSlope: Number(slope.toFixed(3)),
+      avgScore: driverAverages[key],
+      sampleCount: validPairs.length,
+    });
   }
+  // Sort by absolute correlation (most impactful first)
+  driverRegression.sort((a, b) => Math.abs(b.correlation) - Math.abs(a.correlation));
 
-  // N-gram extraction (2-4 chars) for additional words
-  for (const comment of allComments) {
-    for (let n = 2; n <= 4; n++) {
-      for (let i = 0; i <= comment.length - n; i++) {
-        const gram = comment.slice(i, i + n);
-        // Skip if contains space, punctuation, or numbers
-        if (/[\s\d.,!?、。！？\n\r\t()（）「」『』]/.test(gram)) continue;
-        // Skip if already covered by predefined keywords
-        if (PREDEFINED_KEYWORDS.includes(gram)) continue;
-        wordCounts.set(gram, (wordCounts.get(gram) || 0) + 1);
-      }
+  // -- f. Revenue x CSAT insight (correlation + message) --
+  let revenueCsatInsight: RevenueCsatInsight | null = null;
+  if (revenueCorrelation.length >= 3) {
+    const revenues = revenueCorrelation.map((r) => r.revenue);
+    const csats = revenueCorrelation.map((r) => r.avgCsat);
+    const corr = pearsonCorrelation(revenues, csats);
+    let message: string;
+    let strength: RevenueCsatInsight["strength"];
+    if (corr >= 0.5) {
+      strength = "strong_positive";
+      message = "満足度が高い月は売上も高い傾向があります。顧客満足度の向上が売上増加につながる可能性があります";
+    } else if (corr <= -0.5) {
+      strength = "strong_negative";
+      message = "売上が高い月は満足度が下がる傾向があります。繁忙期のサービス品質に注意が必要です";
+    } else {
+      strength = "weak";
+      message = "売上と満足度に明確な関連は見られません。売上は満足度以外の要因（集客数、季節変動等）に影響されている可能性があります";
     }
+    revenueCsatInsight = {
+      correlation: Number(corr.toFixed(3)),
+      message,
+      strength,
+    };
   }
-
-  // Filter: min count 2, sort by count desc, top 30
-  const wordCloud: WordCloudItem[] = Array.from(wordCounts.entries())
-    .filter(([, count]) => count >= 2)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 30)
-    .map(([word, count]) => ({ word, count }));
 
   return {
     csatTrend,
@@ -625,8 +693,9 @@ export async function getSurveyAdvancedStats(
     unitPriceCsat,
     newVsRepeaterCsat,
     revenueCorrelation,
+    revenueCsatInsight,
     menuCsatMatrix,
-    wordCloud,
+    driverRegression,
   };
 }
 
@@ -636,6 +705,7 @@ function emptyAdvancedStats(): SurveyAdvancedStats {
     driverAverages: { service: 0, quality: 0, price: 0 },
     genderCsat: [], ageCsat: [],
     unitPriceCsat: [], newVsRepeaterCsat: [], revenueCorrelation: [],
-    menuCsatMatrix: [], wordCloud: [],
+    revenueCsatInsight: null,
+    menuCsatMatrix: [], driverRegression: [],
   };
 }
