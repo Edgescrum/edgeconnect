@@ -429,11 +429,13 @@ export function AnalyticsClient({
 
   // ヒートマップ
   const ALL_DAY_LABELS = ["月", "火", "水", "木", "金", "土", "日"];
-  const DAY_KEYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+  // businessHours のキーは "0"(日)〜"6"(土) の数字文字列
+  // 表示順は月(=1)〜日(=0) なので、マッピングが必要
+  const DOW_FOR_DISPLAY = [1, 2, 3, 4, 5, 6, 0]; // 月火水木金土日 → DOW値
   const dowToRow = (dow: number) => (dow === 0 ? 6 : dow - 1);
   // 営業日のみ表示（businessHours で null = 定休日）
   const activeDayIndices = businessHours
-    ? DAY_KEYS.map((key, i) => (businessHours[key] !== null ? i : -1)).filter(i => i >= 0)
+    ? DOW_FOR_DISPLAY.map((dow, i) => (businessHours[String(dow)] !== null && businessHours[String(dow)] !== undefined ? i : -1)).filter(i => i >= 0)
     : [0, 1, 2, 3, 4, 5, 6];
 
   const { heatmapStartHour, heatmapEndHour } = (() => {
