@@ -136,6 +136,13 @@ export function AnalyticsClient({
         setFilteredHeatmapData(data.heatmapData);
       } catch (err) {
         console.error("[AnalyticsClient] セグメントフィルター エラー:", err);
+        // エラー時はセグメントを「全体」に戻し、初期データを復元
+        setSegment("all");
+        setFilteredMonthlyData(allMonthlyData);
+        setFilteredMonthlyAvgInterval(monthlyAvgInterval);
+        setFilteredAvgBookingInterval(avgBookingInterval);
+        setFilteredPopularMenus(popularMenus);
+        setFilteredHeatmapData(heatmapData);
       }
     });
   }
