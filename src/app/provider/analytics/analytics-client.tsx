@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect, useRef } from "react";
 import {
   AreaChart,
   Area,
@@ -197,6 +197,16 @@ export function AnalyticsClient({
     }
     fetchFilteredData(segment, newDateRange);
   }
+
+  // 初回マウント時: デフォルト dateRange が "all" でなければフィルター適用済みデータを取得
+  const initialFetchDone = useRef(false);
+  useEffect(() => {
+    if (!initialFetchDone.current && dateRange !== "all") {
+      initialFetchDone.current = true;
+      fetchFilteredData(segment, dateRange);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // 24ヶ月分のデータから期間に応じてスライス（末尾N件を取得）
   const getStatsForPeriod = (): MonthlyStat[] => {
