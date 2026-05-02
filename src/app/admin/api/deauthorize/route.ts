@@ -16,11 +16,30 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "userAccessToken is required" }, { status: 400 });
   }
 
-  // Messaging API の Channel Access Token を使用
-  const channelAccessToken = process.env.LINE_CHANNEL_ACCESS_TOKEN;
-  if (!channelAccessToken) {
-    return NextResponse.json({ error: "LINE_CHANNEL_ACCESS_TOKEN not configured" }, { status: 500 });
+  // LINEログインチャネルのステートレスチャネルアクセストークンを発行（v3エンドポイント）
+  const liffId = process.env.NEXT_PUBLIC_LIFF_ID;
+  const liffChannelSecret = process.env.LIFF_CHANNEL_SECRET;
+  if (!liffId || !liffChannelSecret) {
+    return NextResponse.json({ error: "LIFF credentials not configured" }, { status: 500 });
   }
+  const channelId = liffId.split("-")[0];
+
+  const tokenRes = await fetch("https://api.line.me/oauth2/v3/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      grant_type: "client_credentials",
+      client_id: channelId,
+      client_secret: liffChannelSecret,
+    }),
+  });
+
+  if (!tokenRes.ok) {
+    const tokenErr = await tokenRes.text();
+    return NextResponse.json({ error: `Token issue failed: ${tokenRes.status} ${tokenErr}`, source: "token" }, { status: 400 });
+  }
+
+  const { access_token: channelAccessToken } = await tokenRes.json();
 
   const res = await fetch("https://api.line.me/user/v1/deauthorize", {
     method: "POST",
