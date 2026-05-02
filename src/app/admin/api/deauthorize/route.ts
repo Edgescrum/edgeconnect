@@ -24,14 +24,34 @@ export async function POST(request: NextRequest) {
   }
   const channelId = liffId.split("-")[0];
 
-  // Issue channel access token for LINE Login channel
+  // Build JWT assertion for LINE Login channel access token
+  const now = Math.floor(Date.now() / 1000);
+  const header = { alg: "HS256", typ: "JWT", kid: channelId };
+  const payload = {
+    iss: channelId,
+    sub: channelId,
+    aud: "https://api.line.me/",
+    exp: now + 1800,
+    token_exp: 86400,
+  };
+
+  const enc = (obj: object) =>
+    Buffer.from(JSON.stringify(obj)).toString("base64url");
+  const { createHmac } = await import("crypto");
+  const signingInput = `${enc(header)}.${enc(payload)}`;
+  const signature = createHmac("sha256", liffChannelSecret)
+    .update(signingInput)
+    .digest("base64url");
+  const jwt = `${signingInput}.${signature}`;
+
+  // Issue channel access token
   const tokenRes = await fetch("https://api.line.me/oauth2/v2.1/token", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
       grant_type: "client_credentials",
-      client_id: channelId,
-      client_secret: liffChannelSecret,
+      client_assertion_type: "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
+      client_assertion: jwt,
     }),
   });
 
