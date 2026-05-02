@@ -38,6 +38,10 @@ export async function DELETE(request: NextRequest) {
   if (userId) {
     // 個別削除（依存テーブルから順に）
     const id = Number(userId);
+
+    // customer として持つデータ
+    await supabase.from("survey_responses").delete().eq("customer_user_id", id);
+    await supabase.from("pending_survey_notifications").delete().eq("customer_user_id", id);
     await supabase.from("favorites").delete().eq("user_id", id);
     await supabase.from("bookings").delete().eq("customer_user_id", id);
 
@@ -49,6 +53,9 @@ export async function DELETE(request: NextRequest) {
       .single();
 
     if (provider) {
+      await supabase.from("customer_visit_counts").delete().eq("provider_id", provider.id);
+      await supabase.from("survey_responses").delete().eq("provider_id", provider.id);
+      await supabase.from("pending_survey_notifications").delete().eq("provider_id", provider.id);
       await supabase.from("favorites").delete().eq("provider_id", provider.id);
       await supabase.from("bookings").delete().eq("provider_id", provider.id);
       await supabase.from("blocked_slots").delete().eq("provider_id", provider.id);
@@ -62,6 +69,9 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ message: `ユーザー ID:${id} と関連データを削除しました` });
   } else {
     // 全件削除
+    await supabase.from("customer_visit_counts").delete().neq("id", 0);
+    await supabase.from("survey_responses").delete().neq("id", 0);
+    await supabase.from("pending_survey_notifications").delete().neq("id", 0);
     await supabase.from("favorites").delete().neq("id", 0);
     await supabase.from("bookings").delete().neq("id", "00000000-0000-0000-0000-000000000000");
     await supabase.from("blocked_slots").delete().neq("id", 0);
