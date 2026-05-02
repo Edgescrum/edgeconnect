@@ -1,11 +1,27 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import liff from "@line/liff";
 
 export function AdminClient() {
   const [status, setStatus] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [users, setUsers] = useState<Array<{ id: number; line_user_id: string; display_name: string | null; role: string }>>([]);
+  const [liffReady, setLiffReady] = useState(false);
+  const [accessToken, setAccessToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    const liffId = process.env.NEXT_PUBLIC_LIFF_ID;
+    if (!liffId) return;
+    liff.init({ liffId }).then(() => {
+      setLiffReady(true);
+      if (liff.isLoggedIn()) {
+        setAccessToken(liff.getAccessToken());
+      }
+    }).catch(() => {
+      // LIFF init failed - not in LIFF context
+    });
+  }, []);;
 
   async function fetchUsers() {
     setLoading(true);
@@ -79,6 +95,32 @@ export function AdminClient() {
       document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
     });
     setStatus("Cookie・localStorage・sessionStorage をクリアしました");
+  }
+
+  async function deauthorize() {
+    if (!accessToken) {
+      setStatus("LIFFにログインしていないため、アクセストークンを取得できません");
+      return;
+    }
+    if (!confirm("LINE認可を取り消しますか？再ログイン時に同意画面が再表示されます。")) return;
+    setLoading(true);
+    try {
+      const res = await fetch("/admin/api/deauthorize", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userAccessToken: accessToken }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setStatus(`✓ ${data.message}`);
+      } else {
+        setStatus(`エラー: ${data.error}`);
+      }
+    } catch (e) {
+      setStatus(`エラー: ${e}`);
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -170,6 +212,26 @@ export function AdminClient() {
               </table>
             </div>
           )}
+        </section>
+
+        {/* LINE認可管理 */}
+        <section className="space-y-3">
+          <h2 className="text-base font-semibold">LINE認可管理</h2>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={deauthorize}
+              disabled={loading || !accessToken}
+              className="rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white active:scale-[0.98] disabled:opacity-50"
+            >
+              LINE認可を取り消す（自分）
+            </button>
+            {!liffReady && <span className="text-xs text-muted">LIFF未初期化</span>}
+            {liffReady && !accessToken && <span className="text-xs text-muted">LIFFログインなし</span>}
+            {accessToken && <span className="text-xs text-green-600">トークン取得済み</span>}
+          </div>
+          <p className="text-xs text-muted">
+            現在ログイン中のユーザーのLINE認可を取り消します。取り消し後は初回同意画面が再表示されます。
+          </p>
         </section>
 
         {/* 環境情報 */}
