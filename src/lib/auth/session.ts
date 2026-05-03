@@ -15,6 +15,7 @@ export interface CurrentUser {
   customerPhone: string | null;
   gender: string | null;
   birthDate: string | null;
+  isProfileCompleted: boolean;
 }
 
 export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
@@ -25,7 +26,7 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
 
   const { data, error } = await supabase
     .from("users")
-    .select("id, line_user_id, display_name, role, auth_uid, is_line_friend, customer_name, customer_phone, gender, birth_date")
+    .select("id, line_user_id, display_name, role, auth_uid, is_line_friend, customer_name, customer_phone, gender, birth_date, is_profile_completed")
     .eq("auth_uid", authUser.id)
     .single();
 
@@ -45,6 +46,7 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
     customerPhone: data.customer_phone ?? null,
     gender: data.gender ?? null,
     birthDate: data.birth_date ?? null,
+    isProfileCompleted: data.is_profile_completed ?? false,
   };
 });
 
@@ -69,7 +71,7 @@ export const resolveUser = cache(async (): Promise<CurrentUser | null> => {
     const supabase = createAdminClient();
     const { data } = await supabase
       .from("users")
-      .select("id, line_user_id, display_name, role, auth_uid, is_line_friend, customer_name, customer_phone, gender, birth_date")
+      .select("id, line_user_id, display_name, role, auth_uid, is_line_friend, customer_name, customer_phone, gender, birth_date, is_profile_completed")
       .eq("line_user_id", lineUserId)
       .single();
 
@@ -85,6 +87,7 @@ export const resolveUser = cache(async (): Promise<CurrentUser | null> => {
         customerPhone: data.customer_phone ?? null,
         gender: data.gender ?? null,
         birthDate: data.birth_date ?? null,
+        isProfileCompleted: data.is_profile_completed ?? false,
       };
     }
 
@@ -111,6 +114,7 @@ export const resolveUser = cache(async (): Promise<CurrentUser | null> => {
         customerPhone: null,
         gender: null,
         birthDate: null,
+        isProfileCompleted: false,
       };
     }
   }

@@ -2,18 +2,21 @@
 
 import { useState } from "react";
 import { updateUserSettings, updateUserAttributes } from "@/lib/actions/user";
-import { formatPhoneAsYouType, isValidJapanesePhone } from "@/lib/phone";
+import { formatPhoneAsYouType, isValidJapanesePhone, formatPhone } from "@/lib/phone";
 import { Spinner } from "@/components/Spinner";
 import { Alert } from "@/components/Alert";
 import { FormLabel, FormInput } from "@/components/FormField";
 
 const GENDER_OPTIONS = [
-  { value: "", label: "選択してください" },
   { value: "male", label: "男性" },
   { value: "female", label: "女性" },
   { value: "other", label: "その他" },
   { value: "prefer_not_to_say", label: "回答しない" },
 ] as const;
+
+const currentYear = new Date().getFullYear();
+const BIRTH_YEARS = Array.from({ length: currentYear - 1940 + 1 }, (_, i) => currentYear - i);
+const BIRTH_MONTHS = Array.from({ length: 12 }, (_, i) => i + 1);
 
 export function SettingsForm({
   defaultName,
@@ -27,9 +30,19 @@ export function SettingsForm({
   defaultBirthDate: string;
 }) {
   const [name, setName] = useState(defaultName);
-  const [phone, setPhone] = useState(defaultPhone);
+  const [phone, setPhone] = useState(() => defaultPhone ? formatPhone(defaultPhone) : "");
   const [gender, setGender] = useState(defaultGender);
-  const [birthDate, setBirthDate] = useState(defaultBirthDate);
+  // Extract year and month from birth_date
+  const [birthYear, setBirthYear] = useState(() => {
+    if (!defaultBirthDate) return "";
+    const year = new Date(defaultBirthDate).getFullYear();
+    return isNaN(year) ? "" : String(year);
+  });
+  const [birthMonth, setBirthMonth] = useState(() => {
+    if (!defaultBirthDate) return "";
+    const month = new Date(defaultBirthDate).getMonth() + 1;
+    return isNaN(month) ? "" : String(month);
+  });
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -45,9 +58,11 @@ export function SettingsForm({
       return;
     }
     try {
+      // Convert birth year/month to a date for DB storage
+      const birthDate = birthYear ? `${birthYear}-${(birthMonth || "1").padStart(2, "0")}-01` : null;
       await Promise.all([
         updateUserSettings(name, phone),
-        updateUserAttributes(gender || null, birthDate || null),
+        updateUserAttributes(gender || null, birthDate),
       ]);
       setSuccess(true);
       setTimeout(() => setSuccess(false), 2000);
@@ -93,29 +108,54 @@ export function SettingsForm({
         <div className="space-y-4">
           <div>
             <FormLabel htmlFor="gender">性別</FormLabel>
-            <select
-              id="gender"
-              value={gender}
-              onChange={(e) => setGender(e.target.value)}
-              className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
-            >
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               {GENDER_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setGender(gender === opt.value ? "" : opt.value)}
+                  className={`rounded-xl border px-3 py-2.5 text-sm font-medium transition-colors ${
+                    gender === opt.value
+                      ? "border-accent bg-accent/10 text-accent"
+                      : "border-border bg-card text-muted hover:border-accent/40"
+                  }`}
+                >
                   {opt.label}
-                </option>
+                </button>
               ))}
-            </select>
+            </div>
           </div>
 
           <div>
-            <FormLabel htmlFor="birthDate">生年月日</FormLabel>
-            <FormInput
-              id="birthDate"
-              type="date"
-              value={birthDate}
-              onChange={(e) => setBirthDate(e.target.value)}
-              max={new Date().toISOString().split("T")[0]}
-            />
+            <FormLabel htmlFor="birthYear">生まれ年月</FormLabel>
+            <div className="flex gap-2">
+              <select
+                id="birthYear"
+                value={birthYear}
+                onChange={(e) => setBirthYear(e.target.value)}
+                className="flex-1 rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+              >
+                <option value="">年</option>
+                {BIRTH_YEARS.map((year) => (
+                  <option key={year} value={String(year)}>
+                    {year}年
+                  </option>
+                ))}
+              </select>
+              <select
+                id="birthMonth"
+                value={birthMonth}
+                onChange={(e) => setBirthMonth(e.target.value)}
+                className="w-24 rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+              >
+                <option value="">月</option>
+                {BIRTH_MONTHS.map((month) => (
+                  <option key={month} value={String(month)}>
+                    {month}月
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
       </div>

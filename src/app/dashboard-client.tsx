@@ -1,31 +1,46 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 
 import type { ProviderBase } from "@/lib/types/provider";
-import { GearIcon, SearchIcon, CalendarIcon, ChevronRightIcon, HeartIcon } from "@/components/icons";
+import { GearIcon, CalendarIcon, ChevronRightIcon, HeartIcon } from "@/components/icons";
 import { ProviderAvatar } from "@/components/ProviderAvatar";
-
 interface RecentProvider extends ProviderBase {
   lastService: string;
   lastDate: string;
 }
 
+const PROVIDER_CTA_DISMISSED_KEY = "peco_provider_cta_dismissed";
+
 export function DashboardClient({
   role,
+  displayName,
   provider,
   recentProviders,
   pendingSurveyCount = 0,
-  showAttributePrompt = false,
 }: {
   role: string;
+  displayName: string | null;
   provider: ProviderBase | null;
   recentProviders: RecentProvider[];
   pendingSurveyCount?: number;
-  showAttributePrompt?: boolean;
 }) {
   const isProvider = role === "provider";
   const hasRecent = recentProviders.length > 0;
+  const [providerCtaDismissed, setProviderCtaDismissed] = useState(true);
+
+  useEffect(() => {
+    const dismissed = localStorage.getItem(PROVIDER_CTA_DISMISSED_KEY);
+    setProviderCtaDismissed(!!dismissed);
+  }, []);
+
+  function dismissProviderCta() {
+    localStorage.setItem(PROVIDER_CTA_DISMISSED_KEY, "1");
+    setProviderCtaDismissed(true);
+  }
+
+  const greeting = displayName ? `${displayName}さんのマイページ` : "マイページ";
 
   return (
     <>
@@ -42,41 +57,12 @@ export function DashboardClient({
               <GearIcon className="text-white" />
             </Link>
             <div className="relative">
-              <h1 className="text-xl font-bold">PeCoへようこそ</h1>
+              <h1 className="text-xl font-bold">{greeting}</h1>
               <p className="mt-1.5 text-sm leading-relaxed text-white/80">
-                LINEで簡単に予約ができるサービスです
+                予約の確認やお気に入りの管理ができます
               </p>
-              <div className="mt-4 flex gap-2">
-                <Link
-                  href="/explore"
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-white px-4 py-2.5 text-xs font-semibold text-accent shadow active:scale-[0.98]"
-                >
-                  <SearchIcon size={14} />
-                  事業主を探す
-                </Link>
-                <Link
-                  href="/favorites"
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-white/20 px-4 py-2.5 text-xs font-semibold backdrop-blur-sm active:scale-[0.98]"
-                >
-                  <HeartIcon size={14} filled />
-                  お気に入り
-                </Link>
-              </div>
             </div>
           </div>
-
-          {!isProvider && (
-            <div className="mx-4 mt-4 rounded-2xl bg-gradient-to-r from-amber-400 to-orange-400 p-4 text-white shadow">
-              <p className="font-bold">予約を受け付けませんか？</p>
-              <p className="mt-1 text-xs text-white/90">無料であなた専用の予約ページを作成できます</p>
-              <Link
-                href="/provider/register"
-                className="mt-3 block w-full rounded-xl bg-white py-2.5 text-center text-sm font-bold text-orange-500 shadow active:scale-[0.98]"
-              >
-                事業主として始める
-              </Link>
-            </div>
-          )}
 
           {isProvider && (
             <div className="mx-4 mt-4">
@@ -98,20 +84,6 @@ export function DashboardClient({
             </div>
           )}
 
-          {showAttributePrompt && (
-            <div className="mx-4 mt-4 rounded-2xl bg-indigo-50 p-4 ring-1 ring-indigo-100">
-              <p className="text-sm font-semibold text-indigo-900">プロフィールを充実させませんか？</p>
-              <p className="mt-1 text-xs text-indigo-700/80">性別・生年月日を登録すると、より適切なサービス提案を受けられます</p>
-              <Link
-                href="/settings"
-                className="mt-3 inline-flex items-center gap-1 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white active:scale-[0.98]"
-              >
-                <GearIcon className="text-white" size={14} />
-                設定する
-              </Link>
-            </div>
-          )}
-
           <div className="mt-4 bg-card/60 py-4">
             <div className="space-y-3 px-4">
               <Link
@@ -124,6 +96,20 @@ export function DashboardClient({
                 <div className="flex-1">
                   <p className="text-sm font-semibold">予約一覧</p>
                   <p className="text-xs text-muted">予約の確認・キャンセル</p>
+                </div>
+                <ChevronRightIcon className="text-muted" />
+              </Link>
+
+              <Link
+                href="/favorites"
+                className="flex items-center gap-3.5 rounded-xl bg-background p-3.5 ring-1 ring-border active:scale-[0.99]"
+              >
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-accent-bg">
+                  <HeartIcon size={18} filled className="text-accent" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold">お気に入り</p>
+                  <p className="text-xs text-muted">お気に入りの事業主一覧</p>
                 </div>
                 <ChevronRightIcon className="text-muted" />
               </Link>
@@ -162,6 +148,27 @@ export function DashboardClient({
               )}
             </div>
           </div>
+
+          {/* 事業主登録CTA（一番下） */}
+          {!isProvider && !providerCtaDismissed && (
+            <div className="relative mx-4 my-4 rounded-2xl bg-gradient-to-r from-amber-400 to-orange-400 p-4 text-white shadow">
+              <button
+                onClick={dismissProviderCta}
+                className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-white/20 text-white/80 active:bg-white/30"
+                aria-label="閉じる"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+              </button>
+              <p className="font-bold">予約を受け付けませんか？</p>
+              <p className="mt-1 text-xs text-white/90">無料であなた専用の予約ページを作成できます</p>
+              <Link
+                href="/provider/register"
+                className="mt-3 block w-full rounded-xl bg-white py-2.5 text-center text-sm font-bold text-orange-500 shadow active:scale-[0.98]"
+              >
+                事業主として始める
+              </Link>
+            </div>
+          )}
         </div>
       </div>
 
@@ -178,48 +185,16 @@ export function DashboardClient({
           </Link>
           <div className="relative flex items-center justify-between">
             <div>
-              <p className="text-sm text-white/70">マイページ</p>
-              <h1 className="mt-1 text-2xl font-bold lg:text-3xl">PeCoへようこそ</h1>
+              <h1 className="mt-1 text-2xl font-bold lg:text-3xl">{greeting}</h1>
               <p className="mt-2 max-w-md text-sm leading-relaxed text-white/80">
-                LINEで簡単に予約ができるサービスです。事業主のQRコードやURLから予約しましょう。
+                予約の確認やお気に入りの管理ができます。事業主のQRコードやURLから予約しましょう。
               </p>
-              <div className="mt-5 flex gap-3">
-                <Link
-                  href="/explore"
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-accent shadow-lg hover:shadow-xl transition-shadow"
-                >
-                  <SearchIcon />
-                  事業主を探す
-                </Link>
-                <Link
-                  href="/favorites"
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-white/20 px-5 py-2.5 text-sm font-semibold backdrop-blur-sm hover:bg-white/30 transition-colors"
-                >
-                  <HeartIcon size={16} filled />
-                  お気に入り
-                </Link>
-              </div>
             </div>
             <div className="hidden lg:block">
               <img src="/logo.svg" alt="PeCo" className="h-16" />
             </div>
           </div>
         </div>
-
-        {showAttributePrompt && (
-          <div className="mt-4 flex items-center gap-4 rounded-2xl bg-indigo-50 p-5 ring-1 ring-indigo-100">
-            <div className="flex-1">
-              <p className="text-sm font-semibold text-indigo-900">プロフィールを充実させませんか？</p>
-              <p className="mt-0.5 text-xs text-indigo-700/80">性別・生年月日を登録すると、より適切なサービス提案を受けられます</p>
-            </div>
-            <Link
-              href="/settings"
-              className="shrink-0 rounded-xl bg-indigo-600 px-5 py-2 text-sm font-semibold text-white hover:bg-indigo-700 transition-colors"
-            >
-              設定する
-            </Link>
-          </div>
-        )}
 
         {/* カードグリッド */}
         <div className="mt-6 grid grid-cols-12 gap-5">
@@ -245,21 +220,10 @@ export function DashboardClient({
             </Link>
           )}
 
-          {/* 事業主CTAカード（事業主でない場合） */}
-          {!isProvider && (
-            <div className="col-span-12 overflow-hidden rounded-2xl bg-gradient-to-r from-amber-400 to-orange-400 p-6 text-white shadow-lg lg:col-span-6">
-              <h3 className="text-lg font-bold">予約を受け付けませんか？</h3>
-              <p className="mt-1 text-sm text-white/90">無料であなた専用の予約ページを作成できます。</p>
-              <Link href="/provider/register" className="mt-4 inline-flex rounded-xl bg-white px-5 py-2.5 text-sm font-bold text-orange-500 shadow hover:shadow-md transition-shadow">
-                事業主として始める
-              </Link>
-            </div>
-          )}
-
           {/* 予約一覧カード */}
           <Link
             href="/bookings"
-            className="col-span-12 flex items-center gap-4 rounded-2xl bg-card p-5 shadow-sm ring-1 ring-border hover:ring-accent/30 hover:shadow-md transition-all lg:col-span-6"
+            className="col-span-12 flex items-center gap-4 rounded-2xl bg-card p-5 shadow-sm ring-1 ring-border hover:ring-accent/30 hover:shadow-md transition-all lg:col-span-4"
           >
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-accent/10">
               <CalendarIcon size={24} className="text-accent" />
@@ -271,10 +235,25 @@ export function DashboardClient({
             <ChevronRightIcon size={16} className="text-muted" />
           </Link>
 
+          {/* お気に入りカード */}
+          <Link
+            href="/favorites"
+            className="col-span-12 flex items-center gap-4 rounded-2xl bg-card p-5 shadow-sm ring-1 ring-border hover:ring-accent/30 hover:shadow-md transition-all lg:col-span-4"
+          >
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-accent-bg">
+              <HeartIcon size={24} filled className="text-accent" />
+            </div>
+            <div className="flex-1">
+              <p className="font-semibold">お気に入り</p>
+              <p className="text-sm text-muted">お気に入りの事業主一覧</p>
+            </div>
+            <ChevronRightIcon size={16} className="text-muted" />
+          </Link>
+
           {/* アンケートカード */}
           <Link
             href="/surveys"
-            className="col-span-12 flex items-center gap-4 rounded-2xl bg-card p-5 shadow-sm ring-1 ring-border hover:ring-accent/30 hover:shadow-md transition-all lg:col-span-6"
+            className="col-span-12 flex items-center gap-4 rounded-2xl bg-card p-5 shadow-sm ring-1 ring-border hover:ring-accent/30 hover:shadow-md transition-all lg:col-span-4"
           >
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-orange-50">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-orange-500">
@@ -321,6 +300,24 @@ export function DashboardClient({
                   );
                 })}
               </div>
+            </div>
+          )}
+
+          {/* 事業主登録CTAカード（一番下） */}
+          {!isProvider && !providerCtaDismissed && (
+            <div className="relative col-span-12 overflow-hidden rounded-2xl bg-gradient-to-r from-amber-400 to-orange-400 p-6 text-white shadow-lg">
+              <button
+                onClick={dismissProviderCta}
+                className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-full bg-white/20 text-white/80 hover:bg-white/30 transition-colors"
+                aria-label="閉じる"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+              </button>
+              <h3 className="text-lg font-bold">予約を受け付けませんか？</h3>
+              <p className="mt-1 text-sm text-white/90">無料であなた専用の予約ページを作成できます。</p>
+              <Link href="/provider/register" className="mt-4 inline-flex rounded-xl bg-white px-5 py-2.5 text-sm font-bold text-orange-500 shadow hover:shadow-md transition-shadow">
+                事業主として始める
+              </Link>
             </div>
           )}
         </div>

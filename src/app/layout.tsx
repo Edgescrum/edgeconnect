@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { DM_Sans, Noto_Sans_JP } from "next/font/google";
 import { LiffProvider } from "@/components/LiffProvider";
 import { NavigationLoader } from "@/components/NavigationLoader";
+import { ProfileGate } from "@/components/ProfileGate";
 import "./globals.css";
 
 const dmSans = DM_Sans({
@@ -59,6 +60,7 @@ export default function RootLayout({
           } catch(e) {}
         `}} />
         <NavigationLoader />
+        <ProfileGate />
         <LiffProvider>
           {children}
         </LiffProvider>

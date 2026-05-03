@@ -37,7 +37,6 @@ export function PublicFooter({
           <img src="/logo.svg" alt="PeCo" className="h-4 sm:h-5" />
           <span className="text-border">|</span>
           <Link href="/" className="hover:text-foreground">PeCoとは</Link>
-          <Link href="/explore" className="hover:text-foreground">事業主を探す</Link>
         </div>
         <div className="mt-2 flex flex-wrap items-center gap-3 text-[10px] text-muted/70">
           <Link href="/legal/terms" className="hover:text-foreground">利用規約</Link>

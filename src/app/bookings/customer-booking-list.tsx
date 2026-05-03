@@ -13,24 +13,28 @@ interface BookingItem {
   provider: { name: string; slug: string } | null;
 }
 
-type FilterType = "all" | "today" | "week" | "upcoming";
+type FilterType = "today" | "week" | "upcoming" | "past";
 
 const FILTERS: { value: FilterType; label: string }[] = [
-  { value: "all", label: "すべて" },
   { value: "today", label: "今日" },
   { value: "week", label: "今週" },
-  { value: "upcoming", label: "今後" },
+  { value: "upcoming", label: "今後の予約" },
+  { value: "past", label: "過去の予約" },
 ];
 
 const DAYS = ["日", "月", "火", "水", "木", "金", "土"];
 
 const FILTER_STORAGE_KEY = "peco_bookings_filter";
 
-export function CustomerBookingList({ bookings }: { bookings: BookingItem[] }) {
+export function CustomerBookingList({ bookings, initialFilter }: { bookings: BookingItem[]; initialFilter?: string }) {
   const [filter, setFilterState] = useState<FilterType>(() => {
-    if (typeof window === "undefined") return "all";
+    // URL params take priority, then session storage, then default
+    if (initialFilter && FILTERS.find((f) => f.value === initialFilter)) {
+      return initialFilter as FilterType;
+    }
+    if (typeof window === "undefined") return "upcoming";
     const saved = sessionStorage.getItem(FILTER_STORAGE_KEY);
-    return (FILTERS.find((f) => f.value === saved)?.value) || "all";
+    return (FILTERS.find((f) => f.value === saved)?.value) || "upcoming";
   });
 
   function setFilter(value: FilterType) {
@@ -67,8 +71,10 @@ export function CustomerBookingList({ bookings }: { bookings: BookingItem[] }) {
           return b.status === "confirmed" && start >= todayStart && start < weekEnd;
         case "upcoming":
           return b.status === "confirmed" && start >= now;
+        case "past":
+          return b.status !== "cancelled" && start < now;
         default:
-          return true;
+          return b.status === "confirmed" && start >= now;
       }
     });
   }, [bookings, filter, now, todayStart, tomorrowStart, weekEnd]);
@@ -138,9 +144,7 @@ export function CustomerBookingList({ bookings }: { bookings: BookingItem[] }) {
           <div className="flex flex-col items-center py-12 text-center">
             <p className="text-4xl">📅</p>
             <p className="mt-3 text-sm text-muted">
-              {filter === "all"
-                ? "予約はまだありません"
-                : "該当する予約がありません"}
+              該当する予約がありません
             </p>
           </div>
         ) : (

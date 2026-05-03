@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { resolveUser } from "@/lib/auth/session";
 import { log, logError } from "@/lib/log";
@@ -14,6 +15,7 @@ export async function updateUserSettings(name: string, phone: string) {
     .update({
       customer_name: name.trim() || null,
       customer_phone: phone.trim() || null,
+      is_profile_completed: true,
     })
     .eq("id", user.id);
 
@@ -23,6 +25,7 @@ export async function updateUserSettings(name: string, phone: string) {
   }
 
   log("updateUserSettings", "success", { userId: user.id });
+  revalidatePath("/", "layout");
 }
 
 export async function updateUserAttributes(

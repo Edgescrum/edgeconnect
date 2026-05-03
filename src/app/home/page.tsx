@@ -61,18 +61,15 @@ export default async function HomePage() {
     }
   }
 
-  // ユーザー属性未設定チェック（性別・生年月日が両方未設定の場合に案内を表示）
-  const showAttributePrompt = !user.gender && !user.birthDate;
-
   return (
     <main className="flex min-h-screen flex-col bg-background">
       <div className="flex-1">
         <DashboardClient
           role={user.role}
+          displayName={user.displayName}
           provider={provider}
           recentProviders={recentProviders}
           pendingSurveyCount={pendingSurveyCount}
-          showAttributePrompt={showAttributePrompt}
         />
       </div>
       <PublicFooter maxWidth="max-w-5xl" />

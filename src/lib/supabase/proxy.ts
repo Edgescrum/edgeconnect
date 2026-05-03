@@ -46,7 +46,9 @@ export async function updateSession(request: NextRequest) {
   // 公開ページはセッションリフレッシュをスキップ（パフォーマンス最適化）
   const publicPaths = ["/", "/explore", "/p/"];
   if (publicPaths.some((p) => pathname === p || (p.endsWith("/") && pathname.startsWith(p) && !pathname.includes("/book/")))) {
-    return NextResponse.next({ request });
+    const response = NextResponse.next({ request });
+    response.headers.set("x-pathname", pathname);
+    return response;
   }
 
   // Supabase Authセッションリフレッシュ（認証が必要なルートのみ）
@@ -76,5 +78,6 @@ export async function updateSession(request: NextRequest) {
   // セッションリフレッシュ（JWTの有効期限を延長）
   await supabase.auth.getUser();
 
+  supabaseResponse.headers.set("x-pathname", pathname);
   return supabaseResponse;
 }
