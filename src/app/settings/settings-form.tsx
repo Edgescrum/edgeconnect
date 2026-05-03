@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { updateUserSettings, updateUserAttributes } from "@/lib/actions/user";
-import { formatPhoneAsYouType, isValidJapanesePhone } from "@/lib/phone";
+import { formatPhoneAsYouType, isValidJapanesePhone, formatPhone } from "@/lib/phone";
 import { Spinner } from "@/components/Spinner";
 import { Alert } from "@/components/Alert";
 import { FormLabel, FormInput } from "@/components/FormField";
@@ -16,6 +16,7 @@ const GENDER_OPTIONS = [
 
 const currentYear = new Date().getFullYear();
 const BIRTH_YEARS = Array.from({ length: currentYear - 1940 + 1 }, (_, i) => currentYear - i);
+const BIRTH_MONTHS = Array.from({ length: 12 }, (_, i) => i + 1);
 
 export function SettingsForm({
   defaultName,
@@ -29,13 +30,18 @@ export function SettingsForm({
   defaultBirthDate: string;
 }) {
   const [name, setName] = useState(defaultName);
-  const [phone, setPhone] = useState(defaultPhone);
+  const [phone, setPhone] = useState(() => defaultPhone ? formatPhone(defaultPhone) : "");
   const [gender, setGender] = useState(defaultGender);
-  // Extract year from birth_date for the birth year selector
+  // Extract year and month from birth_date
   const [birthYear, setBirthYear] = useState(() => {
     if (!defaultBirthDate) return "";
     const year = new Date(defaultBirthDate).getFullYear();
     return isNaN(year) ? "" : String(year);
+  });
+  const [birthMonth, setBirthMonth] = useState(() => {
+    if (!defaultBirthDate) return "";
+    const month = new Date(defaultBirthDate).getMonth() + 1;
+    return isNaN(month) ? "" : String(month);
   });
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -52,8 +58,8 @@ export function SettingsForm({
       return;
     }
     try {
-      // Convert birth year to a date (Jan 1 of that year) for DB storage
-      const birthDate = birthYear ? `${birthYear}-01-01` : null;
+      // Convert birth year/month to a date for DB storage
+      const birthDate = birthYear ? `${birthYear}-${(birthMonth || "1").padStart(2, "0")}-01` : null;
       await Promise.all([
         updateUserSettings(name, phone),
         updateUserAttributes(gender || null, birthDate),
@@ -121,20 +127,35 @@ export function SettingsForm({
           </div>
 
           <div>
-            <FormLabel htmlFor="birthYear">生まれ年</FormLabel>
-            <select
-              id="birthYear"
-              value={birthYear}
-              onChange={(e) => setBirthYear(e.target.value)}
-              className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
-            >
-              <option value="">選択してください</option>
-              {BIRTH_YEARS.map((year) => (
-                <option key={year} value={String(year)}>
-                  {year}年
-                </option>
-              ))}
-            </select>
+            <FormLabel htmlFor="birthYear">生まれ年月</FormLabel>
+            <div className="flex gap-2">
+              <select
+                id="birthYear"
+                value={birthYear}
+                onChange={(e) => setBirthYear(e.target.value)}
+                className="flex-1 rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+              >
+                <option value="">年</option>
+                {BIRTH_YEARS.map((year) => (
+                  <option key={year} value={String(year)}>
+                    {year}年
+                  </option>
+                ))}
+              </select>
+              <select
+                id="birthMonth"
+                value={birthMonth}
+                onChange={(e) => setBirthMonth(e.target.value)}
+                className="w-24 rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+              >
+                <option value="">月</option>
+                {BIRTH_MONTHS.map((month) => (
+                  <option key={month} value={String(month)}>
+                    {month}月
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
       </div>
