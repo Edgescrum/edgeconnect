@@ -9,14 +9,14 @@ import { ProfilePromptModal } from "@/components/ProfilePromptModal";
  * 対象外:
  * - 未ログインユーザー（公開ページは閲覧可能）
  * - provider ロール（事業主は別フローでプロフィール設定済み）
- * - LP（/p/[slug]）ページ（ログイン前でも閲覧可能な公開ページ）
+ * - LP（/）ページ
  */
 export async function ProfileGate() {
   const headersList = await headers();
   const pathname = headersList.get("x-pathname") || "";
 
-  // LP（事業主プロフィールページ）ではモーダルを表示しない
-  if (pathname.startsWith("/p/")) return null;
+  // LP（トップページ）ではモーダルを表示しない
+  if (pathname === "/") return null;
 
   const user = await resolveUser();
 
