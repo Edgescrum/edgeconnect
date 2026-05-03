@@ -122,7 +122,11 @@ export function ServiceMenuList({
       {showLogin && (
         <LoginRequired
           message="予約にはログインが必要です"
-          onClose={() => setShowLogin(false)}
+          onClose={() => {
+            setShowLogin(false);
+            sessionStorage.removeItem("login_redirect");
+            localStorage.removeItem("login_redirect");
+          }}
         />
       )}
     </>
