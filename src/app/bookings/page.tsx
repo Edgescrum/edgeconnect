@@ -57,7 +57,7 @@ export default async function BookingsPage({
         <div className="mb-4">
           <LineFriendBanner isLineFriend={user.isLineFriend ?? false} />
         </div>
-        <CustomerBookingList bookings={allBookings} />
+        <CustomerBookingList bookings={allBookings} initialFilter={filter} />
       </div>
 
       <PublicFooter maxWidth="max-w-5xl" />

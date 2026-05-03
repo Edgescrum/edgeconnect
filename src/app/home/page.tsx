@@ -17,7 +17,7 @@ export default async function HomePage() {
   const todayEnd = new Date(todayStart);
   todayEnd.setDate(todayEnd.getDate() + 1);
 
-  const [providerResult, bookingsResult, pendingSurveyCount, todayBookingsResult, upcomingBookingsResult, favoritesResult] = await Promise.all([
+  const [providerResult, bookingsResult, pendingSurveyCount, todayBookingsResult, upcomingBookingsResult] = await Promise.all([
     user.role === "provider"
       ? supabase
           .from("providers")
@@ -47,10 +47,6 @@ export default async function HomePage() {
       .eq("customer_user_id", user.id)
       .eq("status", "confirmed")
       .gte("start_at", now),
-    supabase
-      .from("favorites")
-      .select("id", { count: "exact", head: true })
-      .eq("user_id", user.id),
   ]);
 
   const provider = providerResult.data as {
@@ -86,8 +82,6 @@ export default async function HomePage() {
 
   // ユーザー属性未設定チェック（名前が未設定の場合に初回ポップアップを表示）
   const showProfileModal = !user.customerName;
-  // 性別・生年月日が両方未設定の場合にバナーを表示
-  const showAttributePrompt = !user.gender && !user.birthDate;
 
   return (
     <main className="flex min-h-screen flex-col bg-background">
@@ -97,12 +91,10 @@ export default async function HomePage() {
           provider={provider}
           recentProviders={recentProviders}
           pendingSurveyCount={pendingSurveyCount}
-          showAttributePrompt={showAttributePrompt}
           showProfileModal={showProfileModal}
           stats={{
             todayBookings: todayBookingsResult.count ?? 0,
             upcomingBookings: upcomingBookingsResult.count ?? 0,
-            favorites: favoritesResult.count ?? 0,
           }}
         />
       </div>

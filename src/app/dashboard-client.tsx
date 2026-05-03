@@ -16,7 +16,6 @@ interface RecentProvider extends ProviderBase {
 interface UserStats {
   todayBookings: number;
   upcomingBookings: number;
-  favorites: number;
 }
 
 const PROVIDER_CTA_DISMISSED_KEY = "peco_provider_cta_dismissed";
@@ -26,9 +25,8 @@ export function DashboardClient({
   provider,
   recentProviders,
   pendingSurveyCount = 0,
-  showAttributePrompt = false,
   showProfileModal = false,
-  stats = { todayBookings: 0, upcomingBookings: 0, favorites: 0 },
+  stats = { todayBookings: 0, upcomingBookings: 0 },
 }: {
   role: string;
   provider: ProviderBase | null;
@@ -82,31 +80,26 @@ export function DashboardClient({
                   <SearchIcon size={14} />
                   事業主を探す
                 </Link>
-                <Link
-                  href="/favorites"
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-white/20 px-4 py-2.5 text-xs font-semibold backdrop-blur-sm active:scale-[0.98]"
-                >
-                  <HeartIcon size={14} filled />
-                  お気に入り
-                </Link>
               </div>
             </div>
           </div>
 
           {/* Stats cards */}
-          <div className="mx-4 mt-4 grid grid-cols-3 gap-2">
-            <div className="rounded-xl bg-card p-3 text-center ring-1 ring-border">
+          <div className="mx-4 mt-4 grid grid-cols-2 gap-2">
+            <Link
+              href="/bookings?filter=today"
+              className="rounded-xl bg-card p-3 text-center ring-1 ring-border active:scale-[0.98]"
+            >
               <p className="text-xl font-bold text-accent">{stats.todayBookings}</p>
               <p className="text-[10px] text-muted">今日の予約</p>
-            </div>
-            <div className="rounded-xl bg-card p-3 text-center ring-1 ring-border">
+            </Link>
+            <Link
+              href="/bookings?filter=upcoming"
+              className="rounded-xl bg-card p-3 text-center ring-1 ring-border active:scale-[0.98]"
+            >
               <p className="text-xl font-bold text-accent">{stats.upcomingBookings}</p>
               <p className="text-[10px] text-muted">今後の予約</p>
-            </div>
-            <div className="rounded-xl bg-card p-3 text-center ring-1 ring-border">
-              <p className="text-xl font-bold text-accent">{stats.favorites}</p>
-              <p className="text-[10px] text-muted">お気に入り</p>
-            </div>
+            </Link>
           </div>
 
           {!isProvider && !providerCtaDismissed && (
@@ -149,20 +142,6 @@ export function DashboardClient({
             </div>
           )}
 
-          {showAttributePrompt && (
-            <div className="mx-4 mt-4 rounded-2xl bg-indigo-50 p-4 ring-1 ring-indigo-100">
-              <p className="text-sm font-semibold text-indigo-900">プロフィールを充実させませんか？</p>
-              <p className="mt-1 text-xs text-indigo-700/80">性別・生年月日を登録すると、より適切なサービス提案を受けられます</p>
-              <Link
-                href="/settings"
-                className="mt-3 inline-flex items-center gap-1 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white active:scale-[0.98]"
-              >
-                <GearIcon className="text-white" size={14} />
-                設定する
-              </Link>
-            </div>
-          )}
-
           <div className="mt-4 bg-card/60 py-4">
             <div className="space-y-3 px-4">
               <Link
@@ -175,6 +154,20 @@ export function DashboardClient({
                 <div className="flex-1">
                   <p className="text-sm font-semibold">予約一覧</p>
                   <p className="text-xs text-muted">予約の確認・キャンセル</p>
+                </div>
+                <ChevronRightIcon className="text-muted" />
+              </Link>
+
+              <Link
+                href="/favorites"
+                className="flex items-center gap-3.5 rounded-xl bg-background p-3.5 ring-1 ring-border active:scale-[0.99]"
+              >
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-pink-50">
+                  <HeartIcon size={18} filled className="text-pink-500" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold">お気に入り</p>
+                  <p className="text-xs text-muted">お気に入りの事業主一覧</p>
                 </div>
                 <ChevronRightIcon className="text-muted" />
               </Link>
@@ -242,13 +235,6 @@ export function DashboardClient({
                   <SearchIcon />
                   事業主を探す
                 </Link>
-                <Link
-                  href="/favorites"
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-white/20 px-5 py-2.5 text-sm font-semibold backdrop-blur-sm hover:bg-white/30 transition-colors"
-                >
-                  <HeartIcon size={16} filled />
-                  お気に入り
-                </Link>
               </div>
             </div>
             <div className="hidden lg:block">
@@ -256,21 +242,6 @@ export function DashboardClient({
             </div>
           </div>
         </div>
-
-        {showAttributePrompt && (
-          <div className="mt-4 flex items-center gap-4 rounded-2xl bg-indigo-50 p-5 ring-1 ring-indigo-100">
-            <div className="flex-1">
-              <p className="text-sm font-semibold text-indigo-900">プロフィールを充実させませんか？</p>
-              <p className="mt-0.5 text-xs text-indigo-700/80">性別・生年月日を登録すると、より適切なサービス提案を受けられます</p>
-            </div>
-            <Link
-              href="/settings"
-              className="shrink-0 rounded-xl bg-indigo-600 px-5 py-2 text-sm font-semibold text-white hover:bg-indigo-700 transition-colors"
-            >
-              設定する
-            </Link>
-          </div>
-        )}
 
         {/* カードグリッド */}
         <div className="mt-6 grid grid-cols-12 gap-5">
@@ -297,19 +268,21 @@ export function DashboardClient({
           )}
 
           {/* Stats cards */}
-          <div className="col-span-12 grid grid-cols-3 gap-4 lg:col-span-6">
-            <div className="rounded-2xl bg-card p-4 text-center ring-1 ring-border shadow-sm">
+          <div className="col-span-12 grid grid-cols-2 gap-4 lg:col-span-6">
+            <Link
+              href="/bookings?filter=today"
+              className="rounded-2xl bg-card p-4 text-center ring-1 ring-border shadow-sm hover:ring-accent/30 hover:shadow-md transition-all"
+            >
               <p className="text-2xl font-bold text-accent">{stats.todayBookings}</p>
               <p className="mt-1 text-xs text-muted">今日の予約</p>
-            </div>
-            <div className="rounded-2xl bg-card p-4 text-center ring-1 ring-border shadow-sm">
+            </Link>
+            <Link
+              href="/bookings?filter=upcoming"
+              className="rounded-2xl bg-card p-4 text-center ring-1 ring-border shadow-sm hover:ring-accent/30 hover:shadow-md transition-all"
+            >
               <p className="text-2xl font-bold text-accent">{stats.upcomingBookings}</p>
               <p className="mt-1 text-xs text-muted">今後の予約</p>
-            </div>
-            <div className="rounded-2xl bg-card p-4 text-center ring-1 ring-border shadow-sm">
-              <p className="text-2xl font-bold text-accent">{stats.favorites}</p>
-              <p className="mt-1 text-xs text-muted">お気に入り</p>
-            </div>
+            </Link>
           </div>
 
           {/* 事業主CTAカード（事業主でない場合） */}
@@ -333,7 +306,7 @@ export function DashboardClient({
           {/* 予約一覧カード */}
           <Link
             href="/bookings"
-            className="col-span-12 flex items-center gap-4 rounded-2xl bg-card p-5 shadow-sm ring-1 ring-border hover:ring-accent/30 hover:shadow-md transition-all lg:col-span-6"
+            className="col-span-12 flex items-center gap-4 rounded-2xl bg-card p-5 shadow-sm ring-1 ring-border hover:ring-accent/30 hover:shadow-md transition-all lg:col-span-4"
           >
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-accent/10">
               <CalendarIcon size={24} className="text-accent" />
@@ -345,10 +318,25 @@ export function DashboardClient({
             <ChevronRightIcon size={16} className="text-muted" />
           </Link>
 
+          {/* お気に入りカード */}
+          <Link
+            href="/favorites"
+            className="col-span-12 flex items-center gap-4 rounded-2xl bg-card p-5 shadow-sm ring-1 ring-border hover:ring-accent/30 hover:shadow-md transition-all lg:col-span-4"
+          >
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-pink-50">
+              <HeartIcon size={24} filled className="text-pink-500" />
+            </div>
+            <div className="flex-1">
+              <p className="font-semibold">お気に入り</p>
+              <p className="text-sm text-muted">お気に入りの事業主一覧</p>
+            </div>
+            <ChevronRightIcon size={16} className="text-muted" />
+          </Link>
+
           {/* アンケートカード */}
           <Link
             href="/surveys"
-            className="col-span-12 flex items-center gap-4 rounded-2xl bg-card p-5 shadow-sm ring-1 ring-border hover:ring-accent/30 hover:shadow-md transition-all lg:col-span-6"
+            className="col-span-12 flex items-center gap-4 rounded-2xl bg-card p-5 shadow-sm ring-1 ring-border hover:ring-accent/30 hover:shadow-md transition-all lg:col-span-4"
           >
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-orange-50">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-orange-500">
