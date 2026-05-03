@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { updateUserSettings, updateUserAttributes } from "@/lib/actions/user";
 import { formatPhoneAsYouType, isValidJapanesePhone } from "@/lib/phone";
 
@@ -15,10 +15,7 @@ const currentYear = new Date().getFullYear();
 const BIRTH_YEARS = Array.from({ length: currentYear - 1940 + 1 }, (_, i) => currentYear - i);
 const BIRTH_MONTHS = Array.from({ length: 12 }, (_, i) => i + 1);
 
-const MODAL_DISMISSED_KEY = "peco_profile_modal_dismissed";
-
 export function ProfilePromptModal() {
-  const [show, setShow] = useState(false);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [gender, setGender] = useState("");
@@ -26,13 +23,7 @@ export function ProfilePromptModal() {
   const [birthMonth, setBirthMonth] = useState("");
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const dismissed = localStorage.getItem(MODAL_DISMISSED_KEY);
-    if (!dismissed) {
-      setShow(true);
-    }
-  }, []);
+  const [completed, setCompleted] = useState(false);
 
   function handleSubmit() {
     if (!name.trim()) {
@@ -57,15 +48,14 @@ export function ProfilePromptModal() {
           updateUserSettings(name, phone),
           updateUserAttributes(gender || null, birthDate),
         ]);
-        localStorage.setItem(MODAL_DISMISSED_KEY, "1");
-        setShow(false);
+        setCompleted(true);
       } catch (err) {
         setError(err instanceof Error ? err.message : "保存に失敗しました");
       }
     });
   }
 
-  if (!show) return null;
+  if (completed) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
@@ -79,7 +69,7 @@ export function ProfilePromptModal() {
           </div>
           <h3 className="mt-4 text-lg font-bold">プロフィール登録</h3>
           <p className="mt-2 text-sm text-muted">
-            この情報は予約時に使用します
+            予約に必要な情報を入力してください
           </p>
         </div>
 

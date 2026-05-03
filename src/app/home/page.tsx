@@ -80,9 +80,6 @@ export default async function HomePage() {
     }
   }
 
-  // ユーザー属性未設定チェック（名前が未設定の場合に初回ポップアップを表示）
-  const showProfileModal = !user.customerName;
-
   return (
     <main className="flex min-h-screen flex-col bg-background">
       <div className="flex-1">
@@ -91,7 +88,6 @@ export default async function HomePage() {
           provider={provider}
           recentProviders={recentProviders}
           pendingSurveyCount={pendingSurveyCount}
-          showProfileModal={showProfileModal}
           stats={{
             todayBookings: todayBookingsResult.count ?? 0,
             upcomingBookings: upcomingBookingsResult.count ?? 0,

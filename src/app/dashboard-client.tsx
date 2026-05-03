@@ -6,8 +6,6 @@ import Link from "next/link";
 import type { ProviderBase } from "@/lib/types/provider";
 import { GearIcon, SearchIcon, CalendarIcon, ChevronRightIcon, HeartIcon } from "@/components/icons";
 import { ProviderAvatar } from "@/components/ProviderAvatar";
-import { ProfilePromptModal } from "@/components/ProfilePromptModal";
-
 interface RecentProvider extends ProviderBase {
   lastService: string;
   lastDate: string;
@@ -25,15 +23,12 @@ export function DashboardClient({
   provider,
   recentProviders,
   pendingSurveyCount = 0,
-  showProfileModal = false,
   stats = { todayBookings: 0, upcomingBookings: 0 },
 }: {
   role: string;
   provider: ProviderBase | null;
   recentProviders: RecentProvider[];
   pendingSurveyCount?: number;
-  showAttributePrompt?: boolean;
-  showProfileModal?: boolean;
   stats?: UserStats;
 }) {
   const isProvider = role === "provider";
@@ -52,9 +47,6 @@ export function DashboardClient({
 
   return (
     <>
-      {/* Profile prompt modal for first-time users */}
-      {showProfileModal && <ProfilePromptModal />}
-
       {/* --- モバイル版 --- */}
       <div className="sm:hidden">
         <div>
