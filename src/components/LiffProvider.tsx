@@ -68,10 +68,14 @@ export function LiffProvider({ children }: { children: ReactNode }) {
 
     async function init() {
       try {
-        // Skip LIFF initialization on public routes that don't need auth
+        // Public routes (/p/[slug]) still need LIFF init to create server session
+        // after first login. Only skip if user has no session AND no LIFF context.
         const path = window.location.pathname;
         const isPublicRoute = path.startsWith("/p/") && !path.includes("/book/");
-        if (isPublicRoute) {
+        const isInLiffBrowser = navigator.userAgent.includes("LIFF") ||
+          navigator.userAgent.includes("Line");
+        if (isPublicRoute && !isInLiffBrowser && !cached) {
+          // External browser, no session = truly anonymous visitor
           setState((prev) => prev.isReady ? prev : { ...prev, isReady: true });
           return;
         }
@@ -115,6 +119,12 @@ export function LiffProvider({ children }: { children: ReactNode }) {
               if (destination && destination !== window.location.pathname) {
                 await new Promise((r) => setTimeout(r, 100));
                 window.location.replace(destination);
+                return;
+              }
+              // 初回ログインで同じページに留まる場合（/p/[slug]等）
+              // サーバーコンポーネントのisLoggedInを更新するためリロード
+              if (!hadCache) {
+                window.location.reload();
                 return;
               }
               // URLクリーンアップ（ハッシュフラグメント含む）
