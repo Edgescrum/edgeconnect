@@ -17,11 +17,11 @@ export const metadata: Metadata = {
 export default async function ExplorePage({
   searchParams,
 }: {
-  searchParams: Promise<{ category?: string | string[]; q?: string }>;
+  searchParams: Promise<{ category?: string | string[]; q?: string; prefecture?: string }>;
 }) {
-  const { category, q } = await searchParams;
+  const { category, q, prefecture } = await searchParams;
   const categoryArr = category ? (Array.isArray(category) ? category : [category]) : [];
-  const providers = await searchProviders(categoryArr.length > 0 ? categoryArr : null, q || null, 0, 20);
+  const providers = await searchProviders(categoryArr.length > 0 ? categoryArr : null, q || null, 0, 20, prefecture || null);
 
   return (
     <PublicLayout backHref="/" title="事業主を探す">
@@ -30,6 +30,7 @@ export default async function ExplorePage({
         categories={await getCategories()}
         initialCategories={categoryArr}
         initialQuery={q || null}
+        initialPrefecture={prefecture || null}
       />
     </PublicLayout>
   );

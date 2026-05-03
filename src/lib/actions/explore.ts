@@ -9,6 +9,7 @@ export interface ProviderCard {
   icon_url: string | null;
   category: string | null;
   brand_color: string | null;
+  prefecture: string | null;
   avg_csat: number | null;
   review_count: number | null;
 }
@@ -17,7 +18,8 @@ export async function searchProviders(
   categories: string[] | null,
   query: string | null,
   offset: number = 0,
-  limit: number = 20
+  limit: number = 20,
+  prefecture: string | null = null
 ): Promise<ProviderCard[]> {
   try {
     const supabase = await createClient();
@@ -26,6 +28,7 @@ export async function searchProviders(
       p_query: query || null,
       p_offset: offset,
       p_limit: limit,
+      p_prefecture: prefecture || null,
     });
 
     if (error) {

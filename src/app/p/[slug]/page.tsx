@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 
 import { notFound } from "next/navigation";
 import { getCategoryLabel } from "@/lib/constants/categories";
+import { getPrefectureLabel } from "@/lib/constants/prefectures";
 import { PublicFooter } from "@/components/PublicFooter";
 import { resolveUser } from "@/lib/auth/session";
 import { ServiceMenuList } from "./service-menu-list";
@@ -66,6 +67,7 @@ interface ProviderProfile {
   contact_email: string | null;
   brand_color: string;
   category: string | null;
+  prefecture: string | null;
   subscription_status: string;
   review_summary: { avg_csat: number | null; count: number } | null;
   csat_summary: { avg_csat: number | null; count: number } | null;
@@ -100,6 +102,7 @@ export default async function ProviderProfilePage({
   const favorited = isLoggedIn ? await isFavorited(provider.id) : false;
 
   const categoryLabel = await getCategoryLabel(provider.category);
+  const prefectureLabel = getPrefectureLabel(provider.prefecture);
 
   return (
     <main
@@ -129,11 +132,18 @@ export default async function ProviderProfilePage({
               )}
             </div>
             <h1 className="mt-5 text-2xl font-bold">{provider.name}</h1>
-            {categoryLabel && (
-              <span className="mt-2 inline-block rounded-full px-3 py-1 text-xs font-medium" style={{ backgroundColor: `${brandColor}1a`, color: brandColor }}>
-                {categoryLabel}
-              </span>
-            )}
+            <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
+              {categoryLabel && (
+                <span className="inline-block rounded-full px-3 py-1 text-xs font-medium" style={{ backgroundColor: `${brandColor}1a`, color: brandColor }}>
+                  {categoryLabel}
+                </span>
+              )}
+              {prefectureLabel && (
+                <span className="inline-block rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-muted">
+                  📍 {prefectureLabel}
+                </span>
+              )}
+            </div>
             {provider.bio && (
               <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-muted">{provider.bio}</p>
             )}
@@ -185,11 +195,18 @@ export default async function ProviderProfilePage({
                 </div>
                 <div className="flex-1 pt-2">
                   <h1 className="text-3xl font-bold">{provider.name}</h1>
-                  {categoryLabel && (
-                    <span className="mt-2 inline-block rounded-full px-3 py-1 text-xs font-medium" style={{ backgroundColor: `${brandColor}1a`, color: brandColor }}>
-                      {categoryLabel}
-                    </span>
-                  )}
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    {categoryLabel && (
+                      <span className="inline-block rounded-full px-3 py-1 text-xs font-medium" style={{ backgroundColor: `${brandColor}1a`, color: brandColor }}>
+                        {categoryLabel}
+                      </span>
+                    )}
+                    {prefectureLabel && (
+                      <span className="inline-block rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-muted">
+                        📍 {prefectureLabel}
+                      </span>
+                    )}
+                  </div>
                   {provider.bio && (
                     <p className="mt-3 max-w-xl whitespace-pre-wrap text-sm leading-relaxed text-muted">{provider.bio}</p>
                   )}

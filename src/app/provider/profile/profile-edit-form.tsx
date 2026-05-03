@@ -13,6 +13,7 @@ import { Alert } from "@/components/Alert";
 import { Modal } from "@/components/Modal";
 import { ContactMethodToggles, type ContactMethodState } from "@/components/ContactMethodToggles";
 import { FormLabel, FormInput, FormTextarea } from "@/components/FormField";
+import { PREFECTURES } from "@/lib/constants/prefectures";
 
 interface Provider {
   id: number;
@@ -24,6 +25,8 @@ interface Provider {
   contact_phone: string | null;
   brand_color: string | null;
   category: string | null;
+  prefecture: string | null;
+  is_listed: boolean;
 }
 
 // line_contact_url からLINE IDを抽出
@@ -53,6 +56,8 @@ export function ProfileEditForm({ provider, categories: PROVIDER_CATEGORIES }: {
     contactPhone: provider.contact_phone || "",
   });
   const [category, setCategory] = useState(provider.category || "");
+  const [prefecture, setPrefecture] = useState(provider.prefecture || "");
+  const [isListed, setIsListed] = useState(provider.is_listed);
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -219,6 +224,23 @@ export function ProfileEditForm({ provider, categories: PROVIDER_CATEGORIES }: {
       </div>
 
       <div>
+        <p className="mb-1.5 text-sm font-medium">都道府県</p>
+        <input type="hidden" name="prefecture" value={prefecture} />
+        <select
+          value={prefecture}
+          onChange={(e) => setPrefecture(e.target.value)}
+          className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-sm"
+        >
+          <option value="">未設定</option>
+          {PREFECTURES.map((p) => (
+            <option key={p.value} value={p.value}>
+              {p.label}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div>
         <FormLabel htmlFor="bio">自己紹介</FormLabel>
         <FormTextarea
           id="bio"
@@ -234,6 +256,23 @@ export function ProfileEditForm({ provider, categories: PROVIDER_CATEGORIES }: {
         onChange={setContactMethod}
         showValidationError={!!error && !contactMethod.lineEnabled && !contactMethod.emailEnabled && !contactMethod.phoneEnabled}
       />
+
+      <div>
+        <label className="flex cursor-pointer items-center gap-3">
+          <input
+            type="checkbox"
+            name="is_listed"
+            value="1"
+            checked={isListed}
+            onChange={(e) => setIsListed(e.target.checked)}
+            className="h-5 w-5 rounded border-border text-accent accent-accent"
+          />
+          <div>
+            <span className="text-sm font-medium">「事業主を探す」ページに公開する</span>
+            <p className="text-xs text-muted">ONにすると探すページの一覧に表示されます</p>
+          </div>
+        </label>
+      </div>
 
       <div>
         <FormLabel htmlFor="brand_color">

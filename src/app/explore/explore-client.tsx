@@ -7,6 +7,7 @@ import { searchProviders, type ProviderCard } from "@/lib/actions/explore";
 import { ProviderAvatar } from "@/components/ProviderAvatar";
 import { CategorySelector } from "@/components/CategorySelector";
 import type { Category } from "@/lib/constants/categories";
+import { PREFECTURES } from "@/lib/constants/prefectures";
 import { SearchIcon, ChevronRightIcon } from "@/components/icons";
 
 export function ExploreClient({
@@ -14,30 +15,36 @@ export function ExploreClient({
   categories,
   initialCategories,
   initialQuery,
+  initialPrefecture,
 }: {
   initialProviders: ProviderCard[];
   categories: Category[];
   initialCategories: string[];
   initialQuery: string | null;
+  initialPrefecture: string | null;
 }) {
   const router = useRouter();
   const [providers, setProviders] = useState(initialProviders);
   const [selectedCategories, setSelectedCategories] = useState<string[]>(initialCategories);
   const [query, setQuery] = useState(initialQuery || "");
+  const [prefecture, setPrefecture] = useState(initialPrefecture || "");
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(initialProviders.length >= 20);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const searchTimeout = useRef<ReturnType<typeof setTimeout>>(undefined);
 
-  async function handleFilter(newCategories: string[], newQuery: string) {
+  async function handleFilter(newCategories: string[], newQuery: string, newPrefecture?: string) {
+    const pref = newPrefecture !== undefined ? newPrefecture : prefecture;
     setSelectedCategories(newCategories);
+    if (newPrefecture !== undefined) setPrefecture(newPrefecture);
     setLoading(true);
     try {
       const results = await searchProviders(
         newCategories.length > 0 ? newCategories : null,
         newQuery || null,
         0,
-        20
+        20,
+        pref || null
       );
       setProviders(results);
       setHasMore(results.length >= 20);
@@ -50,6 +57,7 @@ export function ExploreClient({
     const params = new URLSearchParams();
     newCategories.forEach((c) => params.append("category", c));
     if (newQuery) params.set("q", newQuery);
+    if (pref) params.set("prefecture", pref);
     const qs = params.toString();
     router.replace(`/explore${qs ? `?${qs}` : ""}`, { scroll: false });
   }
@@ -62,6 +70,10 @@ export function ExploreClient({
     }, 400);
   }
 
+  function handlePrefectureChange(value: string) {
+    handleFilter(selectedCategories, query, value);
+  }
+
   const loadMore = useCallback(async () => {
     if (loading || !hasMore) return;
     setLoading(true);
@@ -70,7 +82,8 @@ export function ExploreClient({
         selectedCategories.length > 0 ? selectedCategories : null,
         query || null,
         providers.length,
-        20
+        20,
+        prefecture || null
       );
       setProviders((prev) => [...prev, ...results]);
       setHasMore(results.length >= 20);
@@ -79,7 +92,7 @@ export function ExploreClient({
     } finally {
       setLoading(false);
     }
-  }, [loading, hasMore, selectedCategories, query, providers.length]);
+  }, [loading, hasMore, selectedCategories, query, providers.length, prefecture]);
 
   useEffect(() => {
     if (!sentinelRef.current || !hasMore) return;
@@ -93,7 +106,7 @@ export function ExploreClient({
     return () => observer.disconnect();
   }, [hasMore, loadMore]);
 
-  const hasFilters = selectedCategories.length > 0 || query;
+  const hasFilters = selectedCategories.length > 0 || query || prefecture;
 
   return (
     <div className="w-full min-w-0">
@@ -109,15 +122,29 @@ export function ExploreClient({
         />
       </div>
 
-      {/* カテゴリ選択 */}
-      <div className="mt-3 sm:mt-4">
-        <CategorySelector
-          categories={categories}
-          selected={selectedCategories}
-          onChange={(sel) => handleFilter(sel, query)}
-          multiple
-          placeholder="カテゴリで絞り込み"
-        />
+      {/* フィルター行: カテゴリ + 都道府県 */}
+      <div className="mt-3 flex flex-col gap-2 sm:mt-4 sm:flex-row sm:gap-3">
+        <div className="flex-1">
+          <CategorySelector
+            categories={categories}
+            selected={selectedCategories}
+            onChange={(sel) => handleFilter(sel, query)}
+            multiple
+            placeholder="カテゴリで絞り込み"
+          />
+        </div>
+        <select
+          value={prefecture}
+          onChange={(e) => handlePrefectureChange(e.target.value)}
+          className="rounded-xl border border-border bg-card px-3 py-2.5 text-sm sm:w-40"
+        >
+          <option value="">都道府県</option>
+          {PREFECTURES.map((p) => (
+            <option key={p.value} value={p.value}>
+              {p.label}
+            </option>
+          ))}
+        </select>
       </div>
 
       {/* 一覧 */}
