@@ -4,32 +4,27 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 
 import type { ProviderBase } from "@/lib/types/provider";
-import { GearIcon, SearchIcon, CalendarIcon, ChevronRightIcon, HeartIcon } from "@/components/icons";
+import { GearIcon, CalendarIcon, ChevronRightIcon, HeartIcon } from "@/components/icons";
 import { ProviderAvatar } from "@/components/ProviderAvatar";
 interface RecentProvider extends ProviderBase {
   lastService: string;
   lastDate: string;
 }
 
-interface UserStats {
-  todayBookings: number;
-  upcomingBookings: number;
-}
-
 const PROVIDER_CTA_DISMISSED_KEY = "peco_provider_cta_dismissed";
 
 export function DashboardClient({
   role,
+  displayName,
   provider,
   recentProviders,
   pendingSurveyCount = 0,
-  stats = { todayBookings: 0, upcomingBookings: 0 },
 }: {
   role: string;
+  displayName: string | null;
   provider: ProviderBase | null;
   recentProviders: RecentProvider[];
   pendingSurveyCount?: number;
-  stats?: UserStats;
 }) {
   const isProvider = role === "provider";
   const hasRecent = recentProviders.length > 0;
@@ -44,6 +39,8 @@ export function DashboardClient({
     localStorage.setItem(PROVIDER_CTA_DISMISSED_KEY, "1");
     setProviderCtaDismissed(true);
   }
+
+  const greeting = displayName ? `${displayName}さんのマイページ` : "マイページ";
 
   return (
     <>
@@ -60,59 +57,12 @@ export function DashboardClient({
               <GearIcon className="text-white" />
             </Link>
             <div className="relative">
-              <h1 className="text-xl font-bold">PeCoへようこそ</h1>
+              <h1 className="text-xl font-bold">{greeting}</h1>
               <p className="mt-1.5 text-sm leading-relaxed text-white/80">
-                LINEで簡単に予約ができるサービスです
+                予約の確認やお気に入りの管理ができます
               </p>
-              <div className="mt-4 flex gap-2">
-                <Link
-                  href="/explore"
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-white px-4 py-2.5 text-xs font-semibold text-accent shadow active:scale-[0.98]"
-                >
-                  <SearchIcon size={14} />
-                  事業主を探す
-                </Link>
-              </div>
             </div>
           </div>
-
-          {/* Stats cards */}
-          <div className="mx-4 mt-4 grid grid-cols-2 gap-2">
-            <Link
-              href="/bookings?filter=today"
-              className="rounded-xl bg-card p-3 text-center ring-1 ring-border active:scale-[0.98]"
-            >
-              <p className="text-xl font-bold text-accent">{stats.todayBookings}</p>
-              <p className="text-[10px] text-muted">今日の予約</p>
-            </Link>
-            <Link
-              href="/bookings?filter=upcoming"
-              className="rounded-xl bg-card p-3 text-center ring-1 ring-border active:scale-[0.98]"
-            >
-              <p className="text-xl font-bold text-accent">{stats.upcomingBookings}</p>
-              <p className="text-[10px] text-muted">今後の予約</p>
-            </Link>
-          </div>
-
-          {!isProvider && !providerCtaDismissed && (
-            <div className="relative mx-4 mt-4 rounded-2xl bg-gradient-to-r from-amber-400 to-orange-400 p-4 text-white shadow">
-              <button
-                onClick={dismissProviderCta}
-                className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-white/20 text-white/80 active:bg-white/30"
-                aria-label="閉じる"
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
-              </button>
-              <p className="font-bold">予約を受け付けませんか？</p>
-              <p className="mt-1 text-xs text-white/90">無料であなた専用の予約ページを作成できます</p>
-              <Link
-                href="/provider/register"
-                className="mt-3 block w-full rounded-xl bg-white py-2.5 text-center text-sm font-bold text-orange-500 shadow active:scale-[0.98]"
-              >
-                事業主として始める
-              </Link>
-            </div>
-          )}
 
           {isProvider && (
             <div className="mx-4 mt-4">
@@ -198,6 +148,27 @@ export function DashboardClient({
               )}
             </div>
           </div>
+
+          {/* 事業主登録CTA（一番下） */}
+          {!isProvider && !providerCtaDismissed && (
+            <div className="relative mx-4 my-4 rounded-2xl bg-gradient-to-r from-amber-400 to-orange-400 p-4 text-white shadow">
+              <button
+                onClick={dismissProviderCta}
+                className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-white/20 text-white/80 active:bg-white/30"
+                aria-label="閉じる"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+              </button>
+              <p className="font-bold">予約を受け付けませんか？</p>
+              <p className="mt-1 text-xs text-white/90">無料であなた専用の予約ページを作成できます</p>
+              <Link
+                href="/provider/register"
+                className="mt-3 block w-full rounded-xl bg-white py-2.5 text-center text-sm font-bold text-orange-500 shadow active:scale-[0.98]"
+              >
+                事業主として始める
+              </Link>
+            </div>
+          )}
         </div>
       </div>
 
@@ -214,20 +185,10 @@ export function DashboardClient({
           </Link>
           <div className="relative flex items-center justify-between">
             <div>
-              <p className="text-sm text-white/70">マイページ</p>
-              <h1 className="mt-1 text-2xl font-bold lg:text-3xl">PeCoへようこそ</h1>
+              <h1 className="mt-1 text-2xl font-bold lg:text-3xl">{greeting}</h1>
               <p className="mt-2 max-w-md text-sm leading-relaxed text-white/80">
-                LINEで簡単に予約ができるサービスです。事業主のQRコードやURLから予約しましょう。
+                予約の確認やお気に入りの管理ができます。事業主のQRコードやURLから予約しましょう。
               </p>
-              <div className="mt-5 flex gap-3">
-                <Link
-                  href="/explore"
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-accent shadow-lg hover:shadow-xl transition-shadow"
-                >
-                  <SearchIcon />
-                  事業主を探す
-                </Link>
-              </div>
             </div>
             <div className="hidden lg:block">
               <img src="/logo.svg" alt="PeCo" className="h-16" />
@@ -257,50 +218,6 @@ export function DashboardClient({
               </div>
               <ChevronRightIcon size={20} className="shrink-0 text-muted" />
             </Link>
-          )}
-
-          {/* Stats cards */}
-          <Link
-            href="/bookings?filter=today"
-            className="col-span-6 flex items-center gap-4 rounded-2xl bg-card p-5 ring-1 ring-border shadow-sm hover:ring-accent/30 hover:shadow-md transition-all lg:col-span-3"
-          >
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-accent/10">
-              <CalendarIcon size={24} className="text-accent" />
-            </div>
-            <div>
-              <p className="text-3xl font-bold text-accent">{stats.todayBookings}</p>
-              <p className="text-sm text-muted">今日の予約</p>
-            </div>
-          </Link>
-          <Link
-            href="/bookings?filter=upcoming"
-            className="col-span-6 flex items-center gap-4 rounded-2xl bg-card p-5 ring-1 ring-border shadow-sm hover:ring-accent/30 hover:shadow-md transition-all lg:col-span-3"
-          >
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-accent/10">
-              <CalendarIcon size={24} className="text-accent" />
-            </div>
-            <div>
-              <p className="text-3xl font-bold text-accent">{stats.upcomingBookings}</p>
-              <p className="text-sm text-muted">今後の予約</p>
-            </div>
-          </Link>
-
-          {/* 事業主CTAカード（事業主でない場合） */}
-          {!isProvider && !providerCtaDismissed && (
-            <div className="relative col-span-12 overflow-hidden rounded-2xl bg-gradient-to-r from-amber-400 to-orange-400 p-6 text-white shadow-lg lg:col-span-6">
-              <button
-                onClick={dismissProviderCta}
-                className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-full bg-white/20 text-white/80 hover:bg-white/30 transition-colors"
-                aria-label="閉じる"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
-              </button>
-              <h3 className="text-lg font-bold">予約を受け付けませんか？</h3>
-              <p className="mt-1 text-sm text-white/90">無料であなた専用の予約ページを作成できます。</p>
-              <Link href="/provider/register" className="mt-4 inline-flex rounded-xl bg-white px-5 py-2.5 text-sm font-bold text-orange-500 shadow hover:shadow-md transition-shadow">
-                事業主として始める
-              </Link>
-            </div>
           )}
 
           {/* 予約一覧カード */}
@@ -383,6 +300,24 @@ export function DashboardClient({
                   );
                 })}
               </div>
+            </div>
+          )}
+
+          {/* 事業主登録CTAカード（一番下） */}
+          {!isProvider && !providerCtaDismissed && (
+            <div className="relative col-span-12 overflow-hidden rounded-2xl bg-gradient-to-r from-amber-400 to-orange-400 p-6 text-white shadow-lg">
+              <button
+                onClick={dismissProviderCta}
+                className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-full bg-white/20 text-white/80 hover:bg-white/30 transition-colors"
+                aria-label="閉じる"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+              </button>
+              <h3 className="text-lg font-bold">予約を受け付けませんか？</h3>
+              <p className="mt-1 text-sm text-white/90">無料であなた専用の予約ページを作成できます。</p>
+              <Link href="/provider/register" className="mt-4 inline-flex rounded-xl bg-white px-5 py-2.5 text-sm font-bold text-orange-500 shadow hover:shadow-md transition-shadow">
+                事業主として始める
+              </Link>
             </div>
           )}
         </div>

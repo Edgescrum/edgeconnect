@@ -11,13 +11,7 @@ export default async function HomePage() {
 
   const supabase = await createClient();
 
-  const now = new Date().toISOString();
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
-  const todayEnd = new Date(todayStart);
-  todayEnd.setDate(todayEnd.getDate() + 1);
-
-  const [providerResult, bookingsResult, pendingSurveyCount, todayBookingsResult, upcomingBookingsResult] = await Promise.all([
+  const [providerResult, bookingsResult, pendingSurveyCount] = await Promise.all([
     user.role === "provider"
       ? supabase
           .from("providers")
@@ -34,19 +28,6 @@ export default async function HomePage() {
       .order("created_at", { ascending: false })
       .limit(10),
     getPendingSurveyCount(),
-    supabase
-      .from("bookings")
-      .select("id", { count: "exact", head: true })
-      .eq("customer_user_id", user.id)
-      .eq("status", "confirmed")
-      .gte("start_at", todayStart.toISOString())
-      .lt("start_at", todayEnd.toISOString()),
-    supabase
-      .from("bookings")
-      .select("id", { count: "exact", head: true })
-      .eq("customer_user_id", user.id)
-      .eq("status", "confirmed")
-      .gte("start_at", now),
   ]);
 
   const provider = providerResult.data as {
@@ -85,13 +66,10 @@ export default async function HomePage() {
       <div className="flex-1">
         <DashboardClient
           role={user.role}
+          displayName={user.displayName}
           provider={provider}
           recentProviders={recentProviders}
           pendingSurveyCount={pendingSurveyCount}
-          stats={{
-            todayBookings: todayBookingsResult.count ?? 0,
-            upcomingBookings: upcomingBookingsResult.count ?? 0,
-          }}
         />
       </div>
       <PublicFooter maxWidth="max-w-5xl" />
