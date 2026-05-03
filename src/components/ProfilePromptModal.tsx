@@ -12,14 +12,17 @@ const GENDER_OPTIONS = [
 
 const currentYear = new Date().getFullYear();
 const BIRTH_YEARS = Array.from({ length: currentYear - 1940 + 1 }, (_, i) => currentYear - i);
+const BIRTH_MONTHS = Array.from({ length: 12 }, (_, i) => i + 1);
 
 const MODAL_DISMISSED_KEY = "peco_profile_modal_dismissed";
 
 export function ProfilePromptModal() {
   const [show, setShow] = useState(false);
   const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
   const [gender, setGender] = useState("");
   const [birthYear, setBirthYear] = useState("");
+  const [birthMonth, setBirthMonth] = useState("");
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -30,22 +33,23 @@ export function ProfilePromptModal() {
     }
   }, []);
 
-  function handleDismiss() {
-    // Don't permanently dismiss - show again next time
-    setShow(false);
-  }
-
   function handleSubmit() {
     if (!name.trim()) {
       setError("お名前を入力してください");
       return;
     }
+    if (!phone.trim()) {
+      setError("電話番号を入力してください");
+      return;
+    }
     setError(null);
     startTransition(async () => {
       try {
-        const birthDate = birthYear ? `${birthYear}-01-01` : null;
+        const birthDate = birthYear
+          ? `${birthYear}-${(birthMonth || "01").padStart(2, "0")}-01`
+          : null;
         await Promise.all([
-          updateUserSettings(name, ""),
+          updateUserSettings(name, phone),
           updateUserAttributes(gender || null, birthDate),
         ]);
         localStorage.setItem(MODAL_DISMISSED_KEY, "1");
@@ -60,7 +64,7 @@ export function ProfilePromptModal() {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="w-full max-w-sm rounded-2xl bg-card p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+      <div className="w-full max-w-sm max-h-[90vh] overflow-y-auto rounded-2xl bg-card p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
         <div className="text-center">
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-accent/10">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-accent">
@@ -69,8 +73,8 @@ export function ProfilePromptModal() {
             </svg>
           </div>
           <h3 className="mt-4 text-lg font-bold">プロフィール登録</h3>
-          <p className="mt-1 text-sm text-muted">
-            予約時に使用されるお名前を登録してください
+          <p className="mt-2 text-sm text-muted">
+            この情報は予約時に使用します
           </p>
         </div>
 
@@ -82,6 +86,17 @@ export function ProfilePromptModal() {
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="山田 太郎"
+              className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-medium text-muted">電話番号 <span className="text-red-500">*</span></label>
+            <input
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="090-1234-5678"
               className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
             />
           </div>
@@ -107,19 +122,33 @@ export function ProfilePromptModal() {
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-medium text-muted">生まれ年</label>
-            <select
-              value={birthYear}
-              onChange={(e) => setBirthYear(e.target.value)}
-              className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
-            >
-              <option value="">選択してください</option>
-              {BIRTH_YEARS.map((year) => (
-                <option key={year} value={String(year)}>
-                  {year}年
-                </option>
-              ))}
-            </select>
+            <label className="mb-1 block text-xs font-medium text-muted">生まれ年・月</label>
+            <div className="flex gap-2">
+              <select
+                value={birthYear}
+                onChange={(e) => setBirthYear(e.target.value)}
+                className="flex-1 rounded-xl border border-border bg-background px-3 py-3 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+              >
+                <option value="">年</option>
+                {BIRTH_YEARS.map((year) => (
+                  <option key={year} value={String(year)}>
+                    {year}年
+                  </option>
+                ))}
+              </select>
+              <select
+                value={birthMonth}
+                onChange={(e) => setBirthMonth(e.target.value)}
+                className="w-24 rounded-xl border border-border bg-background px-3 py-3 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+              >
+                <option value="">月</option>
+                {BIRTH_MONTHS.map((month) => (
+                  <option key={month} value={String(month)}>
+                    {month}月
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
           {error && (
@@ -127,19 +156,13 @@ export function ProfilePromptModal() {
           )}
         </div>
 
-        <div className="mt-6 space-y-2.5">
+        <div className="mt-6">
           <button
             onClick={handleSubmit}
             disabled={isPending}
             className="flex w-full items-center justify-center gap-2 rounded-xl bg-accent py-3.5 font-semibold text-white shadow-lg shadow-accent/25 disabled:opacity-60 active:scale-[0.98]"
           >
             {isPending ? "保存中..." : "登録する"}
-          </button>
-          <button
-            onClick={handleDismiss}
-            className="w-full rounded-xl py-3 text-sm text-muted active:bg-gray-50"
-          >
-            あとで
           </button>
         </div>
       </div>
