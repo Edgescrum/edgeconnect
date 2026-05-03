@@ -1,3 +1,4 @@
+import { headers } from "next/headers";
 import { resolveUser } from "@/lib/auth/session";
 import { ProfilePromptModal } from "@/components/ProfilePromptModal";
 
@@ -8,8 +9,15 @@ import { ProfilePromptModal } from "@/components/ProfilePromptModal";
  * 対象外:
  * - 未ログインユーザー（公開ページは閲覧可能）
  * - provider ロール（事業主は別フローでプロフィール設定済み）
+ * - LP（/p/[slug]）ページ（ログイン前でも閲覧可能な公開ページ）
  */
 export async function ProfileGate() {
+  const headersList = await headers();
+  const pathname = headersList.get("x-pathname") || "";
+
+  // LP（事業主プロフィールページ）ではモーダルを表示しない
+  if (pathname.startsWith("/p/")) return null;
+
   const user = await resolveUser();
 
   // 未ログイン or 事業主 or プロフィール完了済み → 何も表示しない
