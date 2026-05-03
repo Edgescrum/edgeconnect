@@ -15,8 +15,8 @@ export async function ProfileGate() {
   const headersList = await headers();
   const pathname = headersList.get("x-pathname") || "";
 
-  // LP（トップページ）ではモーダルを表示しない
-  if (pathname === "/") return null;
+  // LP・管理画面ではモーダルを表示しない
+  if (pathname === "/" || pathname.startsWith("/admin")) return null;
 
   const user = await resolveUser();
 
