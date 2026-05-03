@@ -162,8 +162,8 @@ export function DashboardClient({
                 href="/favorites"
                 className="flex items-center gap-3.5 rounded-xl bg-background p-3.5 ring-1 ring-border active:scale-[0.99]"
               >
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-pink-50">
-                  <HeartIcon size={18} filled className="text-pink-500" />
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-accent-bg">
+                  <HeartIcon size={18} filled className="text-accent" />
                 </div>
                 <div className="flex-1">
                   <p className="text-sm font-semibold">お気に入り</p>
@@ -268,22 +268,30 @@ export function DashboardClient({
           )}
 
           {/* Stats cards */}
-          <div className="col-span-12 grid grid-cols-2 gap-4 lg:col-span-6">
-            <Link
-              href="/bookings?filter=today"
-              className="rounded-2xl bg-card p-4 text-center ring-1 ring-border shadow-sm hover:ring-accent/30 hover:shadow-md transition-all"
-            >
-              <p className="text-2xl font-bold text-accent">{stats.todayBookings}</p>
-              <p className="mt-1 text-xs text-muted">今日の予約</p>
-            </Link>
-            <Link
-              href="/bookings?filter=upcoming"
-              className="rounded-2xl bg-card p-4 text-center ring-1 ring-border shadow-sm hover:ring-accent/30 hover:shadow-md transition-all"
-            >
-              <p className="text-2xl font-bold text-accent">{stats.upcomingBookings}</p>
-              <p className="mt-1 text-xs text-muted">今後の予約</p>
-            </Link>
-          </div>
+          <Link
+            href="/bookings?filter=today"
+            className="col-span-6 flex items-center gap-4 rounded-2xl bg-card p-5 ring-1 ring-border shadow-sm hover:ring-accent/30 hover:shadow-md transition-all lg:col-span-3"
+          >
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-accent/10">
+              <CalendarIcon size={24} className="text-accent" />
+            </div>
+            <div>
+              <p className="text-3xl font-bold text-accent">{stats.todayBookings}</p>
+              <p className="text-sm text-muted">今日の予約</p>
+            </div>
+          </Link>
+          <Link
+            href="/bookings?filter=upcoming"
+            className="col-span-6 flex items-center gap-4 rounded-2xl bg-card p-5 ring-1 ring-border shadow-sm hover:ring-accent/30 hover:shadow-md transition-all lg:col-span-3"
+          >
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-accent/10">
+              <CalendarIcon size={24} className="text-accent" />
+            </div>
+            <div>
+              <p className="text-3xl font-bold text-accent">{stats.upcomingBookings}</p>
+              <p className="text-sm text-muted">今後の予約</p>
+            </div>
+          </Link>
 
           {/* 事業主CTAカード（事業主でない場合） */}
           {!isProvider && !providerCtaDismissed && (
@@ -323,8 +331,8 @@ export function DashboardClient({
             href="/favorites"
             className="col-span-12 flex items-center gap-4 rounded-2xl bg-card p-5 shadow-sm ring-1 ring-border hover:ring-accent/30 hover:shadow-md transition-all lg:col-span-4"
           >
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-pink-50">
-              <HeartIcon size={24} filled className="text-pink-500" />
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-accent-bg">
+              <HeartIcon size={24} filled className="text-accent" />
             </div>
             <div className="flex-1">
               <p className="font-semibold">お気に入り</p>

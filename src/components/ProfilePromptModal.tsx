@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useTransition } from "react";
 import { updateUserSettings, updateUserAttributes } from "@/lib/actions/user";
+import { formatPhoneAsYouType, isValidJapanesePhone } from "@/lib/phone";
 
 const GENDER_OPTIONS = [
   { value: "male", label: "男性" },
@@ -40,6 +41,10 @@ export function ProfilePromptModal() {
     }
     if (!phone.trim()) {
       setError("電話番号を入力してください");
+      return;
+    }
+    if (!isValidJapanesePhone(phone)) {
+      setError("正しい電話番号を入力してください（例: 090-1234-5678）");
       return;
     }
     setError(null);
@@ -95,8 +100,9 @@ export function ProfilePromptModal() {
             <input
               type="tel"
               value={phone}
-              onChange={(e) => setPhone(e.target.value)}
+              onChange={(e) => setPhone(formatPhoneAsYouType(e.target.value))}
               placeholder="090-1234-5678"
+              inputMode="tel"
               className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
             />
           </div>
