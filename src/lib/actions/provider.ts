@@ -191,6 +191,8 @@ export async function updateProfile(formData: FormData) {
     throw new Error("電話番号の形式が正しくありません。日本の電話番号を入力してください");
   }
   const brandColor = formData.get("brand_color") as string;
+  const prefectureVal = (formData.get("prefecture") as string) || null;
+  const isListed = formData.get("is_listed") === "1";
 
   // 連絡先が1つも設定されていない場合はエラー
   const hasContact = (lineEnabled && lineId) || (emailEnabled && contactEmail) || (phoneEnabled && contactPhoneVal);
@@ -212,6 +214,8 @@ export async function updateProfile(formData: FormData) {
     ? contactPhoneVal
     : null;
   if (brandColor) updates.brand_color = brandColor;
+  updates.prefecture = prefectureVal;
+  updates.is_listed = isListed;
 
   const iconFile = formData.get("icon") as File | null;
   if (iconFile && iconFile.size > 0) {

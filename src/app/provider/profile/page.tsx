@@ -15,7 +15,7 @@ export default async function ProfileEditPage() {
   const supabase = await createClient();
   const { data: provider } = await supabase
     .from("providers")
-    .select("id, slug, name, bio, icon_url, line_contact_url, contact_email, contact_phone, brand_color, category")
+    .select("id, slug, name, bio, icon_url, line_contact_url, contact_email, contact_phone, brand_color, category, prefecture, is_listed")
     .eq("user_id", user.id)
     .single();
 
